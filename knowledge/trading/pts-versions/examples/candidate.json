@@ -1,0 +1,24 @@
+{
+  "$schema": "../schemas/candidate.schema.json",
+  "protocol": "pts-candidate-catalog-v1",
+  "formatVersion": 1,
+  "id": "pts-trend-reversal",
+  "candidateVersion": "0.1.0",
+  "status": "draft-unregistered",
+  "executionEnabled": false,
+  "registryEntry": null,
+  "reference": {
+    "bundleId": "pts-course",
+    "knowledgeVersion": "1.0.0",
+    "path": "../../pts/bundle.json",
+    "sha256": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+  },
+  "proposedPolicy": {
+    "path": "../../pts/candidate-policy.json",
+    "sha256": "4597573703ab1a798d501637b9ab67faf608a1c56686705e1adca2f6d61c876e"
+  },
+  "documentation": {
+    "version": "1.0.0",
+    "description": "Initial independent draft identity; preserves unresolved course and execution definitions."
+  }
+}

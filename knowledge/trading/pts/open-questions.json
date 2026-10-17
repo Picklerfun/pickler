@@ -1,0 +1,295 @@
+{
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "status": "unresolved",
+  "questions": [
+    {
+      "id": "Q-timeframes",
+      "ruleIds": ["timeframes"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Minimum history for each timeframe.",
+        "Candle source, session calendar, timezone and close definition.",
+        "Priority when timeframe findings conflict."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-trend-direction",
+      "ruleIds": ["trend-direction"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Pivot and channel detection using only information available at the signal time.",
+        "Minimum contacts and tolerance around a channel boundary.",
+        "Classification of sideways or undetermined trends."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-risk-account",
+      "ruleIds": ["risk-account"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Definition of account equity and aggregate risk for correlated positions.",
+        "Reviewed risk limits for an evaluable version.",
+        "Commissions, slippage and funding allowances; planned loss is not a guaranteed realized loss."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-leverage-exposure",
+      "ruleIds": ["leverage-exposure"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Deterministic exposure sizing from approved account risk and stop distance.",
+        "Available margin, liquidation constraints and existing creator caps."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-retracement",
+      "ruleIds": ["retracement"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Whether spoken ratios are rounded or exact.",
+        "Reproducible impulse and retracement anchors, orientation and formula.",
+        "Confirmation by price cross, candle close or persistence."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-basic-setup",
+      "ruleIds": ["basic-setup"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Required versus optional confluences for the first version.",
+        "Maximum distance to the relevant channel boundary.",
+        "Separate upward and downward variants without mixing Fibonacci drawings."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-entry-trigger",
+      "ruleIds": ["entry-trigger"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "One reviewed entry mode or explicit rules for both alternatives.",
+        "Trigger freshness, order semantics and expiration.",
+        "Use only a crossing that has already occurred."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-structural-stop",
+      "ruleIds": ["structural-stop"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Selection among alternative invalidation anchors.",
+        "Tick or volatility buffer and liquidation constraints.",
+        "A possible sweep cannot authorize widening a stop or bypassing host controls."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-breakeven",
+      "ruleIds": ["breakeven"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Whether break even means entry price or zero net loss after all costs.",
+        "Exact midpoint versus spoken rounding near 0.50.",
+        "Persisted transitions and event ordering within a candle."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-targets",
+      "ruleIds": ["targets"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Partial percentages, initial versus remaining quantity and final remainder.",
+        "Conditions authorizing extended targets and the correct drawing.",
+        "Event ordering when stop and target appear in the same candle."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-rupture-confirmation",
+      "ruleIds": ["rupture-confirmation"],
+      "scope": "initial-candidate",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Confirmation matrix by timeframe and structure.",
+        "Calendar hours versus sessions or closed candles.",
+        "Initial detection versus later confirmation."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-mother-wave",
+      "ruleIds": ["mother-wave"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Tolerance around return to the origin.",
+        "Confirmed anchors and activation time.",
+        "Maximum number of candles and formation duration."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-phi",
+      "ruleIds": ["phi"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Exact geometry and sequence of pattern points.",
+        "Tolerance for breaches and zone width.",
+        "Separate a candidate pattern from a confirmed pattern."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-phi-mother",
+      "ruleIds": ["phi-mother"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Which wave confirms the scenario and how many are allowed.",
+        "Required components for a selected first variant.",
+        "Human-reviewed positive and negative labeled examples."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-failed-triangle",
+      "ruleIds": ["failed-triangle"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Triangle and vertex detection.",
+        "Return tolerance, crossing and confirmation window.",
+        "Separate use as an exit warning from use as a new entry."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-phi-wedge",
+      "ruleIds": ["phi-wedge"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Measurable slopes and convergence.",
+        "Minimum contacts and amplitude.",
+        "Reviewed positive and negative examples."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-leading-diagonal",
+      "ruleIds": ["leading-diagonal"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Preserve the course-specific definition rather than substitute a homonymous pattern.",
+        "Definition of the preceding extreme and sequence.",
+        "The provided lesson ends mid-sentence."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-seller-covering",
+      "ruleIds": ["seller-covering"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Tolerance around 2.61.",
+        "Additional entry confirmation.",
+        "Separate a temporary bounce from a larger trend change."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-intermediate-ranges",
+      "ruleIds": ["intermediate-ranges"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Macro impulse ranges versus local pattern triggers.",
+        "Keep correction reversal zones separate from new impulse targets.",
+        "An independently reviewed horizon for continuation setups."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-context-equities",
+      "ruleIds": ["context-equities"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Historical sources, calendars and time alignment.",
+        "Defined return windows and measured relationships.",
+        "Divergence thresholds and missing data handling.",
+        "Resolve ambiguous symbols, including HIG, without silently replacing them."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-context-crypto",
+      "ruleIds": ["context-crypto"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Instrument identities and dominance methodologies.",
+        "Equity-market sessions versus continuous crypto trading.",
+        "Correlation must not become an unconditional causal rule."
+      ],
+      "resolution": null
+    },
+    {
+      "id": "Q-context-macro",
+      "ruleIds": ["context-macro"],
+      "scope": "optional-extension",
+      "status": "unresolved",
+      "blocksExecutionOfRule": true,
+      "decisionsRequired": [
+        "Course theory versus current observable facts.",
+        "Verified macro definitions before coding a policy.",
+        "Selected put/call series and window; historical example values are not current evidence."
+      ],
+      "resolution": null
+    }
+  ],
+  "contentIssues": ["missing-M3C6", "truncated-M3C7", "missing-visual-coordinates"],
+  "reviewRequirement": "Resolve only the concepts selected for an implemented version. Optional pattern or context extensions are not mandatory for the basic candidate."
+}

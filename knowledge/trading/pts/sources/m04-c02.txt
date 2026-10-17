@@ -1,0 +1,44 @@
+En esta clase vamos a iniciar con un concepto que es sumamente importante y es el concepto
+de las correlaciones. Ya a lo largo de este módulo vamos a centrarnos en un aspecto que
+es muy muy importante de entender y es el siguiente. Los mercados financieros no son
+independientes unos de los otros. En realidad existe una correlación o una serie de correlaciones
+entre los distintos mercados o entre los distintos activos financieros. Básicamente ¿Qué es una
+correlación? Básicamente esto consiste en una similitud o una similitud o una influencia entre
+diferentes gráficos en los cuales usualmente se interpreta como si un gráfico está haciendo
+esto el otro gráfico debe estar haciendo aquello. Eso es lo que significa una correlación es decir
+si tenemos una situación con un gráfico con un activo financiero hay otro que se ve influenciado y
+que debe estar haciendo una cosa o la otra ok. Entonces por ejemplo el caso más fácil de entender
+es el de Bitcoin con las altcoins vamos a explicar esto a mucha mayor profundidad pero en la mayoría
+de los casos cuando Bitcoin sube las altcoins se ven influenciadas de forma positiva como muy
+posiblemente ustedes lo sabrán y cuando Bitcoin cae las altcoins se ven influenciadas de forma
+negativa. Obviamente esto es el ejemplo más simple más sencillo de entender pero a partir de allí
+podemos profundizar en múltiples cosas y en un montón de conceptos importantes. Así que desde
+este punto de vista vamos a definir dos tipos de correlación básicas. La primera es la correlación
+positiva que significa una correlación positiva significa que dos gráficos suelen hacer lo
+mismo al mismo tiempo. ¿Qué significa esto? Significa que en pocas palabras si uno está subiendo
+el otro también está subiendo o puede estar a punto de iniciar subidas. Obviamente aplica
+lo contrario si un activo está por ejemplo cayendo al tener una correlación positiva con otro
+también el otro activo puede estar cayendo. Es decir una correlación positiva significa que dos activos
+suelen comportarse igual comportarse igual uno con el otro eso es lo que significa una correlación
+positiva. En pocas palabras van en un comportamiento paralelo van en un comportamiento del cual una
+activo junto con otro activo pueden ir trabajando juntos de la mano. Ahora una correlación negativa
+ok podríamos decir que tenemos una correlación negativa cuando es lo opuesto cuando dos gráficos
+suelen ir en dirección contraria ok en dirección opuesta uno del otro y la forma más fácil de
+describirlo es que si un gráfico sube digamos que el que está correlativamente el que tiene una
+correlación negativa el que está negativamente correlacionado baja y lo mismo al contrario si
+un activo está cayendo y está correlacionado negativamente con otro el activo correlacionado
+negativamente sube ok es decir tiene una relación opuesta esto lo vamos a ver porque nos va a
+permitir entender muchas cosas dentro del mercado y también va a facilitar mucho el trabajo de
+análisis entonces en resumen correlación positiva es que si un activo sube el otro activo también
+sube y si un activo baja el otro activo también está digamos que predispuesto a también caer en
+ocasiones no siempre se mueven al unizo no hay ocasiones en las que literalmente estos activos
+correlacionados van calcados unos con los otros la mayoría de veces a veces pueden tener digamos
+que pequeñas diferencias temporales pero son pequeñas excepciones en marcos ya más grandes o en
+niveles a más largo plazo la correlación positiva de uno con el otro suelen mantenerse por lo tanto
+cuando un activo correlacionado tiende a estar subiendo o estar bajando el otro activo que
+está correlacionado a él también suele tener el mismo comportamiento y en el caso de la correlación
+negativa o de la correlación opuesta significa que si un activo está subiendo el otro está haciendo
+exactamente el movimiento contrario o si un activo está cayendo esto justamente predispone para que
+el activo correlacionado opuestamente pueda más bien tener subidas comprender esto nos va a permitir
+ahora pasar al siguiente paso en los cuales los diversos activos van a tener correlaciones positivas
+y negativas y vamos a ir explicando cada uno de ellos.

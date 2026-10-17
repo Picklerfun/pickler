@@ -196,6 +196,12 @@ injected execution contract. These are strategy modules, not new harness plugin 
 transaction-fenced execution. See [Studio perpetual execution](docs/studio-perps-execution.md).
 See [Trading architecture](docs/trading-architecture.md) before adding a strategy or consumer.
 
+PTS reference material lives in `knowledge/trading/pts` as `pts-course@1.0.0`. The separate
+`knowledge/trading/pts-versions` catalog names only disabled, unregistered candidates, never Studio
+or executable selections. Read [baseline recovery](apps/agent-service/TRADING-BASELINE.md) for
+private local preservation and isolated recovery. Do not rewrite source bundles, fill unresolved
+parameters, change SMA versions or restart sessions from restored histories.
+
 ## AI credit foundation
 
 Core owns user credit contracts and exact token pricing; infrastructure owns the private billing schema and transactional repository. API-schema carries portable credit DTOs, without endpoints. See [AI credits](docs/ai-credits.md). No commercial tariffs, checkout, runtime activation or USD/AUSD conversion are introduced. Keep user charges separate from provider cost reservations and historical budgets.
@@ -237,3 +243,23 @@ published testnet generation was verified incompatible and stays blocked. Read
 [Token operations](docs/market/token-launch-operations.md) and
 [the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation
 is implied. Explicit acceptance scripts in `scripts/contracts` never run during ordinary tests.
+
+## Local experimental PTS
+
+PTS 0.2.0 is an independently versioned, local-only evaluation policy, not a fifth Studio strategy.
+Read [PTS basic paper](apps/agent-service/PTS-BASIC-PAPER.md) and the affected package instructions.
+The original course and disabled 0.1.0 candidate remain immutable. Public history preparation is
+bounded; replay/audit are offline. A prepared configuration does not authorize or start the
+fourteen-day comparison. Missing Perpl history remains ineligible; do not invent candles.
+
+## Independent intraday PTS
+
+`pts-intraday@0.1.0` adds local evaluation v9 with native 1d/4h/1h/15m/5m roles and a fixed
+24-hour paper pilot. Read [the intraday guide](apps/agent-service/PTS-INTRADAY-PAPER.md). It never
+relabels basic history, modifies the immutable course/basic versions or registers a Studio strategy.
+Controlled profitable fixtures are not evidence of market profitability.
+
+The offline causal research extension is documented in
+[PTS causal research](apps/agent-service/PTS-CAUSAL-RESEARCH.md). Its separately versioned
+signal candidates cannot initialize accounts or enter an executable strategy registry. Saved
+signals, development controls and verified financial returns remain distinct.

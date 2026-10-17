@@ -28,7 +28,7 @@ export function createStudyData(
     readerPolicy = policy;
     reader ??= createPerplAcquisitionReader(agents, { ...options, schedule, policy });
     return reader.read(
-      { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+      { tenantId: record.config.tenantId, agentId: record.agentIds.rules! },
       ["BTC", "ETH"],
       signal,
       guard,
@@ -42,7 +42,7 @@ export function createStudyData(
     observe: async (record, signal, guard) => {
       if (!record.dataPolicy) {
         return runtime.data.observation(
-          { ...record.config, agentId: record.agentIds.rules },
+          { ...record.config, agentId: record.agentIds.rules! },
           record.startedAt ?? Date.now(),
           signal,
         );
@@ -50,7 +50,7 @@ export function createStudyData(
       const frames = await read(record, signal, guard);
       const { service } = await createPerplSession(
         agents,
-        { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+        { tenantId: record.config.tenantId, agentId: record.agentIds.rules! },
         signal,
         { ...options, schedule, ...(guard ? { guard } : {}) },
       );
@@ -76,7 +76,7 @@ export function createStudyData(
       if (cache?.hour !== hour) {
         const { service } = await createPerplSession(
           agents,
-          { tenantId: record.config.tenantId, agentId: record.agentIds.rules },
+          { tenantId: record.config.tenantId, agentId: record.agentIds.rules! },
           signal,
           { ...options, schedule, ...(guard ? { guard } : {}) },
         );
@@ -124,7 +124,7 @@ export function createStudyData(
       for (const symbol of ["BTC", "ETH"] as const) {
         frames.push(
           await runtime.data.frame(
-            { ...record.config, agentId: record.agentIds.rules },
+            { ...record.config, agentId: record.agentIds.rules! },
             symbol,
             signal,
           ),

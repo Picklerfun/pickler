@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Disabled PTS candidate catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "protocol",
+    "formatVersion",
+    "id",
+    "candidateVersion",
+    "status",
+    "executionEnabled",
+    "registryEntry",
+    "reference",
+    "proposedPolicy",
+    "documentation"
+  ],
+  "properties": {
+    "$schema": { "const": "../schemas/candidate.schema.json" },
+    "protocol": { "const": "pts-candidate-catalog-v1" },
+    "formatVersion": { "const": 1 },
+    "id": { "const": "pts-trend-reversal" },
+    "candidateVersion": { "const": "0.1.0" },
+    "status": { "const": "draft-unregistered" },
+    "executionEnabled": { "const": false },
+    "registryEntry": { "type": "null" },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bundleId", "knowledgeVersion", "path", "sha256"],
+      "properties": {
+        "bundleId": { "const": "pts-course" },
+        "knowledgeVersion": { "const": "1.0.0" },
+        "path": { "const": "../../pts/bundle.json" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "proposedPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "const": "../../pts/candidate-policy.json" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "description"],
+      "properties": {
+        "version": { "const": "1.0.0" },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

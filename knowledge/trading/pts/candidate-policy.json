@@ -1,0 +1,99 @@
+{
+  "$schema": "./schemas/candidate-policy.schema.json",
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "candidateId": "pts-trend-reversal",
+  "status": "proposal-not-registered",
+  "mode": "analysis-only",
+  "executionEnabled": false,
+  "description": "Proposed initial analysis of reversal with the primary trend. This is an integration choice, not a fully specified executable strategy from the course.",
+  "findingStates": ["met", "not-met", "unknown"],
+  "requiredConditions": [
+    {
+      "id": "market-data-complete",
+      "description": "Required closed candles and observation metadata are available at the analysis time.",
+      "ruleIds": ["timeframes"],
+      "unresolvedQuestionIds": ["Q-timeframes"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "primary-trend-defined",
+      "description": "The reviewed larger-timeframe criteria establish a primary trend.",
+      "ruleIds": ["timeframes", "trend-direction"],
+      "unresolvedQuestionIds": ["Q-timeframes", "Q-trend-direction"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "weekly-channel-aligned",
+      "description": "The reviewed weekly channel supports the proposed direction within the larger trend.",
+      "ruleIds": ["trend-direction", "basic-setup"],
+      "unresolvedQuestionIds": ["Q-trend-direction", "Q-basic-setup"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "correction-at-channel-boundary",
+      "description": "The correction or rebound reaches the relevant channel boundary within a reviewed tolerance.",
+      "ruleIds": ["basic-setup"],
+      "unresolvedQuestionIds": ["Q-basic-setup"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "retracement-in-reversal-zone",
+      "description": "The identified prior impulse retraces into its reviewed reversal zone.",
+      "ruleIds": ["retracement"],
+      "unresolvedQuestionIds": ["Q-retracement"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "entry-trigger-confirmed",
+      "description": "The selected entry confirmation has occurred using the reviewed drawing and crossing rule.",
+      "ruleIds": ["entry-trigger", "rupture-confirmation"],
+      "unresolvedQuestionIds": ["Q-entry-trigger", "Q-rupture-confirmation"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    },
+    {
+      "id": "structural-invalidation-defined",
+      "description": "The selected invalidation anchor is reproducible from available observations.",
+      "ruleIds": ["structural-stop"],
+      "unresolvedQuestionIds": ["Q-structural-stop"],
+      "knownFindingRequires": ["resolved-criterion", "market-evidence"]
+    }
+  ],
+  "optionalConfirmations": ["phi", "mother-wave", "phi-mother"],
+  "reviewedDefinitions": {
+    "timeframeHistoryAndCalendars": null,
+    "trendDetector": null,
+    "channelDetector": null,
+    "boundaryTolerance": null,
+    "fibonacciAnchorsAndRatios": null,
+    "entryModeAndConfirmation": null,
+    "invalidationAnchorAndBuffer": null
+  },
+  "execution": {
+    "readiness": "unresolved",
+    "reviewedAccountRiskBps": null,
+    "sizingPolicy": null,
+    "leveragePolicy": null,
+    "costPolicy": null,
+    "stopTransitionPolicy": null,
+    "partialExitSchedule": null,
+    "extendedTargetEligibility": null,
+    "holdingAndExpirationPolicy": null,
+    "sameCandleEventOrdering": null,
+    "blockingQuestionIds": [
+      "Q-timeframes",
+      "Q-trend-direction",
+      "Q-risk-account",
+      "Q-leverage-exposure",
+      "Q-retracement",
+      "Q-basic-setup",
+      "Q-entry-trigger",
+      "Q-structural-stop",
+      "Q-breakeven",
+      "Q-targets",
+      "Q-rupture-confirmation"
+    ]
+  },
+  "analysisSchema": "schemas/analysis.schema.json",
+  "requestSchema": "schemas/analysis-request.schema.json"
+}

@@ -23,7 +23,15 @@
     "./evaluation": {
       "types": "./src/evaluation.ts",
       "import": "./dist/evaluation.js"
-    }
+    },
+    "./pts": {
+      "types": "./src/pts.ts",
+      "import": "./dist/pts.js"
+    },
+    "./testing/pts": "./test/pts-fixture.ts",
+    "./testing/pts-intraday": "./test/pts-intraday-fixture.ts",
+    "./testing/pts-intraday-fast": "./test/pts-intraday-fast-fixture.ts",
+    "./testing/pts-intraday-responsive": "./test/pts-intraday-responsive-fixture.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

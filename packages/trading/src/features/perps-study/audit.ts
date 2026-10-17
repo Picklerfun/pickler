@@ -45,6 +45,36 @@ export function canonicalAudit(value: unknown): string {
   }
   return JSON.stringify(value) ?? "null";
 }
+/** The same canonical bytes, yielded without constructing one unbounded string. */
+export function* canonicalAuditChunks(value: unknown): Generator<string> {
+  if (Array.isArray(value)) {
+    yield "[";
+    for (let index = 0; index < value.length; index++) {
+      if (index) {
+        yield ",";
+      }
+      // Preserve legacy map/join semantics, including holes in controlled inputs.
+      if (index in value) {
+        yield* canonicalAuditChunks(value[index]);
+      }
+    }
+    yield "]";
+  } else if (value && typeof value === "object") {
+    yield "{";
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    for (let index = 0; index < entries.length; index++) {
+      const [key, entry] = entries[index]!;
+      if (index) {
+        yield ",";
+      }
+      yield JSON.stringify(key) + ":";
+      yield* canonicalAuditChunks(entry);
+    }
+    yield "}";
+  } else {
+    yield JSON.stringify(value) ?? "null";
+  }
+}
 function resultObject(value: unknown): { answers?: PerpsJevAnswers; proposals?: PerpsProposal[] } {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new PilotError("MODEL_OUTPUT_INVALID", "Missing structured result");
@@ -207,15 +237,15 @@ export function auditPerpsDecisions(
             if (strategy === "rules") {
               replay = perpsRules(context);
             } else if (strategy === "jev" && record.config.version === 2) {
-              answers = checkedAnswers(round!.calls.jev.result, false);
+              answers = checkedAnswers(round!.calls.jev?.result, false);
               replay = perpsJevDecisions(context, answers);
-              const saved = proposals(resultObject(round!.calls.jev.result).proposals);
+              const saved = proposals(resultObject(round!.calls.jev?.result).proposals);
               if (canonicalAudit(saved) !== canonicalAudit(replay)) {
                 conversion = "RESULT_DIVERGENCE";
               }
             } else if (strategy === "combined") {
               answers = checkedAnswers(round!.calls.review?.result, true);
-              const proposed = proposals(round!.calls.fallback.result);
+              const proposed = proposals(round!.calls.fallback?.result);
               original = proposed.find((p) => p.symbol === symbol);
               replay = perpsJevReviewed(proposed, answers);
               if (
@@ -225,7 +255,7 @@ export function auditPerpsDecisions(
                 conversion = "RESULT_DIVERGENCE";
               }
             } else if (strategy === "deepseek") {
-              replay = proposals(round!.calls.direct.result);
+              replay = proposals(round!.calls.direct?.result);
               original = replay.find((p) => p.symbol === symbol);
             } else {
               // Legacy routing is retained as observed; do not invent a four-way interpretation.

@@ -1,0 +1,62 @@
+{
+  "version": 8,
+  "protocol": "perps-pts-sma-v1",
+  "tenantId": "perps-lab",
+  "sessionId": "pts-basic-prepared",
+  "network": "mainnet",
+  "hours": 336,
+  "budgetUsd": "5",
+  "markets": [
+    {
+      "symbol": "BTC",
+      "marketId": 1
+    },
+    {
+      "symbol": "MON",
+      "marketId": 10
+    },
+    {
+      "symbol": "ETH",
+      "marketId": 20
+    },
+    {
+      "symbol": "SOL",
+      "marketId": 31
+    },
+    {
+      "symbol": "HYPE",
+      "marketId": 40
+    },
+    {
+      "symbol": "ZEC",
+      "marketId": 50
+    },
+    {
+      "symbol": "LIT",
+      "marketId": 60
+    },
+    {
+      "symbol": "VVV",
+      "marketId": 70
+    },
+    {
+      "symbol": "PUMP",
+      "marketId": 90
+    },
+    {
+      "symbol": "NEAR",
+      "marketId": 100
+    },
+    {
+      "symbol": "UNI",
+      "marketId": 110
+    }
+  ],
+  "acquisitionPolicy": "stream-universe-component-paper-20s-v1",
+  "candidate": "pts-trend-reversal@0.2.0",
+  "history": {
+    "file": "history.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "preparedFor": "local-paper-only"
+}

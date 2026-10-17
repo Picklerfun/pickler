@@ -1,0 +1,175 @@
+# Explicit component-freshness paper policy
+
+`stream-universe-component-paper-20s-v1` is a separately authorized local financial experiment.
+It does not change the capture-only `stream-universe-component-20s-v2`, historical accounts,
+Studio, deployed agents, REST selectors, financial formulas, signals, risk, fees or funding.
+
+The operator authorized implementation and one six-hour SMA reopening comparison on 2026-10-09.
+This authorization supersedes the earlier capture-only exclusion for this new selector only.
+No model, news, trading key, real order, automation, merge or deployment is admitted.
+
+## Data contract
+
+Use the latest ticker and reconstructed book from one copied live connection generation.
+Both native timestamps must independently be at most 30 seconds old and at most five seconds
+ahead. Record their skew; do not gate this policy on a five-second difference between them.
+Require an advancing heartbeat received at most five seconds ago, with its sequence, head block,
+receipt and buffer copy time. Identical heartbeat messages cannot renew that receipt. Heartbeats
+never advance price timestamps. Acquisition still has one total twenty-second deadline and no
+REST price fallback. Missing, disconnected, old or contradictory proof cannot authorize a fill.
+
+Frames hash the snapshot, book and copied `streamEvidence`. The account's immutable
+`marketDataPolicy` selects validation; an intent cannot select it. Historical absent fields keep
+the strict ticker/book skew rule. Product accounts reject this field. Financial observation,
+simulation, risk valuation and PostgreSQL admission use native component dates. Opening and
+closing completion verify the frame hash and recompute the fill under the account lock; trusted
+v7 initial/final gates, account policy and study ownership are rechecked transactionally.
+Native price freshness, funding, position times and lease fencing use PostgreSQL's financial
+clock in persistence. Local heartbeat receipt and buffer-copy ordering use the trusted local
+receipt clock that produced those dates; comparing them to the database clock would reject a
+valid copy when that clock trails by even one millisecond. Both limits remain unchanged: native
+age 30 seconds, native future bound five seconds and heartbeat age five seconds. The receipt
+clock is an infrastructure dependency, never an intent, configuration value or provider field.
+Component validation failures retain allowlisted reason codes, frame hashes and both clocks;
+no raw provider payload, connection value or credential is logged.
+
+All final frames must share the copied generation, heartbeat and reference time before any
+portfolio execution. Funding reconciliation and once-bar atomic key consumption remain intact.
+
+## Qualification adoption
+
+Configuration v7 must explicitly select the new policy and pin `captureQualification.commit`
+(40 lowercase hexadecimal digits) and `captureQualification.reportSha256` (64). These identify
+the immutable component capture. Other selectors cannot carry this field.
+
+`run --qualification ORIGINAL_REPORT` revalidates all retained component frames at their original
+clocks, checks configuration/catalog hashes, and replays the complete bounded public capture.
+It requires at least 29 of 30 joint cycles, release, socket closure, no ownership/reconstruction
+errors, no truncation and unchanged public transport/reconstruction source under an ancestor
+commit. Only the new session ID, explicit selector and capture pin differ from the capture's
+frozen configuration. The adoption writes a new proof with the paper commit/configuration hash;
+it never changes source artifacts or invents historical fills. Controlled financial tests are
+required separately. This explicit adoption avoids repeating the already passed public capture.
+
+`prepare`, `status`, `report`, `stop`, `run`, and read-only `audit-export` retain their v7 meanings.
+For this selector `preflight --qualification ORIGINAL_REPORT` performs offline adoption and
+PostgreSQL preparation, without a public request. Use a fresh output directory for each adoption.
+`stability` rejects the financial selector before loading environment or providers; capture-only
+stability remains separately available and does not implicitly authorize another run.
+
+## One concurrent paper comparison
+
+Freeze a clean commit, v7 configuration, catalog and pinned adoption. Use a dedicated file with
+local `DATABASE_URL` only, never a model/trading environment. The existing runner executes
+`sma-reference` and `sma-once-bar`, each with 1,000 virtual AUSD, across 72 five-minute slots and
+eleven markets. Shared initial/final data, independent portfolios, hourly signals, selective risk,
+100-AUSD maximum size and existing exits remain unchanged. Close admissions at the fixed six-hour
+end; allow at most fifteen minutes of deterministic virtual exits. Do not recover missed slots,
+restart a started session, alter parameters, repeat automatically or create a monitor.
+
+The process publishes reports after rounds and at completion, and compact observation state.
+Report the effective financial policy, capture adoption, common valid rounds, omissions, detected
+exits, blocked reentries, fills, fees, funding, realized P&L, verifiable marked equity and pending
+positions. API calls, tokens and new monetary reservations are zero. Preserve historical costs.
+Independent component freshness is an experimental assumption; capture acceptance does not prove
+joint economic accuracy, profitability or a latency effect. Six hours remain exploratory.
+
+## First execution and clock regression
+
+The first frozen execution at `8af5a43503672c60ae5426c32d1a5f336944e283` stopped after four
+complete slots with `INVALID_MARKET_DATA`. Its common frame validation passed before the first
+portfolio valuation failed. The original record did not retain the rejected frame and database
+validation time, so the exact historical condition is not verifiable. Preserve this interruption,
+its open virtual positions and costs; do not report a completed six-hour comparison.
+
+Controlled replay demonstrated a separate clock-domain defect: a local copy one millisecond
+ahead of the database clock was rejected despite admissible native timestamps and heartbeat.
+The regression uses distinct receipt and financial clocks; PostgreSQL coordinator tests confirm
+open, valuation and deterministic stop closes while ledger dates remain database-owned.
+This proves the defect and its correction, not the missing historical failure values.
+
+## Captured execution lifetime regression
+
+The distinct corrected-clock session at `a09ec5c215ff98a03b1be790fa89effb45443dc3` stopped in its
+first slot with a recorded heartbeat age of 5,022ms against the unchanged 5,000ms limit. Four
+reference openings committed before the other account was rejected; native prices were fresh.
+Its safe diagnostics identify `heartbeat-expired-at-receipt-clock`. Preserve the partial slot,
+positions, fees and failed session. It cannot establish a paired financial result.
+
+Captured component-paper operations now combine existing admission, simulation and completion
+inside one fenced transaction, and reuse the returned committed view. Existing business helpers
+continue to check risk, final persisted evidence, ownership, hashes and hourly keys. Original
+component/heartbeat proof is revalidated before commit; expiry rolls back the attempt, fill,
+ledger and key together. A confirmed duplicate remains idempotent and creates no new fill.
+Historical, product and uncaptured execution retain their previous paths. This optimization does
+not refresh the heartbeat proof or change any 5/30-second threshold.
+
+Paired controlled PostgreSQL benchmarks use identical portfolios and evidence with thirty samples
+per execution path/scenario. Report actual monotonic durations separately from injected query
+clock delays, complete/partial outcomes, query counts and denominator. Controlled financial
+parity and expiry rollback do not prove future capture availability or profitability.
+
+## Common observation lifetime regression
+
+The third session `sma-component-atomic-20261009`, frozen at
+`b1bb7fb0226ba0f33b072f03f23e253684ceab42`, stopped before the fixed end after 68 complete
+slots, one omitted slot and three unevaluated slots. Its lease was released. Each portfolio retains
+three open virtual positions; neither six-hour completion nor realized profit is established.
+The immutable read-only export has canonical payload SHA-256
+`8f7375bae488ce57dd6c5d9df58a707331fe5bb2b263ec90ea330d63d638897f`.
+
+Safe recorded dates demonstrate a BTC native ticker age of 29,694ms at buffer copy and 30,189ms
+at PostgreSQL validation, 495ms later. Book age was 1,189ms and heartbeat age 582ms at their
+respective checks. The first portfolio observation had already committed when the second rejected
+the native ticker. This is a local observation lifetime/atomicity defect, not the removed
+five-second native skew gate. Rejected historical book bytes were not retained; the controlled
+regression uses synthetic frame bodies with the demonstrated clock values.
+
+For the explicit component-paper policy, both accounts now share an `observeCommon` transaction
+with deterministic locks, immutable study membership/policies, one financial/receipt clock and
+the existing `applyPaperObservation` function. Initial, final and funding observations use that
+port. Original frame hashes and freshness are checked before commit. Maintenance begins only
+after the common valuation commits. No native date or heartbeat proof is refreshed locally.
+
+A demonstrably expired native component or heartbeat returns unavailable only after confirmed
+rollback before any commit attempt. Both accounts, position projections, funding postings and
+observation records roll back together. The admitted slot is recorded and never recovered; the
+next minute can continue with a new observation. One-account prior history, invalid identities
+or hashes, ownership loss, failed rollback and uncertain commit remain fatal. A failure after
+financial maintenance begins is not an omission. Historical and product observation paths retain
+their behavior. The native 30-second, future five-second and heartbeat five-second limits remain
+unchanged.
+
+The operator's active repair-and-completion authorization requires preserving each interrupted
+trial and verifying a demonstrated correction before a distinct frozen continuation experiment.
+Never resume the failed session, recover old slots, extend its deadline, repeat the passed capture
+qualification, or count later prices as closure of its pending positions. Controlled full-duration
+regressions remain distinct from the eventual six-hour prospective comparison.
+
+## Database failure visibility and local isolation
+
+An evaluation pool reports a recognized PostgreSQL statement deadline as
+`PERSISTENCE_QUERY_TIMEOUT`, preserving safe SQLSTATE `57014` in timing evidence. Other
+cancellations are `PERSISTENCE_QUERY_CANCELLED`; the recognized driver connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Unknown failures are not guessed to be timeouts.
+No driver message, SQL, parameter or cause enters
+the normalized failure. A confirmed rollback on a database error remains a technical interruption;
+it is not a market-data omission or an automatic retry. Uncertain commits remain fatal.
+The ten-second database statement limit and all market freshness/heartbeat limits are unchanged.
+
+A physical server shared with database-creation/migration tests can experience competing work.
+Recorded overlap is evidence of contention risk, not proof of the exact contribution of each task.
+A dedicated local server separates PostgreSQL checkpoint and lock activity; it still shares host
+hardware and does not guarantee availability or profitability. Do not change other sessions'
+servers or stop their work. [PostgreSQL's creation documentation](https://www.postgresql.org/docs/17/sql-createdatabase.html)
+explains the checkpoint cost of file-copy database creation; do not infer that strategy for a
+historical statement when its bytes were not retained.
+
+Before an authorized zero-model continuation on an isolated physical server, preserve the source,
+create a consistent private dump, verify every existing application/migration table by sorted
+row SHA-256 hashes, and retain source/dump/target provenance. Carry all campaign reservations and
+unknown usage unchanged. The isolated copy cannot become another paid allowance or be combined
+with the source as a second historical sample. Freeze the dedicated database-only environment,
+clean code/configuration and capture adoption after controlled tests finish. An interrupted
+session stays interrupted with its own pending positions and original end; only a distinct
+session can use the demonstrated correction under explicit repair-and-completion authorization.

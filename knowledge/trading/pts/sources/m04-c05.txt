@@ -1,0 +1,147 @@
+Siguiendo con el análisis de activos que van correlacionados al SP500, vamos a hablar
+de un conjunto de activos sumamente importante y es el llamado índices alternos. Vamos a
+explicar que son los índices alternos y básicamente, para explicarlo de la manera más simple posible,
+los índices alternos son índices bursátiles adicionales que nos indican la fortaleza o
+la debilidad del SP500. En pocas palabras, esto lo que quiere decir es que si estos índices suben
+cuando el SP500 también sube, tenemos fortaleza en el mercado. Si estos índices caen cuando el
+SP500 sube, eso significa debilidad en el SP500 o si ellos no acompañan la subida,
+también indican cierta debilidad. Incluso, por el contrario, podríamos decir que si el SP500 está
+cayendo y estos índices están laterales o están a punto de subir, eso es un indicio que en cualquier
+momento muy próximamente el SP500 puede encontrar un suelo y puede empezar a subir. Entonces,
+estos índices nos brindan información adicional sobre lo que está pasando en el mercado y
+básicamente estos índices con sus símbolos sería el Dow Jones, que se puede representar con el
+ticker DIA, bueno también se puede el DJI, pero digamos que el DIA está bien, el Russell 2000,
+que en este caso sería el IWM, el gráfico de bonos basura HIG, HIG se llama Bonos Corporativos
+de Alto Rendimiento, lo que se entiende en la jerga común de Wall Street como bonos basura,
+se le llama bonos basura porque son los que son más riesgosos pero tienen mayor, mayor paga.
+Así que son de los primeros bonos que el mercado tira por la ventana cuando hay problemas pero
+cuando el mercado en realidad tiene un conjunto de comportamiento alcista, estos bonos mantienen
+un gráfico que se sostiene de buena forma y por último el DJT, el Dow Jones de transportes.
+Vamos a ver un ejemplo de cómo esto se ha manifestado, supongamos que tenemos aquí el SP500,
+tenemos el SP500, este es su comportamiento al día de hoy, al momento de preparar este material
+y por ejemplo si nos vamos al Dow Jones de transporte, el Dow Jones tradicional, vean que viene muy
+similar al SP500 pero ocurren ciertas cosas interesantes, por darles un ejemplo el Dow Jones tuvo
+serias caídas durante el mes de diciembre y estas serias caídas iban alertando de algunos
+problemas en el SP500 y también podríamos decir que luego de allí tuvo su rebote pero después
+del rebote noten ustedes que el Dow Jones de transportes no logró, bueno el Dow Jones tradicional
+no logró rebasar máximos cuando el SP500 sí rebasó máximos, esto fue una debilidad para el SP500,
+si el SP500 viene y forma un máximo más alto y el Dow Jones no forma un máximo más alto sino
+que lo pone, lo forma más bajo, esto usualmente podría decirse que es una divergencia bajista o
+que es un síntoma de debilidad, lo mismo pasaría al contrario en casos cuando el mercado está al
+cista, si nos vamos al IWM, el Russell 2000, de hecho que el Russell 2000 si lo comparamos con el
+SP500 en enero de este año vean que el Russell 2000 desde noviembre del 2024 o sea prácticamente
+por aquí, el Russell 2000 no hacía nuevos máximos vean que el Russell, el IWM estuvo cayendo con
+mucha fuerza desde noviembre desde un momento en que el SP500 igual venía al cista y que fue lo que
+pasó después que el SP500 también se cayó, ahora si nos vemos en el momento actual pues el
+Russell sí ha venido rebotando, vean que de una u otra forma sí hemos tenido rebotes con el Russell
+lo cual significa que este rebote del SP500 al menos por ahora es saludable, es un rebote positivo,
+en el caso del HIG, este es el HIG, estos son los bonos de alto rendimiento, más bien aquí pasó
+algo muy interesante y es que bueno noten ustedes que los bonos prácticamente desde septiembre del
+2024 no han hecho en realidad un máximo más alto que el anterior lo cual denotaba que para
+finales del año pasado inicios de una corrección podía ocurrir pero algo muy positivo es que
+ellos a después de la corrección que hubo han tenido un rebote muy fuerte, este rebote muy fuerte
+da a entender que al menos por ejemplo estamos delante de un rebote saludable en el SP500,
+lo cual quiere decir que si en algún momento el SP500 tiene alguna corrección y estos bonos
+se mantienen saludables, la tendencia del SP500 a la alza muy posiblemente estaría lista para
+seguir, incluso estos bonos cuando se formó el techo del 2022 fueron los primeros en indicar
+problemas con mucha antelación, si nos vamos aquí a esta sección voy a jalar el SP500,
+voy a traerme HIG, vean que con mucha antelación ya los bonos venían advirtiendo de problemas
+y de hecho de hecho pues bueno algo interesante es que ya el tiempo después el SP500 tuvo esta
+caída posteriormente vean cómo de alguna u otra forma los bonos han venido poco poco subiendo poco
+poco con mucha lateralidad porque estos no son activos para que uno los trae pero si son activos
+para analizar yo la verdad yo no los trae o prefiero traer el SP500 las acciones bitcoins todo lo demás
+el NASDAQ pero sí los utilizo como una brújula para mí ellos son una brújula y si me voy al
+movimiento actual que me quiere decir HIG me quiere decir que al menos por ahora mientras HIG se
+siga sosteniendo como lo está haciendo actualmente esto es un movimiento bastante sano e incluso si
+HIG llega a romper esta zona y se va a niveles más altos que los del año pasado significaría
+que el SP500 podría tener muy buen recorrido al cista todavía y si el SP500 tiene buen recorrido al
+cista bitcoins también va a tener un buen recorrido al cista y el NASDAQ y las acciones otro índice
+importante es el Dow Jones de hecho que el Dow Jones por ejemplo gritaba corrección a inicio de
+año vean cómo el Dow Jones Dow Jones de transporte se pone de JT cuando ponen de JT sale el
+Trump media and technology group ustedes tienen que vigilar que sea el que dice Dow Jones transportation
+el de JT el de Dow Jones de transporte y aquí por ejemplo cuando ustedes lo analizan se dan cuenta
+que forma un máximo más alto el SP500 y al mismo tiempo este estaba formando un mínimo más un máximo
+más bajo lo cual era un fuerte síntoma de debilidad y ahora como este está subiendo el SP500
+también está subiendo esto es un síntoma muy positivo al menos de la subida actual incluso
+cuando se dio el famoso crash del covid el movimiento del de JT fue uno de los más importantes para
+podernos dar cuenta de que había en serios problemas en aquel entonces recuerdo cuando
+en el tema del coronabicho era por ahí un rumor en china el SP500 hizo este fee bajista ven este
+fee bajista y el Dow Jones de transporte hizo un máximo más bajo entonces piensen ustedes que por
+ejemplo estamos con un fee bajista en el SP500 y piensen ustedes que al mismo tiempo el Dow Jones
+de transporte está haciendo un máximo más bajo y al mismo tiempo el VIX está subiendo el mercado
+grita corrección grita corrección si usted plantea hay un short puede estar delante de algo muy
+interesante puede estar delante de algo efectivamente muy muy muy interesante incluso vean aquí a
+corto plazo cuando se formó este suelo vean que el SP500 estaba formando mínimos más bajos y aquí
+ya estaba formando una especie de suelito el Dow Jones de transporte cuando el Dow Jones de transporte
+estuvo este importante rebote y si eso coincide con una caída brusca del VIX habemos suelos
+señores y señoras estaríamos delante de un suelo y bastante interesante en el SP500 entonces
+esto nos trae un mecanismo de análisis para nosotros y especialmente quiero hacer una última
+mención nuevamente al IWM el IWM es extremadamente valioso porque el IWM el Russell lo que hace
+este índice en la vida real es comprender toda una serie de acciones de menor capitalización que
+tal vez no tienen todavía suficiente capital para poder ingresar a cotizar en el SP500 el
+estándar por 500 en realidad junta las 500 principales empresas de bolsa en Estados Unidos lo que
+pasa es que ya por sí mismo tiene vida propia tiene una entidad propia ok el Russell 2000 lo
+que hace es juntar acciones de menor capitalización por lo tanto eso significa que muchas veces la
+salud del mercado verdaderamente se ve en el Russell 2000 y a partir de allí podemos sacar
+conclusiones ejemplo yo personalmente me puse muy alcista en enero del 2023 porque el Russell 2000
+hizo un máximo pero hizo un mínimo igual al mínimo anterior y el SP500 hizo un mínimo más bajo esto a
+mí me decía que tal vez el SP500 en el momento estaba teniendo mayores caídas pero que el Russell
+2000 con esta onda madre estaba demostrando fuerza alcista y cuál es el tema con esta fuerza alcista
+que a partir de allí ese fue el mejor momento para entrar al SP500 recuerdo que el del NASDAQ agarramos
+gran parte de toda su vida el NASDAQ fue muy bueno en enero del 2023 el bitcón estaba en 15 mil
+dólares nosotros agarramos posiciones desde los 17 mil 17 mil 18 mil dólares estuvimos agarrando
+posiciones y esto es porque el NASDAQ estaba reflejando mucha salud en el mercado lo mismo en
+enero bien como el el rossel estaba reflejando debilidad y ahora el rossel refleja esta fortaleza
+que se puede trasladar a los demás elementos de mercado es más este tema con relaciones es
+fascinante y para esta clase lo que tienen que aprender es entonces es que día rossel hig y
+de jt dao jones de transportes son sumamente importantes pero ven les quiero mostrar algo
+rápido nada más ven que el SP500 hoy en gráfico cuatro horas está subiendo y bitcóin ha estado
+corregiendo recientemente estaba bajista estaba bueno no bajista pero digamos en cuatro horas
+estaba cayendo a los 101 y se estaba poniendo feo y ven como pinta un poquito de verde el SP500
+y ya bitcón empieza a pintarse un poquito de verde un poquito de verde no se extrañen no
+se extrañen que si el SP500 rompe esta resistencia a corto plazo para arriba en bandera reventa
+alcista tengamos bandera reventa alcista en bitcóin sería sería sumamente sumamente posible porque
+como repito el tema de las correlaciones es extremadamente importante es más vean vamos
+una cosa rápida vamos un ejemplo rápido aquí de una vez en vivo preparando este material miren
+el vix por ahora tal parece que está cayendo ok el i wm vamos i wm en cuatro horas y se está
+sosteniendo vean está aquí formando una bandera reventa alcista tal parece que quiere sostenerse
+ok vayámonos al SP500 si lo quieren ver en futuros futuros es donde no tienen los los gaps ustedes
+ponen SPX 500 y aquí que aparece SP500 index cache yo uso mucho este el que dice FX CM yo le
+doy clic aquí y ya me aparece y vean que el SP500 está subiendo incluso si lo pongo en gráfico de
+una hora ven que interesante vamos a ver si trazo de este mínimo a este máximo vea donde
+está rebotando ustedes saben donde está rebotando está rebotando exactamente en donde en la zona
+de reversión y al mismo tiempo si yo trazo de este mínimo a este máximo que se encuentra aquí para
+ver si lo ponen 15 minutos que se vea mejor si lo trazo de este mínimo a esta zona vamos a ver
+aquí que me aparece por acá fía el sista lo ven ahí se recuperó rápidamente aquí tenemos un
+un fisito voy a devolverme a gráfico de de una hora tenemos aquí este bonito fi mira estaba estaba
+para entrarle la verdad ven aquí uno viene vea y están las banderas reventadas alcistas estos
+estos platas en el banco chicos estos platas en el banco estos platas en el banco uno viene y pone
+retroceso aquí entrada en el 23 míralo aquí entrada en el 38 también se puede poner stop en este
+mínimo o se quiere en una capa de seguridad extra stop sobre este nivel ya está haciendo el
+quiebrel sista si nos vamos para quiebrel sista se nos puede ir el SP500 a todos estos niveles a
+5900 5987 esto haciendo los tilos calpin y con esta situación del SP500 venga vamos a irnos para
+bitcon rápido miramos poner algo rápido en bitcóin pongamos a bitcóin y mira bitcóin está más
+débil pero claro la correlación piensen ustedes la correlación positiva que es el SP500 sobre
+bitcóin es importante y vean que en el caso de bitcóin también tenemos un fi y alcistas
+sobre esta zona y vamos a poner aquí tenemos este fi alcista tenemos esta onda madre y vean
+esto que interesante de este mínimo que está aquí abajo a esta parte de máximo vamos a ir le
+vamos a poner zona de reversión y mire el bicho apenas hizo romper la zona de reversión y se
+regresó y aquí está tirando una onda madre que como el SP500 está subiendo eso favorece
+para que bitcon suba entonces voy a agarrar de este mínimo a este de acá y le vamos a poner
+retroceso y le vamos a meter también vamos a dejarle puesta el 127 y el 161 a ver cómo le va
+entonces uno viene y dice bueno vamos a hacer una cosa si lo quiero agresivo nos meteríamos ya en
+lo vamos a agarrarlo aquí es sobre el 38 para meterle confirmación ahorita porque está muy a
+corto plazo vamos a meterle aquí en el 38 la entrada vamos a ponerle stop debajito de este
+mínimo aquí debajo de este mínimo le metemos vamos a poner el break y ven por aquí casi
+llegando a la a la al 61 sobre el 61 le metemos target 1 al 78 target 2 al 127 a poner aquí al
+127 no al 1 0 0 target 3 al 1 27 target 4 al 1 20 al 1 61 target 5 entonces mira sería como buscar
+entrar en 102 y eso si no queremos meterle ya en 102 200 y lo apretamos todavía más y lo apretamos
+todavía más le ponemos 101 359 de stop ponerle break y ven en 103 con 400 target 1 aquí sobre el
+sobre el 61 103 con 600 78 104 con 250 104 con 9105 con 9107 con 200 mire que interesante y si llega a
+romper el 161 nos vamos al 261 si nos vamos al 261 nos volvemos locos tenemos hablando que serían
+los 110 mil dólares miren que interesante y todo esto ligado ven ligado todo al ese pequeñito
+ven cómo funcionan las correlaciones así es como uno puede trabajar los esceneres de correlación
+vamos a ir viendo cómo le va todo esto pero bueno y dejando de lado esta primera sección
+recuerden entonces y wm día hig y dejó taté no yo de transportes son extremadamente importantes
+para determinar la salud del mercado todos son importantes si yo tuviera que decir cuáles son
+los dos top y wm y hig aunque la verdad es que los cuatro son súper valiosos y por supuesto el bix

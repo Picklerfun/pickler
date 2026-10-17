@@ -9,6 +9,7 @@ import {
   type PerpsStudyView,
   type AuditDiagnostic,
   type PerpsStudyMap,
+  EVALUATION_PROTOCOLS,
 } from "@pickler/trading/evaluation";
 import type { PerpsPaperView } from "@pickler/trading/perps";
 import { perpsModelState } from "@pickler/agent-runtime/composition/perps-model-state";
@@ -114,8 +115,11 @@ export async function runPerpsAudit(input: {
       throw new PilotError("INVALID_INPUT", "audit-export requires --config and --env-file");
     }
     const config = JSON.parse(await readFile(resolve(input.configPath), "utf8"));
+    const definition = Object.hasOwn(EVALUATION_PROTOCOLS, config.protocol)
+      ? EVALUATION_PROTOCOLS[config.protocol as keyof typeof EVALUATION_PROTOCOLS]
+      : null;
     if (
-      !["perps-comparison-v1", "perps-four-way-v2"].includes(config.protocol) ||
+      definition?.instrument !== "perpetual" ||
       !config.tenantId ||
       !config.sessionId ||
       !["mainnet", "testnet"].includes(config.network)
@@ -123,8 +127,14 @@ export async function runPerpsAudit(input: {
       throw new PilotError("INVALID_INPUT", "Perpetual study scope required");
     }
     // Parse only DATABASE_URL; never populate process.env or read model/trading keys.
-    const { parse } = await import("dotenv");
-    const url = parse(await readFile(resolve(input.envFile), "utf8")).DATABASE_URL;
+    let url: string | undefined;
+    if (config.version === 7) {
+      const { localStudyDatabase } = await import("./database-env.js");
+      url = await localStudyDatabase(resolve(input.envFile));
+    } else {
+      const { parse } = await import("dotenv");
+      url = parse(await readFile(resolve(input.envFile), "utf8")).DATABASE_URL;
+    }
     if (!url || !["127.0.0.1", "localhost", "[::1]"].includes(new URL(url).hostname)) {
       throw new PilotError("INVALID_INPUT", "Audit export requires explicit loopback PostgreSQL");
     }
@@ -183,6 +193,16 @@ export async function runPerpsAudit(input: {
     throw new PilotError("INVALID_INPUT", "Invalid or modified audit packet");
   }
   refuseSecrets(packet.payload);
+  if (
+    !["perps-comparison-v1", "perps-four-way-v2"].includes(
+      packet.payload.study.record.config.protocol,
+    )
+  ) {
+    throw new PilotError(
+      "AUDIT_ANALYZER_UNSUPPORTED",
+      "This model decision analyzer supports only the historical v1/v2 comparisons; use the protocol-specific offline report",
+    );
+  }
   const analysis = auditPerpsDecisions(
     packet.payload.study,
     packet.payload.diagnostics,

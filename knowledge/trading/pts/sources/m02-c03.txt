@@ -1,0 +1,189 @@
+Continuando con la temática del retro Cessu Fibonacci, hay varias cosas importantes que
+tenemos que considerar a la hora de entender cómo la zona de reversión, es decir el nivel
+entre el 0.61 y 0.78, es el nivel máximo antes de poner en duda la tendencia en impulsos
+principales y es que por ejemplo vamos a considerar lo siguiente, si tomamos en cuenta que el nivel
+entre 0.61 y 0.78 es el nivel máximo al que debería retroceder una tendencia en el sentido de que por
+ejemplo si tenemos un impulso alcista sobre la zona del 61 y 78 sobre la zona de reversión a partir
+de aquí debería empezar a subir y si tenemos una tendencia bajista sobre la zona del 0.61, 0.78
+a partir de aquí debería empezar nuevamente el mercado a caer por lo tanto la pregunta del
+millón que muy posiblemente ustedes estén haciendo que pasa cuando esta zona de reversión en
+tendencias alcistas no se respeta y más bien empieza nuevamente a caer o qué ocurre cuando
+esta zona de reversión en tendencias bajistas no se respeta y más bien la logra romper o la logra
+perforar. Para contestar esa pregunta vamos a introducir un concepto que es sumamente valioso y es el
+concepto de quiebre, llamamos quiebre alcista o quiebre bajista al momento en que la zona de
+reversión de forma contundente y fehaciente termina de ser totalmente vulnerada y en ese sentido
+pues bueno ya comprendemos que el nivel 0.61 o 0.78 se llama zona de reversión y ahora vamos a
+definir lo siguiente la ruptura alcista de la resistencia entre el 0.61 y el 0.78 cuando el
+mercado rompe al alza dicho nivel le vamos a llamar quiebre alcista y básicamente lo que hace es
+romper la tendencia bajista y convertir dicho rebote en un movimiento de impulso ok es decir
+a partir de romper o perforar el nivel entre 0.61 y 0.78 empezamos a ver un quiebre alcista cuando
+tenemos que el retroceso es dentro de una tendencia bajista vamos a ver múltiples ejemplos para que
+que claro y al mismo tiempo llamamos quiebre bajista cuando en este caso una tendencia al alza no
+logra respetar el soporte del nivel 0.61 0.78 de Fibonacci y más bien procede a romper dicho
+nivel cuando rompe dicho nivel le llamamos quiebre bajista ok eso es sumamente importante ya que
+por ejemplo en múltiples ocasiones estamos especulando con que haya la posibilidad de un
+quiebre alcista o un quiebre bajista o por el contrario por ejemplo si estamos operando un simple
+rebote de tendencia bajista en el momento en el que rompe la zona de reversión podemos dejar de
+tratarlo como un rebote y podemos tratarlo como todo un impulso alcista principal es decir como
+ya la legitimización de un cambio de tendencia y eso es algo sumamente valioso porque a la hora en
+la que por ejemplo definimos si se quiebra una tendencia bajista y se convierte en alcista o viceversa
+la zona de reversión es sumamente clave en este caso si ponemos el ejemplo esquemático nos damos
+cuenta que suponemos que tenemos una tendencia alcista o que esto es un impulso alcista que
+empieza a tener una corrección rompe el 23 activa el Fibonacci va para el 38 el 38 lo rompe y se va
+a la zona de reversión comprendida entre el 61 y el 78 si la tendencia se mantiene vigente como
+tendencia alcista aquí deberíamos ver un movimiento al alza pero si el mercado sobre este nivel perfora
+perfora la zona de reversión esto es lo que se llama un quiebre bajista y básicamente convierte lo
+que sería una simple corrección en todo un movimiento tendencial ahora si nos vamos también en
+este caso aún retroceso Fibonacci bajista tenemos que viene un impulso principal bajista llega al
+23 activa el Fibonacci llega al 38 activa el Fibonacci llega a la zona de reversión y perfora la zona de
+reversión esto lo que se llama como un quiebre alcista y el tema con un quiebre alcista básicamente
+es que este movimiento que inicialmente era un simple rebote para seguir cayendo se convierte
+en realidad en todo un movimiento alcista de tendencia esto va a cobrar especial interés cuando por
+ejemplo vamos a trabajar o vamos a especular con movimientos del retroceso Fibonacci que inicialmente
+no podemos catalogar como el inicio de una tendencia alcista bajista pero que tiene potencial entonces
+cuál es la clave aquí que los niveles Fibonacci previos nos permiten generar entradas tempranas por
+ejemplo supongamos que hay una tendencia alcista a la cual por la razón que sea empezamos a especular
+que podría tener un movimiento bajista importante ya sea por cambios en el contexto macroeconómico
+cambios en el activo cambios en el sentimiento del mercado entonces por ejemplo que si yo buscamos
+una entrada a la baja en el 0 23 o una entrada a la baja en el 0 38 digamos que los traders más
+agresivos pueden buscar una entrada desde el 23 los traders más conservadores pueden buscar una
+entrada desde el 38 y llegamos a la zona de reversión aquí lo que hace un trader usualmente es poner
+un stop de ganancia o el stop en punto de entrada para ver aquí cuál es la respuesta del mercado
+si el mercado viene y por la razón que sea tenemos una perspectiva bajista en este caso si el mercado
+rompe la zona de reversión nos daría la razón y se vendría todo un derrumbe lo mismo pasa al
+contrario supongamos que un activo ya ha venido con una importante tendencia bajista y tenemos la
+perspectiva de que aquí ya el mercado debería empezar un movimiento a la alza inicialmente
+no podemos definir que se viene toda una nueva tendencia alcista lo primero que se puede presuponer
+es que haya un rebote siempre se inicia con un cambio de tendencia presuponiendo que es un simple
+rebote y siempre se inicia presuponiendo que es una simple corrección es la ruptura del nivel del
+78 lo que convierte una corrección en todo un impulso bajista y es la ruptura de la zona de
+reversión lo que convierte un simple rebote en todo un movimiento alcista entonces suponiendo vamos
+a operar un rebote buscamos una entrada en el 23 o buscamos una entrada en el 38 dependiendo del
+perfil de agresividad que tengamos en ese momento y suponiendo llegamos a la resistencia de la zona
+de reversión la resistencia del nivel entre 061 y 078 dejamos un estom de ganancia etcétera
+decimos bueno si la tendencia bajista se mantiene la zona de reversión debería ser mantenida o
+debería respetarse y el precio debería rechazar y en este caso por ejemplo ponemos un estom de
+ganancia y que nos saquen ganancia pero si tenemos la especulación por argumentos macroeconómicos
+estadísticos gráficos que más adelante vamos a aprender o por otros temas técnicos que la zona
+de reversión se puede romper seguimos sosteniendo esta posición alcista y si rompe el 78 valida
+que ya no estamos ante un rebote estamos ante todo un movimiento de nueva tendencia alcista y esto
+es en el trading extremadamente rentable ustedes quieren tener una operativa llena de enormes
+beneficios potenciales lo que tienen que hacer es que por ejemplo si buscan un rebote por diversos
+motivos y el nivel entre 023 038 toman la entrada y ustedes van a la alza y el mercado llega a la zona
+de reversión presenta cierta resistencia al inicio normal o sea cierto trabajo un rango lateral vean
+que en ambos dibujen el esquema que es muy normal un rango lateral sobre la zona de reversión sin
+terminar de rechazarla no un cierto rango y lo rompe a la alza ustedes estarían montados estarían
+operando todo un movimiento alcista tendencial desde una entrada extremadamente temprana lo
+cual es como repito sumamente rentable vamos a ver ejemplos de eso y de paso quiero decirles
+una cosa los niveles fibonashi a los que el mercado directamente se va a trabajar cuando
+rompe la zona de reversión son la extensión del 1.00 del 1.27 y del 1.61 entonces suponiendo en el
+ejemplo bajista sería por ejemplo que aquí venimos y decimos nos vamos aquí a configuración y
+agregamos si tenemos el valor de 1.00 0 agregamos 1.27 y 1.61 por lo tanto el quiebre bajista se
+puede extender hasta todos estos niveles o sea puede ser un movimiento bajista mucho más potente
+y si es un movimiento alcista venimos y extendemos estos niveles hasta la zona del 1.27 y del 1.61
+lo cual significa entonces que podríamos extender los movimientos alcistas hacia la zona de 1.00
+0 1.27 y 1.61 lo cual por ejemplo si es para operarlo al alza o a la baja un recorrido absolutamente
+inmenso es un recorrido que cuando ustedes logran trabajar eso en su in trading o en operaciones
+rápidas van a tener ganancias muy cuantiosas ya que estaríamos hablando de un movimiento muy
+profundo especialmente en gráfico diario esto es ideal en gráfico diario absolutamente ideal
+también se puede trabajar en gráfico de cuatro horas o de una hora en movimientos menores porque
+todo esto es fractal es más hay traders de de protéines kills chicos que usan esto en gráficos
+de un minuto scalpers agresivos ustedes pueden llegar a ese nivel obviamente a menor temporalidad
+el mercado es más volátil más caótico más complejo a mayor temporalidad el mercado va más
+lento pero igual ofrece una garancia enorme operar un movimiento de estos ensemanal es garantizado
+una de las mejores operaciones del año ok entonces y genera un potencial absolutamente
+increíble y sobre todo también si se pueden a pensar permite en el caso de que si yo se buscó
+una entrada desde el 23 o desde el 38 y se rompe todo esto permite una entrada bastante temprana en
+los movimientos ahora esto si se rompe el 061 y el 078 y por lo tanto tenemos argumentos
+previos para pensar que la zona de reversión se va a quebrar si la zona de reversión no se
+quiebra pues el mercado va en la dirección opuesta por lo tanto depende del gráfico y del marco
+temporal que estemos analizando pero si tenemos que tener claro que en teoría en tendencia en
+mercados tendenciales la zona de reversión se respeta y si no se respeta entramos a la sección
+de los quiebres alcistas y los quiebres bajistas vamos a dar ejemplos sumamente interesantes de
+lo que está pasando actualmente vean por ejemplo lsp 500 en el mes de agosto que formó este canal
+alcista muy bonito muy bien delimitado etcétera etcétera este canal alcista que formó lsp 500
+vean cómo sobre este nivel respeto la zona de reversión de una manera milimétrica literalmente
+trazando el retroceso fibonashi desde el mínimo en el mes de abril al máximo en el mes de julio
+la corrección a inicios de agosto finales de julio fue milimétrica a la zona de reversión y a partir
+de allí el mercado se disparó a la alza y todos los que operaron eso tuvieron muchos beneficios
+de hecho que nosotros estuvimos operando eso y nos generó muchos beneficios en aquel momento
+cuál es el tema que ahora vamos a ver una situación muy interesante vean que aquí la
+tendencia principal era el sista por lo tanto pues bueno la zona de reversión se respeta muy
+bien ahora vean una situación muy interesante con esta última caída importante que ha tenido el
+mercado y esto es porque estamos en vivo y a todo color con esta situación y noten lo siguiente
+en ese pequeñientos debido al tema arancelario etcétera tuvo esta caída importante vean que
+un entrada en el 23 habría sido la zona de 5.750 de hecho que todo esto le hemos operado a la
+alza recientemente para que lo sepan en el momento de preparar este material todo esto le hemos
+operado a la alza en el pequeñientos en bitcón en acciones en álcool es un montón de cosas nos
+ha ido muy bien ahora piensen esto una entrada en el 0 23 5.150 va perfecto una entrada en el 0
+38 por ahí de los 5.300 y algo no pongámosle 5.350 va el mercado alcanza la zona de reversión
+0.61078 va vean que el día de hoy al momento de preparar este material el ese pequeñientos está
+rompiendo el 0 78 o sea el momento de preparar este material con ustedes estamos viviendo un
+quiebre al cista en vivo y a todo color porque porque si la tendencia fuera bajista esta resistencia
+debería ser capaz de rechazarla y vean cómo lo está rompiendo ahora en gráficos diarios la zona
+de reversión es valioso digamos que para estar totalmente confirmado como hemos hablado antes
+podríamos al igual que en los canales darle de 24 a 72 horas a nivel máximo ok si para dentro de
+tres días al momento de preparar este material este gráfico diario hoy lo rompió si para dentro
+de 72 horas seguimos estando por encima de esta zona de 0 78 vamos a tener un quiebre al cista en
+el ese pequeñientos y ese quiebre al cista por lo tanto hacia dónde nos llevaría dijimos que hacia
+el nivel de uno o sea por ejemplo hacia el nivel de 6149 y también a la extensión vamos a ponerlo
+aquí a la extensión del 1 27 y el 1 61 por lo tanto sería la extensión del 6500 y 6984
+que sería los niveles 1 27 1 61 para ejemplos prácticos ahora yo le digo por qué en el mes de
+agosto especulábamos que la zona de reversión iba a ser capaz de resistir y por qué sobre esta zona
+esta zona de reversión en este caso bajista no es capaz de resistir y hay probabilidad de
+perforar la alza por una razón muy interesante porque en marcos temporales más grandes el canal
+principal es el canal al cista y es allí donde empezamos a mezclar y a tener en confluencia diversos
+elementos de mercado y es básicamente lo siguiente cuando nosotros tenemos un canal al cista
+llamémole por ejemplo tenemos un canal al cista y sobre ese canal al cista por ejemplo tenemos el
+mercado viene tiene un impulso al alza luego viene tiene un retroceso y luego viene tiene otro impulso
+al alza luego viene tiene otro retroceso y el mercado llega a este nivel sobre este nivel como
+la tendencia es al cista si podemos especular y estamos dentro de un canal al cista principal si
+podemos especular que la zona de reversión entre el 0 61 y el 0 78 va a ser capaz de sostenerse
+pero a la hora de empezar a subir de este retroceso bajista que en este caso podríamos por ejemplo
+ponerlo del nivel máximo de corrección al nivel inferior de este retroceso por ser favorable a la
+tendencia de aquí si podríamos especular quiebres al cistas o sea en pocas palabras usted puede ser
+más presto a especular quiebres al cistas en canales al cistas y en canales bajistas principales
+estoy hablando usted puede especular con quiebres bajistas o sea usted va a favor de la tendencia
+principal que el canal nos esté indicando no tem por ejemplo aquí como el ese pequeñito si
+rompe esta zona de reversión que el día de hoy la está preparando finalmente noten cómo estaríamos
+igual dentro del canal al cista es gracias a que el canal principal es al cista que uno puede
+tener más libertad que esta zona de reversión pueda ser rota ven que interesante vamos a ir
+lo mostrando con otros ejemplos para que lo podamos ver vamos a verlo en el caso de bitcóin ok
+en el caso de bitcóin si ustedes se van al gráfico semanal como es el gráfico semanal
+principal de este canal si vemos este canal en gráfico semanal perdón si vemos este
+canal en gráfico semanal principalmente que es lo que tenemos en este momento en este momento
+evidentemente esto es un canal que es al cista evidentemente va tenemos un canal al cista vean
+que en este último punto de aquí tuvimos un rebote en la zona de reversión vean que interesante
+hecho que hasta incluso usted puede venir y se va a la turequita y sobre esto puede quitar todos los
+demás valores y dejar solamente activos el 061 y el 078 miren qué limpio se ve muy bonito de hecho
+que incluso usted viene y le pone el candadito y ya ese dibujo de la zona de reversión queda bien
+marcado ahora vean qué interesante en bitcóin si medimos el retroceso de este máximo a este mínimo
+sobre la base del canal hacemos clic del máximo al mínimo y ponemos nuestro retroceso fibonashi
+ponemos nuestro nivel y vean qué interesante vean lo que hizo bitcóin en los últimos días
+bitcóin rompió la zona del 23 y activó el retroceso rompió la zona del 38 y activó el
+retroceso y vean qué recientemente al menos al momento de preparar este material ha logrado
+perforar el 078 el 078 aproximadamente estaba en los 101 mil dólares y los niveles que rompió
+fue el 38 y el 23 ok eso qué significa que ya bitcóin de este retroceso ha logrado efectuar ahora un
+quiebre al cista por lo tanto vamos a proyectar los nuevos niveles bueno un nivel es el nivel de 1.00
+el otro nivel entonces vamos a irnos acá
+o sino a la herramienta de fibonashi y vamos a ponerle aquí un momento aquí está y vamos a poner
+lo siguiente vamos a poner 1.27 y 1.61 ¿cuáles son los niveles de 1.27 y 1.61 tendríamos en este
+caso el nivel de 118 mil dólares aproximadamente y el nivel de 129 mil aproximadamente ok qué
+significa lo anterior lo anterior significa entonces que el quiebre al cista de este retroceso ok el
+quiebre al cista en el 78 de este retroceso nos permite planificar nuevos targets a la alza
+y por qué especulamos a que lo pueda romper a la alza porque el canal principal viene siendo
+al cista por lo tanto en canales principalmente al cistas usted puede especular ok usted puede
+permitirse la libertad de la especulación que en retrocesos fibonashi puedan haber quiebres
+al cistas a favor de la tendencia por lo tanto eso significaría entonces poniendo un ejemplo
+teórico eso significaría entonces que de este mínimo del canal digamos a este máximo si trazamos
+un retroceso fibonashi aquí se debería respetar la zona del 61 al 78 pero si trazamos un retroceso
+desde este máximo a este mínimo esta zona de reversión 61 78 debería ser capaz de ser perforada o
+sea debería ser capaz de romperse bien interesante y eso nos permite proyectar a targets como el
+1 27 o como el 1 61 y mezclamos tanto la parte de canales como la parte de retroceso fibonashi lo
+mismo puede aplicar por ejemplo para ejemplos bajistas para todo tipo de escenarios mencionar
+un ejemplo rápido vamos a trazar aquí mirin godadi gráfico diario el canal principal claramente es
+un canal al cista vamos a ponerlo aquí nos vamos para acá por ejemplo y vamos a notar algo sumamente
+interesante si trazamos un retroceso fivo desde este máximo hacia la base del canal nos vamos
+a dar cuenta que al menos ok ya rompió el 23 ya rompió el 38 tocó el 61 tuvo un regreso y luego
+volvía de volverse si godadi viene y logra perforar el nivel por ejemplo de 203 eso nos permitiría
+después proyectar un target hacia los 217 hacia los 230 e incluso hacia los 250 dólares

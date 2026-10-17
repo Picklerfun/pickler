@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PTS proposed analysis request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "bundleId",
+    "knowledgeVersion",
+    "example",
+    "candidateId",
+    "mode",
+    "instrument",
+    "analysisTime",
+    "marketEvidence",
+    "resolvedDefinitions",
+    "note"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "../schemas/analysis-request.schema.json"
+    },
+    "bundleId": {
+      "const": "pts-course"
+    },
+    "knowledgeVersion": {
+      "const": "1.0.0"
+    },
+    "example": {
+      "type": "boolean"
+    },
+    "candidateId": {
+      "const": "pts-trend-reversal"
+    },
+    "mode": {
+      "const": "analysis-only"
+    },
+    "instrument": {
+      "type": "string",
+      "minLength": 1
+    },
+    "analysisTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "marketEvidence": {
+      "type": "array",
+      "items": {
+        "title": "Market observation supplied by a future adapter",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "instrument", "timeframe", "observedAt", "source", "data"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "instrument": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timeframe": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "resolvedDefinitions": {
+      "type": "array",
+      "items": {
+        "title": "Reviewed analysis definition",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "questionIds", "reviewedAt", "definition"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "questionIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "definition": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

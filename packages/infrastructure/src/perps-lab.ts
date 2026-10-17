@@ -1,0 +1,35 @@
+/** Explicit local persistence composition; no model or signing adapter is loaded. */
+export { PostgresResearchStore } from "./persistence/research-store.js";
+export { PostgresPerpsPaperStore } from "./persistence/perps-paper-store.js";
+export { PostgresPerpsStudyStore } from "./persistence/perps-study-store.js";
+export { PostgresPerpsDiagnosticStore } from "./persistence/perps-diagnostic-store.js";
+export type {
+  PerpsDiagnosticScope,
+  PerpsDiagnosticInitialization,
+  PerpsDiagnosticRecord,
+} from "./persistence/perps-diagnostic-store.js";
+export { PostgresPerpsHourlyBreakoutStore } from "./persistence/perps-breakout-store.js";
+export type {
+  PerpsBreakoutStoreOptions,
+  PerpsBreakoutStudyRecord,
+  PerpsBreakoutFundingRequirement,
+  PerpsBreakoutFundingState,
+} from "./persistence/perps-breakout-store.js";
+export { exportPerpsBreakoutAuditParts } from "./persistence/perps-breakout-audit.js";
+export type {
+  PerpsBreakoutAuditPart,
+  PerpsBreakoutAuditManifest,
+} from "./persistence/perps-breakout-audit.js";
+export { exportPerpsAudit, exportPerpsAuditParts } from "./persistence/perps-audit-export.js";
+export type {
+  PerpsAuditPart,
+  PerpsAuditSourceRevision,
+  PerpsAuditCaptureStats,
+} from "./persistence/perps-audit-export.js";
+export { guardPerpsLabPool } from "./persistence/perps-lab-pool.js";
+export type { PerpsLabFailureDiagnostic } from "./persistence/perps-lab-pool.js";
+export { observePerpsLabPool } from "./persistence/perps-lab-query.js";
+export type { PerpsLabQueryDiagnostic } from "./persistence/perps-lab-query.js";
+export { createLocalPerpsLabStore, warmLocalPerpsLabStore } from "./persistence/perps-lab-local.js";
+export type { PerpsLabConnectionReadiness } from "./persistence/perps-lab-local.js";
+export type { PerpsLabConnectionDiagnostic } from "./persistence/perps-lab-connection.js";

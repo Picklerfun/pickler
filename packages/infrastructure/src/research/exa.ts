@@ -93,6 +93,27 @@ export class ExaResearch implements WebSearch, PageReader {
     return this.call("search", exaSearchRequest(query, includeDomains), signal);
   }
 
+  searchWindow(
+    query: string,
+    from: string,
+    to: string,
+    signal: AbortSignal,
+  ): Promise<SearchResult> {
+    if (
+      !query.trim() ||
+      query.length > 1000 ||
+      !Number.isFinite(Date.parse(from)) ||
+      !Number.isFinite(Date.parse(to)) ||
+      Date.parse(from) >= Date.parse(to)
+    ) {
+      throw new PilotError("INVALID_INPUT", "Invalid bounded news search");
+    }
+    return this.call(
+      "search",
+      { ...exaSearchRequest(query), type: "auto", startPublishedDate: from, endPublishedDate: to },
+      signal,
+    );
+  }
   async read(url: string, signal: AbortSignal): Promise<Source> {
     if (!publicSourceUrl(url)) {
       throw new PilotError("INVALID_INPUT", "Invalid page URL");

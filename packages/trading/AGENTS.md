@@ -179,6 +179,249 @@ and closeable. No financial formula, threshold or lab protocol changes.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 
+## Original SMA laboratory
+
+`perps-original-sma-v1` selects one rules 1.0.0 arm and configuration v3. Reuse the original hourly inputs and conservative four-hour operator risk; no multiframe exits. The common runner accepts no models for this protocol, uses an empty call map and reports each cycle through an injected callback. Paid and historical protocols retain their interpretations.
+
+## Local SMA review comparison
+
+Configuration v4 perps-sma-jev-exa-v1 owns three explicit SMA review arms, entry-only material veto and common final gates in features/perps-study/sma-review.ts. Reuse original SMA/risk versions. The fixed eight slots, 27-call limit and USD 0.50 new reservation ceiling include contract checks; no retries.
+
+## Explicit SMA continuation
+
+perpsSlotClock uses recorded operator continuation segments; the original start and completed slots remain unchanged. Runner release carries safe interruption codes for administrative terminal reporting.
+
+## Local universe comparison
+
+Evaluation v5 `perps-sma-jev-exa-all-markets-v1` owns exact SMA separation ranking, at most five positions, common invalid-asset exclusions and asset-specific review lanes in `perps-study/universe.ts`. `perps-paper/universe-acquisition.ts` validates the bounded partial universe. Original risk, sizing and hourly policy remain unchanged. No replacement after veto, resume or paid repeat.
+
+## SMA profiles and selective exposure laboratory
+
+Local `perps-sma-profile-risk-v1` configuration v6 has four independent variants:
+`hourly-legacy`, `hourly-selective`, `fast-legacy`, and `fast-selective`. It composes no
+model, news, signer, or real order capability. Preserve v1–v5 records and monetary reservations.
+The new optional account `riskManagement` is assigned from the trusted study at initialization;
+absence retains historical collective exposure exits. No intent can change it.
+
+Trading exports versioned profiles through `strategies`/`evaluation`, and the bounded selective
+planner through `perps`. The profile runner serializes public observations, full ledger closes,
+common final refreshes, and four portfolio executions; no host may duplicate these policies.
+Selective accounts admit projected post-fill exposure at most 40% of marked equity and reduce
+strictly above 50% using full closes. Global emergency exits and historical risk stay intact.
+
+Read [the local guide](../../apps/agent-service/SMA-PROFILES-RISK.md) for frozen parameters,
+commands, one-shot execution, and report limitations. Tests never make paid provider calls.
+All registered perpetual protocols permit a read-only audit export. Export support does not
+authorize running an older model-decision analyzer against a new profile protocol.
+The profile runner accepts an injected sleep port for controlled scheduling tests. If a cycle
+finishes in a newer minute, it immediately checks that minute instead of sleeping past an
+unexpired admission. Durable slot fencing still rejects duplicates, late slots and recovery.
+Confirmed exits fence reopening by both the originating cycle slot and the confirmation's
+decision slot, including observations that cross an admission boundary.
+
+`acquireUniverseV2` is the opt-in `rest-universe-coherent-20s-v2` acquisition policy. The injected
+absolute deadline includes metadata work before acquisition. Every batch snapshot operation must
+perform a fresh guarded bulk ticker request; returned states update all pairs, and a missing state
+discards that asset's prior snapshot. One recovery operation can precede an unread book, followed by
+that book's turn. Repeated timestamps postpone only their component by two seconds; ready work
+continues instead of a global sleep. Timestamp regressions permanently exclude the affected asset.
+Revalidate the latest components at one final clock and keep all historical v1 behavior unchanged.
+Transport still owns one-second serialized starts and the twenty-four-request cap. Controlled
+counterexamples demonstrate scheduling corrections, not live availability or economic improvement.
+Transient request failures are recorded with their operation code. Previously received components
+may remain eligible only with their original provenance and the final freshness/coherence checks;
+a failed request never advances their dates. A successfully received batch missing a symbol is
+different: it discards that symbol's previous snapshot instead of substituting it.
+
+`auditUniverseCapture`, exported through `evaluation`, owns the pure `perpl-reader-audit-v2`
+analysis of versioned public captures. It emits allowlisted facts and never invokes data ports.
+Recovery intervals require both original ticker and book dates; ticker-only initialization is
+excluded. Optional per-request market IDs remain absent for historical captures. Missing request
+bytes, cache attribution or transport targets are unverifiable, not reconstructed evidence.
+
+## SMA reopening and timing protocol
+
+Configuration v7 (`perps-sma-reentry-latency-v1`) adds `sma-reference` and `sma-once-bar`, both hourly/selective. `features/perps-study/reentry.ts` owns immutable entry policies and the final hourly key; apply its gate after selection, never rerank replacements. `reentry-metrics.ts` checks common slots, pre-maintenance valuation and detected exits. The shared profile runner prioritizes price maintenance before funding/candle preparation and uses `nextPriceCycleDelay` after overruns. Preserve v6 actions and risk semantics. Infrastructure must atomically persist confirmed fills and consumed keys; hosts must not manufacture either. See [local protocol guide](../../apps/agent-service/PERPS-SMA-REENTRY.md).
+
+`reentryEconomics` matches blocked keys only to confirmed reference openings in the same common
+valid slot, direction and final hourly bar. It reads the existing fee, realized-P&L and funding
+postings; missing/duplicate postings or pending funding cannot establish a net result. These are
+actual reference positions, not hypothetical P&L for a blocked proposal or causal fee savings.
+
+## Explicit universe stream acquisition
+
+`perps-paper/stream-universe.ts` owns transport-neutral joint validation and the explicit
+`stream-universe-20s-v1` policy. All components come from a copied generation and one clock;
+no matching historical component is selected. The reader audit accepts stream capture v3 and
+emits `perpl-reader-audit-v3` while preserving older interpretations. No strategy, risk or
+financial calculation changes are part of this selector. See the local WebSocket guide in
+`apps/agent-service/PERPL-UNIVERSE-WEBSOCKET.md`.
+Stream acquisition accepts an injected bounded snapshot-refresh port after invalid evidence.
+The transport owns subscription rate limits; trading revalidates the new components under the
+same clock/deadline and never treats a refresh request as proof that a price timestamp advanced.
+
+The offline reader auditor accepts recorded universe adapter versions 1, 2 and 3. Three-read
+stream diagnostics remain explicitly `DIAGNOSTIC_ONLY_NOT_ACCEPTANCE`; admitting their offline
+analysis never makes them qualification or upgrades a recorded outcome.
+
+The separate capture-only `stream-universe-component-20s-v2` policy checks native component age
+and future bounds independently and requires advancing heartbeat continuity within five seconds.
+It records ticker/book skew without applying that gate. Historical financial `validatePaperFrame`
+and fill simulation retain their original skew rule. Stream report/audit v4 preserves the descriptor,
+strict-rule market/cycle counts and nonfinancial admission; reject contradictory metadata.
+Capture success never admits financial execution or changes a historical outcome.
+
+The separately authorized `stream-universe-component-paper-20s-v1` financial laboratory policy
+is selected by the account's immutable `marketDataPolicy`, never an intent. `simulation.ts`
+validates independently fresh native components plus a copied live heartbeat proof, and hashes
+that proof with the frame. `validatePaperFrameSet` rejects mixed generations/reference clocks;
+historical accounts and product sessions retain strict behavior. Financial math, risk, signals,
+funding and exits are unchanged. `perps-study/component-qualification.ts` revalidates an explicitly
+pinned complete capture at its original clocks; it reconstructs no historical trades and performs
+no I/O. See [paper policy](../../apps/agent-service/PERPL-COMPONENT-PAPER.md).
+
+Component paper validation accepts a separate trusted receipt clock for local heartbeat/copy
+proof. Native component freshness and financial dates retain the financial clock. Equal clocks
+remain the pure-function default; legacy/product formulas and codes are unchanged.
+`PerpsFrameValidationFailure` exports safe allowlisted clock provenance and a bounded reason
+union, never raw provider content. Do not infer missing historical failure clocks.
+
+Component-paper services may use the optional captured-frame execution port to admit, simulate
+and confirm one shared frame in a single fenced transaction. The runner reuses its committed
+view only for this explicit policy; historical and product paths retain their prior lifecycle.
+The port does not acquire fresh data, alter proof timestamps, change prices or financial rules.
+
+Component-paper common observations use the optional `observeCommon` port for both v7 accounts.
+One copied input and financial/receipt clock precede all maintenance; a confirmed transaction
+rollback on demonstrated native/heartbeat aging records an unavailable observation or slot.
+`isComponentFrameExpiry` classifies aging only, never identity/schema, future-date or ownership
+failures. Initial/final marks and funding reuse the common port. A partially committed observation,
+financial maintenance failure or uncertain commit cannot become an omission. Legacy paths remain
+unchanged. Controlled six-hour tests use synthetic evidence and do not establish live availability.
+
+## Experimental PTS public contract
+
+`@pickler/trading/pts` exports deterministic PTS 0.2.0 detectors, UTC aggregation, dated strict
+pivots, exact ratio/channel/ATR comparisons, sizing, management and offline reproduction.
+`src/features/pts/` owns these rules; `@pickler/trading/testing/pts` is controlled test data only.
+Evaluation config v8 (`perps-pts-sma-v1`) uses explicit `sma-reference`/`pts-basic` maps and the
+existing profile coordinator. It has no model arms or monetary reservations.
+
+PTS account policy alone permits native explicit-quantity partials. Keep initial basis/quantity,
+remaining amounts, block-ordered reductions, consumed setup/targets and non-widening stop state.
+Same-block funding uses the quantity before reduction; later blocks use the reduced quantity,
+including reconciliation after final close. Historic full closes and SMA/Studio rules are unchanged.
+The pure ptsFinancialAudit reads confirmed ledger postings and quantity/funding invariants for replay and audit.
+No candle-only financial return or hypothetical evolving portfolio belongs in signal replay.
+Keep decisions and revisions bounded by information time and the original missing-evidence labels.
+See [the local guide](../../apps/agent-service/PTS-BASIC-PAPER.md).
+
+The pure inspectPtsHistory is evidence inspection only: retain invalid original bars and mark
+projections NOT_VERIFIABLE. Its diagnostic counts cannot admit a strategy or repair an OHLC bar.
+
+PTS financial audit distinguishes posted ledger components from final net results; pending or disputed funding keeps final funding and net P&L null.
+
+Intraday PTS has independent identity 0.1.0 and configuration v9 (`perps-pts-intraday-sma-v1`),
+with `sma-reference`/`pts-intraday` maps. `temporal-profile.ts` binds trusted native roles/minima/
+expiry, six-hour holding and UTC day-end close; default PTS functions retain basic 0.2.0 semantics.
+`@pickler/trading/testing/pts-intraday` exposes controlled native fixtures only. Setup, position and
+intent versions must match immutable account policy; no relabeling or user-supplied role overrides.
+Offline intraday replay evaluates each closed 5m window and never computes candle-only profit.
+
+canonicalAuditChunks yields exactly the historical canonicalAudit bytes without joining a whole
+snapshot; hashing/files remain host responsibilities. auditPtsDecisionRows reuses the PTS policy
+for an explicit original slot subset. auditPtsStudy preserves its original full-window rows and
+financial audit; evidence hashes are computed once per original initial/final object. No action,
+reason, signal, financial policy or historical hash interpretation changes with segmented export.
+
+Independent fast intraday prerelease 0.2.0-fast.1 is an explicit v9 candidate with native 4h/1h/15m/5m roles. Correction and entry share one 180-bar 5m series; existing geometry, expiry, six-hour/day-end and financial rules are reused. ptsCandidateVersion/ptsConfigVersion/ptsPolicy reject unknown identities and preserve old policy hashes. The test-only testing/pts-intraday-fast subpath provides synthetic data, never live evidence.
+
+The optional study cycleView is an execution projection, not an audit snapshot. For PTS v8/v9 it
+retains every recent event key/date/kind, the latest observation outside the time window and the
+payloads used by scheduling, same-slot close fences and first-executable exit tracking. Unused
+payloads may be empty. Read full view or consistent audit exports for original evidence; never
+infer missing financial evidence from the compact projection. Historical protocols retain their
+complete view semantics.
+
+## Local PTS captured final boundary
+
+The optional paper `withCapturedFrames` port coordinates the PTS v8/v9 final phase with the same
+common frames, simulator and financial functions. Final valuation, maintenance, gates and both
+portfolios' fills share one transaction. Only a confirmed whole-phase rollback on demonstrated
+aging becomes an omitted execution; ownership and persistence uncertainty remain fatal.
+Earlier committed observations/exits remain recorded. Do not replace the common input, update
+proof dates, change policies or resume a partial historical round. See
+[the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).
+
+Independent responsive prerelease 0.2.0-fast.2 changes only primary/channel roles to 1h/15m, sharing the native 15m series with impulse/ATR and keeping 5m correction/entry. The v9 config and immutable account mapping pin its own identity; old versions retain hashes/actions. Reuse the same financial functions and setup fences. Controlled profitable fixtures and candle signal replay do not establish market returns. See [responsive intraday](../../apps/agent-service/PTS-INTRADAY-RESPONSIVE.md).
+
+The testing/pts-intraday-responsive public subpath supplies controlled synthetic native fixtures only. It is absent from production barrels and must never be selected as captured data or a provider fallback.
+
+## Fixed hourly-breakout screen
+
+`features/hourly-breakout` owns evaluation v10 `perps-hourly-breakout-fixed-screen-v1`. Its
+prepared configuration is disabled, has a null T0 and operator, and names an existing agent.
+The separate explicit run acceptance must bind the future UTC midnight, operator, source and
+financial technical evidence. The financial roles are independent `hourly-breakout` (C),
+`sma-reference` (S), and `hourly-long` (L). N is cash and responsive PTS fast.2 is nonfinancial
+signal context; neither becomes an account or a financial strategy.
+
+The reviewed T1 parameter namespace and SHA-256 remain immutable. Structural C discovery uses
+exactly 22 closed original hourly bars and the known predecessor, independently of books and
+portfolio state. Native 60-bar 1h/15m/5m financial readiness remains a separate gate. Keep the
+original public mainnet catalogue identity separate from dynamic native fees/config/precision.
+Never rescue a blocked event, promote an initial hold, replace a failed rank, change direction,
+refresh an aged original final copy, pyramid, or enable a PTS position policy on these accounts.
+
+The injected coordinator owns discovery before reservation, one serial 101-AUSD head per
+account, all pending-attempt visibility, due closes before openings, and the immutable common
+final source. Potential position-bound reducing intents are recorded before final acquisition;
+they enter Q only when a due reduction is actually selected. All coincident close reasons stay
+on that intent. Unknown financial outcomes stop every new admission; affected accounts receive
+no further financial writes while unaffected accounts retain authorized reductions. A definite
+commit with unavailable V proof remains a known effect with unproved supervision, never an
+invented rollback. Infrastructure alone implements the separate durable boundaries.
+
+Coordinator identity memory has a fixed 8 MiB conservative tombstone index and at most 128
+recent exact identities. Eviction cannot authorize another execution; uncertain membership
+fails closed. Technical financial rollbacks stop every new admission immediately; only the
+explicit native risk/data rejection allowlist remains account-local. Mandatory reductions precede
+selective-only intentions. Re-read and replan after every confirmed close; retire an obsolete
+selective-only intention durably without inventing a fill or erasing its original Q evidence.
+
+The calendar records missed original slots and never catches them up. Fixed endpoints are
+28 days of admissions, four hours of closing and 72 additional hours for funding evidence.
+Twenty seconds bounds original source acquisition; it is not a new financial commit deadline.
+Native component freshness, receipt heartbeat, ownership and five-minute entry fences still
+apply at the actual financial boundary. The pure clock helpers keep source-local J and
+financial V certificates/populations distinct, retain first acknowledgements, and distinguish
+proved gaps, unproved compliance and clock failure.
+
+The pure report keeps fixed 672/7392, 8064/88704 and 40320/443520 availability denominators,
+pooled account/action-obligation Q floors, exact native position-linked contribution residuals,
+paired C/S group subtraction and candidate-only emergency rejection. Reference emergencies and
+missing PTS context never erase actual effects. No positive descriptive screen establishes
+timing alpha, PTS financial superiority or automatic follow-up authority.
+
+`applyPaperMarks`, `applyPaperPositionFunding` and `finalizePaperObservationDelta` expose native
+marking, held-position funding and one account finalizer for bounded-history adapters. Apply
+the finalizer once after all pages, including late funding for closed positions. A funding
+revision discards all newly proposed funding postings; signed rounding, day and peak behavior
+of `applyPaperObservation` remain unchanged. Controlled tests under `test/hourly-breakout-*`
+exercise injected clocks, the complete fixed calendar, financial invariants and historical
+parity without database, provider, model or real-order access.
+
+Product incremental observations retain their covered-through funding checkpoints and advance
+them only with verified coverage. The extracted position kernel defaults to the original full
+held-interval behavior for laboratory accounts; disputes restore every product checkpoint to
+its pre-observation value and discard all proposed postings before the shared finalizer.
+
+The `pts` subpath also exports pure causal research inspections and chronological sessions.
+Research policies and signals have separate identities/types from executable PTS versions and
+intents. Preserve historical baseline actions and hashes; dependency failures are not downstream
+passes. Candidate signals and candle projections never establish financial returns. See
+[PTS causal research](../../apps/agent-service/PTS-CAUSAL-RESEARCH.md).
+
 ## Perpl real testnet sessions
 
 The read-only state optionally obtains public account/deposit requirements from its injected

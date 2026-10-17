@@ -215,3 +215,300 @@ See the canonical selection/version, preservation and controlled acceptance boun
 runtime activation is implied.
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
+
+## Private trading baseline
+
+Read [TRADING-BASELINE.md](TRADING-BASELINE.md) for `evaluate baseline-export`, `baseline-verify`
+and `baseline-restore-check`. Their dispatch precedes provider composition. Export consumes an
+explicit inventory and loopback database configuration only; verify is offline; recovery uses
+fresh directories and a separate PostgreSQL cluster. Never overwrite originals, omit changing
+files silently, resume restored sessions, reset budgets or register the disabled PTS candidate.
+Private artifacts stay outside Git. Source PTS bytes and prior strategy versions remain unchanged.
+
+## Original SMA rules-only study
+
+Read [SMA-ORIGINAL.md](SMA-ORIGINAL.md). Configuration v3 `perps-original-sma-v1` loads only loopback PostgreSQL and public Perpl data. Preserve hourly rules 1.0.0 and four-hour operator risk; no model clients, keys, reserves, fake arms or resume. The process writes reports each cycle; no automation is created.
+
+## Local SMA review comparison
+
+Read SMA-JEV-EXA.md for local v4 perps-sma-jev-exa-v1. One-shot synthetic validate uses an exclusive marker and run requires matching passed checks. Only PostgreSQL, public Perpl and explicitly authorized Jev/Exa are composed. Report/status call no providers. No automation, resume or real trading.
+
+## Explicit SMA continuation
+
+SMA v4 resume requires --allow-paid and a local operator-resume.json. It retains original checks, metadata, calls and portfolios and schedules only untouched slots with a new recorded clock segment. No automatic paid retry.
+
+## Local universe comparison
+
+Read [SMA-ALL-MARKETS.md](SMA-ALL-MARKETS.md) for configuration v5 and the one-shot eleven-market SMA/Jev/Exa comparison. `universe-data.ts` composes public data; `universe-report.ts` renders 264 identities offline. Synthetic contracts use their own record, renew ownership and exclude live news from controlled facts. USD 2.50 new retained reserves include checks, within the same USD 5 historical campaign. No resume, automation, merge or deployment.
+
+## SMA profiles and selective exposure
+
+Read [SMA-PROFILES-RISK.md](SMA-PROFILES-RISK.md). Configuration v6 exposes the four
+profile/risk variants through the unified evaluator. `profiles-host.ts` parses only local
+DATABASE_URL; `profiles-data.ts` composes the runtime public reader, and `profiles-report.ts`
+renders 3,168 decision identities. No model/news/signing clients, paid validation, restart,
+resume, automation, or deployment. The runner regenerates reports after observations and at
+completion. Freeze commit, catalog, and configuration before the single six-hour run.
+`profiles-resources.ts` attempts every cleanup and preserves the primary failure. Reports retain
+the study commit separately from the report commit and export all execution/observation events,
+including exits after admission slot 71. Read-only reporting never infers process liveness from
+a persisted running state.
+Risk summaries count the full confirmed mandatory-exit batch when an exposure breach initiated
+it; they do not count only the first close whose pre-exit snapshot still exceeds the limit.
+Individual exit conditions can coincide with that batch and are not independent causes.
+Report hashes are memoized per immutable evidence object within one rendering; every decision
+retains the same canonical digest without hashing a full snapshot again for each market/variant.
+`audit-export` accepts the registered perpetual protocols; the historical model-decision
+`audit` analyzer explicitly rejects unsupported profile protocols rather than fabricating arms.
+
+## SMA reentry/latency comparison
+
+[PERPS-SMA-REENTRY.md](PERPS-SMA-REENTRY.md) documents configuration v7 and the public-only two-portfolio protocol. `evaluate timing-check --state EXPORT --output NEW_DIRECTORY` runs offline before environment/provider composition and rejects environment/paid flags. `stability` performs one independent 30-minute eleven-market capture; `run` requires its passing proof matching commit/configuration, or the explicit pinned adoption for the separately authorized component paper policy below. `reentry-host.ts` composes only local PostgreSQL and public Perpl, emits compact per-observation status and coalesces full reports through `reentry-report-worker.mjs`. All file publication is atomic. Do not call models, restart, repeat qualification, extend deadlines, create monitors, merge or deploy automatically. Old monitors remain paused. New model calls/tokens/reservations are zero; historical budgets and records are unchanged. Tests include PostgreSQL atomic key consumption, common final evidence, mandatory price-exit priority and historical v6 parity.
+
+The unified evaluation npm entry includes Node’s option separator before the script. Preserve it
+so laboratory `--env-file` is handled by the application rather than preloaded by Node. V7 requires
+a dedicated database-only file; offline timing and audit never load an environment.
+
+V7 reports include `reentry-economics.json`/`.csv`, matching blocked keys to actual reference
+positions and ledger postings. Pending funding and incomplete inputs remain unverifiable. Read
+[the 2026-10-08 acceptance record](PERPS-SMA-REENTRY-ACCEPTANCE-20261008.md) before further public
+work: the single qualification failed, so no six-hour comparison was started or authorized to
+repeat automatically. Its artifacts and frozen qualification commit must remain intact.
+
+Read [Perpl reader evidence](PERPL-READER-EVIDENCE.md) for the explicitly selected v7 acquisition
+correction. `reader-audit` is offline and emits only allowlisted recorded facts in a new directory;
+`reader-check` makes three public diagnostic captures with an independent local lease, never
+qualification, trading or models. Its protocol cannot pass the six-hour run's qualification gate.
+Preserve the failed acceptance and default v1 reader. The v2 selector, genuinely fresh bulk reads,
+cache/network diagnostics and policy persistence are covered by controlled regressions. No
+automatic acceptance repeat or strategy change is authorized by the correction.
+
+## Local universe WebSocket qualification
+
+Read [PERPL-UNIVERSE-WEBSOCKET.md](PERPL-UNIVERSE-WEBSOCKET.md) before public work with the
+explicit v7 `stream-universe-20s-v1` selector. Stability v3 uses one continuous public reader,
+independent diagnostic ownership, 30 slots, and 330 market rows. `stream-capture.ts` retains
+at most a 32 MiB contiguous validated prefix with hashes and explicit truncation. Offline
+reader-audit v3 verifies hashes and replays retained messages through pure reconstruction,
+without environment, credentials or connections. Partial evidence cannot upgrade joint validity.
+No economic run, paid call, restart, repeat, automation, merge or deployment is implicit.
+Read [the one-shot result](PERPL-UNIVERSE-WEBSOCKET-ACCEPTANCE-20261008.md): it failed after two
+valid cycles. Preserve the original generic summary and specific stream error. Post-check safe
+limit counters and cancellation fixes have controlled validation only; missing historical limit
+dimensions remain unverifiable and never authorize another public check.
+
+The operator explicitly authorized further WSS repair and verification on 2026-10-08. Keep each
+diagnostic and qualification in a new directory; preserve previous failed captures. `reader-check`
+also accepts the explicit universe stream for three diagnostic reads and cannot pass economic
+qualification. Stream v2 records processing/guard/queue counters and bounded snapshot requests.
+Only a complete passing thirty-minute stability record establishes capture acceptance. This repair
+authorization enables no trading, models, automation, merge, deployment, or economic comparison.
+
+The universe stream v3 reconstructs messages synchronously and requires fresh guards
+for buffer delivery. Its public repair qualification must preserve any failed earlier check.
+Offline reader audit supports v2/v3 adapter captures and three-read stream diagnostics without
+converting them to acceptance. No repeated subscription is considered evidence of fresh data.
+Read [the v3 repair result](PERPL-UNIVERSE-WEBSOCKET-REPAIR-20261009.md): thirty slots completed
+without transport or ownership errors, but only 17/30 joint captures were valid. Preserve that
+failed availability gate and do not infer economic readiness from technical continuity.
+
+Read [the component-policy record](PERPL-UNIVERSE-COMPONENT-POLICY-20261009.md) for the separately
+authorized 2026-10-09 capture experiment `stream-universe-component-20s-v2`. Stability/audit v4
+records its independent native freshness rule, heartbeat continuity, strict-rule counts and
+`financialExecutable: false`. Financial host commands reject it before environment loading;
+account initialization rejects it before writes. Preserve old captures and their failed gates.
+Offline candidates never count as prospective acceptance or upgrade historical outcomes.
+
+The component-policy public measurement at frozen commit `46bcca8c36d91edd0508ff05e3f6b6aedab304df`
+passed 30/30 joint cycles and 330/330 market observations; the unchanged strict rule accepts
+11/30 of the same snapshots. Independent offline/PostgreSQL proof confirmed hashes, closure,
+release and zero diagnostic accounts/decision rounds. This is capture acceptance only.
+That capture alone does not authorize financial execution or upgrade the old 17/30 failure.
+Read the component-policy record for immutable artifact paths and limitations.
+
+The operator separately authorized `stream-universe-component-paper-20s-v1` and one six-hour
+v7 economic experiment on 2026-10-09. Read [the paper policy](PERPL-COMPONENT-PAPER.md).
+It requires immutable account policy, native freshness and copied heartbeat proof through financial
+validation and transactional admission. `component-qualification.ts` explicitly adopts a pinned,
+complete capture with offline replay and unchanged transport source; it never invents historical
+fills. New paper preflight is offline; financial-selector stability is rejected. Preserve capture
+artifacts, strategies, historical reservations, one-shot deadlines and zero models/signers.
+
+Component paper failures publish `financial-frame-validation-failed` with allowlisted reason,
+frame hash and distinct receipt/database clocks; runtime status retains the same safe details.
+The first execution stopped after four slots and remains interrupted with open positions.
+The clock regression is proven in controlled tests; its exact historical triggering values were
+not recorded. Preserve that distinction and the first run's evidence when continuing authorized
+repair work. Never silently resume a started session or overwrite its history.
+
+Component-paper controlled PostgreSQL tests include captured-frame atomic rollback, racing
+closes, idempotency, hash/owner rejection and paired thirty-sample query-delay benchmarks.
+Simulated clock delays are reported separately from monotonic measured durations. An interrupted
+comparison with a partial account fill remains incomplete; never present it as a common round.
+
+The third component-paper session at `b1bb7fb0226ba0f33b072f03f23e253684ceab42` remains
+interrupted before its six-hour end with 68 complete slots. Recorded BTC ticker age advanced from
+29,694ms at copy to 30,189ms at validation while sequential account valuation was in progress.
+The corrected component-only runner uses a common transaction and records confirmed expiry
+rollback separately from partial/uncertain writes. Preserve this session, its pending positions
+and failure export. The controlled regression reproduces the dates with synthetic frame bodies;
+it never claims to recover the rejected historical bytes or completes the interrupted trial.
+
+A component-paper database timeout remains a fatal persistence interruption, with the specific
+`PERSISTENCE_QUERY_TIMEOUT` code on corrected executions; a recognized connection deadline is
+`PERSISTENCE_CONNECTION_TIMEOUT`. Never reinterpret an interrupted
+historical generic code or pending positions as completed/closed. Keep database-load attribution
+bounded by recorded evidence; a coincident checkpoint alone cannot identify every causal workload.
+An explicitly authorized zero-model continuation may use a separate local physical server only
+after restoring and verifying the complete existing campaign history, reservations and table
+hashes. Keep the original server and failed sessions intact; never use duplicate copies as fresh
+monetary budget authority. Controlled database tests must finish before freezing that runner.
+
+## Experimental PTS local commands
+
+`src/pts-study/` owns local v8 composition, safe artifacts and restricted commands. Read its
+AGENTS.md and [PTS guide](PTS-BASIC-PAPER.md). Offline replay/audit dispatch before any environment
+or public transport composition. Preparation writes a new directory, saves original public
+responses/hashes, and optionally initializes an inactive study using a dedicated loopback
+DATABASE_URL-only file. No model/trading keys are read and no paid clients are built.
+
+The explicit future run uses the existing profile runner and shared public reader; it cannot resume.
+Coalesced full reports run in a separate thread; compact observation status stays on the host.
+Report progress includes attempted slots and process-state transitions, so an unavailable attempt
+or closing-only transition publishes without requiring another completed decision round.
+Do not call run as implementation acceptance, reactivate monitors, or add PTS to Studio selectors.
+
+`src/pts-study` also dispatches local v9 `perps-pts-intraday-sma-v1` independently from basic v8.
+Read [intraday PTS](PTS-INTRADAY-PAPER.md). The committed inactive template is preparation only;
+one explicit authorized run has 24 fixed hours/288 slots. Offline replay/audit precede provider
+composition. Reports pin the correct independent policy and preserve pending funding/null metrics.
+
+Intraday run composition passes the verified preparation eligibility cohort to the shared reader.
+Known unavailable original histories remain preserved and omitted for both portfolios, never
+re-evaluated as executable signals. Retain interrupted attempts and their unchanged policies.
+
+## Bounded local PTS reports
+
+New PTS report manifests use v3 and hash the actual canonical JSON projection while streaming it.
+Keep byte hashes separate from the semantic report hash and preserve historical v2 artifacts and
+source/policy digest meanings. Read [report JSON integrity](PTS-REPORT-JSON-INTEGRITY.md).
+
+Local PTS v8/v9 exports use the additive segmented audit v2 manifest and consistent paged
+read-only PostgreSQL capture. V1 audit packets remain readable. Offline dispatch validates the
+stored protocol/version before loading providers. Full native evidence stays in private hashed
+parts; report workers replay one original round at a time and receive no giant snapshot clone.
+JSON/CSV publication streams containers; HTML excludes raw histories. Specific report failures
+stop admission, and interrupted studies retain positions/funding and their original error codes.
+Read [PTS intraday](PTS-INTRADAY-PAPER.md) for the reproduced serialization interruption.
+
+Read [fast intraday PTS](PTS-INTRADAY-FAST.md) for explicit v9 candidate 0.2.0-fast.1. Its new inactive template, descriptor and policy stay separate from 0.1.0. Commands and reports pin the chosen candidate; saved preparation from another identity is rejected. The original active trial is not altered or restarted. Offline results and controlled fills do not establish profitability.
+
+The local PTS host also observes queries through the restricted persistence composition. On
+interruption it publishes persistence-query-diagnostic.json atomically alongside compact status.
+The in-memory collector bounds completed queries to 128 and active identities to 16, retains the
+first failure independently and declares truncation. Compact status exposes only that safe first
+query failure. This evidence does not grant ownership, authorize recovery, change query deadlines
+or amend historical missing query phases. Reports and financial policy remain unchanged.
+
+## PTS report source isolation
+
+`pts-study/report-worker-client.ts` starts workers without inherited environment and waits for
+exit after verified publication. The report worker now performs the consistent PostgreSQL source
+export as well as audit/render/publication. `report-source.ts` reads only the dedicated local
+DATABASE_URL file and uses infrastructure's one-connection read-only report role. Execution uses
+the separate four-connection guarded role, including Drizzle permission reads. Coalescing still
+allows one report generation at a time.
+
+Forward the first bounded report persistence diagnostic to the controller; preserve its specific
+code and publish compact interruption state even if a full report cannot be generated. Abort
+terminates the report worker without retrying uncertain work. Verify database backend release
+separately; a blocked server read can persist until its unchanged ten-second statement deadline.
+The thirty-pair source-only benchmark uses synthetic JSON, verifies identical hashes and includes
+worker startup. It does not measure provider latency or strategy returns. Read
+[PTS report persistence](PTS-REPORT-PERSISTENCE.md) for checks and evidence limits.
+
+Local PTS v8/v9 lease-bound account reads explicitly select infrastructure's pts-snapshot-v1
+without changing mutations, financial rules or deadlines. Consistent inspection uses no exclusive
+study lock; final ownership checks use fresh read-committed state outside the snapshot.
+See [PTS read isolation](PTS-STUDY-READ-ISOLATION.md) for controlled proof and original incident limits.
+
+Local PTS report source capture reuses verified unchanged round/event parts using infrastructure's
+native SHA-256 revisions and a hashed source index. Fresh record/accounts and full current row
+inventories remain in one consistent read-only snapshot. Missing parts refetch; corruption fails
+publication. Canonical payload hashes and old v1/v2 packets keep their interpretation. Server
+fingerprinting, aggregate file verification and full replay/rendering still do work; do not claim
+this is a constant-time report or proof of profitable signals. Read [PTS incremental capture](PTS-REPORT-INCREMENTAL.md).
+
+Local incremental source capture selects a materialized page of keys before fingerprinting its
+round/event JSONB bodies. Keep the same consistent snapshot, native revision policy and canonical
+payload meaning. The PostgreSQL regression forces unordered scan/sort and rejects hashing outside
+the selected page. Read [PTS report page bounds](PTS-REPORT-PAGE-BOUNDS.md) for the 36-round
+interruption, controlled measurements and limits of the historical diagnosis. Preserve the frozen
+failed study and pending positions; a repaired report cannot resume financial execution.
+
+Read [study control reads](PTS-STUDY-CONTROL-READS.md) for the preserved 100-round interruption and
+isolated metadata/ownership projection measurements. Infrastructure owns projected permission and
+lease checks; the host must keep using those fences. A terminal read-only report goes to a new
+directory and preserves pending positions. Reduced query payloads are not proof of historical
+timeout causality, successful prospective continuity or PTS profitability; never resume the failed
+study or alter its frozen configuration.
+
+Read [PTS captured final execution](PTS-CAPTURED-FINAL-EXECUTION.md) for the preserved heartbeat-aging
+interruption and the local v8/v9 common final transaction. The host keeps its existing runner,
+financial functions and fixed admission window. A confirmed final-phase rollback is an omission,
+not a hold or completed round; partial/uncertain writes remain interruptions. Controlled fills
+prove long/short and partial execution only. Preserve the failed trial and its pending positions;
+this repair does not resume it or establish profitable PTS decisions.
+
+Read [local PTS connection readiness](PTS-LOCAL-CONNECTION-READINESS.md) for the preserved new-client
+timeout and pre-admission local check. Preflight/run verify the fixed execution capacity before
+claim; no model, provider, signing or financial work belongs in readiness. Preserve the failed
+study, stale database projection and separate terminal-process proof. Readiness is a mitigation,
+not a retrospective socket diagnosis or evidence of profitable decisions.
+
+The PTS host publishes bounded connection phases and run-only event-loop evidence with its query
+diagnostic at completion/interruption. Keep the one-second passive timer separate from financial
+clocks, freeze it at cleanup, and declare truncation. Process-wide CPU and timer lateness do not
+identify a historical timeout cause; no credentials, driver messages or authentication bytes belong
+in these artifacts. See the local readiness guide for the versioned fields and controlled tests.
+
+Read [responsive intraday PTS](PTS-INTRADAY-RESPONSIVE.md) for the independent v9 0.2.0-fast.2 candidate. Preparation/commands reuse the public-only PTS host, with explicit policy/history hashes and no Studio selection. Keep original failed studies, native data, unknown reservations and signal-only financial limitations. No automatic restart or parameter adjustment to obtain positive results is implied.
+
+PTS report rows explicitly distinguish stored DATA_UNAVAILABLE omissions from NOT_RECORDED evidence and valid holds. The versioned presentation retains original row status/reason and stored omission phase/cause in JSON/CSV/HTML; it changes no trading policy or ledger. Offline rendering into a new directory cannot establish process liveness or replace a frozen active runner.
+
+Read [PTS causal research](PTS-CAUSAL-RESEARCH.md) for the offline `pts-research-input-v1`
+audit extension. Its manifest pins saved sources and disabled research policies; dispatch precedes
+environment and provider composition. Reports separate original decisions, retrospective signal
+experiments and unavailable financial paths. Never start a public trial from its future protocol.
+
+## Hourly breakout fixed screen
+
+`src/hourly-breakout` owns the restricted local configuration-v10 host; read its AGENTS.md.
+Preparation is offline and disabled. Preflight reads only explicit existing public permissions and
+the dedicated loopback DATABASE_URL-only file. Financial run requires a separate future acceptance
+record before database/provider composition; preparation and source acceptance cannot supply it.
+The separately authorized `stability` command freezes one 24-hour source window before any public
+call. The first canonical pump includes the metadata/WebSocket cold start; no public bootstrap runs
+before the frozen start. All 4,320 original windows and 1,440 canonical minutes remain counted.
+Offset 20/40-second copies never rescue canonical coverage; preparation coverage stays separate.
+Source J and future financial V clocks, ownership, acceptance and results remain distinct.
+New source-only captures explicitly pin `source-independent-database-clock-v1`: host time owns
+J/calendar and PostgreSQL owns diagnostic leases. Persist full-RTT offsets without requiring absolute
+clock equality or modifying timestamps. Revalidate numeric proof, regressions and diagnostic endpoints
+offline. Historical manifests and the separately gated future financial clock retain their meaning.
+
+Original snapshots, candle revisions and public HTTP bodies remain in immutable hashed parts;
+only the declared first32MiB validated wire prefix may truncate. Every artifact and concurrent
+report temporary shares the16GiB reserved ceiling. One read-only report worker publishes verified
+derived generations and the pointer last, retaining current/previous derived output only. Offline
+source status/report/audit-export/audit/replay use an explicit source-manifest.json before any
+environment/provider composition and preserve historical output. Local STOP control bytes are
+pre-reserved before capture; a stop request does not establish process liveness or financial flatness.
+
+Each derived generation retains its exact source manifest. Compact `acceptance.json` excludes
+large row populations; complete JSON/CSV retains 15,840 canonical market-minutes and 47,520
+market-pumps. Source certificates declare local OS authority and observed uncertainty, never
+external UTC accuracy. A future financial clock certificate is immutable, separately authorized
+and checked against every actual sample. New financial run authority must bind the reviewed
+protocol digest and exact implementation/configuration. No acceptance bundle is allocated by
+preparation. Funding work cannot delay the serialized priority minute valuations or required exits.

@@ -36,7 +36,7 @@ async function setup(t: TestContext) {
   const view = await study.initialize(scope, { fixture: true });
   const accounts = {} as Record<PerpsStrategy, PerpsPaperAccount>;
   for (const s of PERPS_STUDY_STRATEGIES) {
-    accounts[s] = (await paper.view({ ...scope, agentId: view.record.agentIds[s] })).account;
+    accounts[s] = (await paper.view({ ...scope, agentId: view.record.agentIds[s]! })).account;
   }
   return {
     research,
@@ -92,7 +92,7 @@ test("real PostgreSQL isolates dedicated agents, serializes admissions and recov
   await x.study.initialize(x.scope, { fixture: true });
   for (const s of PERPS_STUDY_STRATEGIES) {
     assert.equal(
-      (await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s] })).movements.length,
+      (await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s]! })).movements.length,
       1,
     );
   }
@@ -121,7 +121,7 @@ test("real PostgreSQL isolates dedicated agents, serializes admissions and recov
   const after = await x.study.view(x.scope);
   assert.equal(after.record.startedAt, x.view.record.createdAt);
   assert.equal(after.rounds[0]!.status, "interrupted");
-  assert.equal(after.rounds[0]!.calls.direct.costUsd, null);
+  assert.equal(after.rounds[0]!.calls.direct!.costUsd, null);
   assert.equal(perpsAccountedUsd(after.rounds), "0.024576");
   assert.equal(await peer.reserve(x.scope, replacement, 1, evidence, x.accounts, holds), null);
 });
@@ -157,7 +157,7 @@ test("parallel known usage commits independently; budget exhaustion admits neith
     jev: holds,
   });
   await x.study.finishExecution(x.scope, lease, round.key, "complete");
-  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.fallback.status, "skipped");
+  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.fallback!.status, "skipped");
   const expensive = {
     ...x.scope,
     sessionId: "expensive",
@@ -170,7 +170,7 @@ test("parallel known usage commits independently; budget exhaustion admits neith
     null,
   );
   assert.equal((await x.study.view(expensive)).record.decisionStopReason, "BUDGET_EXHAUSTED");
-  assert.ok(v.record.agentIds.rules !== x.view.record.agentIds.rules);
+  assert.ok(v.record.agentIds.rules! !== x.view.record.agentIds.rules!);
 });
 test("blind direct proposals persist usage before validation and never retry malformed output", async () => {
   let requests = 0,
@@ -420,7 +420,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   assert.equal(view.rounds[0]!.executionStatus, "complete");
   assert.equal(
     (
-      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules })
+      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! })
     ).account.positions.filter((p) => p.closedAt === null).length,
     2,
   );
@@ -431,7 +431,7 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   await runner.cycle(x.scope, next, new AbortController().signal);
   view = await x.study.view(x.scope);
   assert.equal(view.record.decisionStopReason, "MODEL_FAILURE");
-  assert.equal(view.rounds[1]!.calls.direct.error, "MODEL_TIMEOUT");
+  assert.equal(view.rounds[1]!.calls.direct!.error, "MODEL_TIMEOUT");
   const calls = paid;
   x.advance(4 * 3600000);
   await x.study.release(x.scope, next);
@@ -440,13 +440,13 @@ test("deterministic replay shares evidence, executes baseline, and supervises ri
   assert.equal(paid, calls);
   assert.equal(
     (
-      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules })
+      await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! })
     ).account.positions.filter((p) => p.closedAt === null).length,
     0,
   );
   const accounts = {} as Record<PerpsStrategy, PerpsPaperView>;
   for (const s of PERPS_STUDY_STRATEGIES) {
-    accounts[s] = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s] });
+    accounts[s] = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds[s]! });
   }
   const report = perpsStudyReport(await x.study.view(x.scope), accounts, x.now());
   assert.equal(report.comparable, false);
@@ -490,7 +490,7 @@ test("completed proposal without execution becomes incomplete on restart; permis
   assert.equal(recovered.record.decisionStopReason, "INTERRUPTED_EXECUTION");
   await x.research.pool.query(
     "UPDATE pickler.agents SET paused=true WHERE tenant_id=$1 AND id=$2",
-    [x.scope.tenantId, x.view.record.agentIds.jev],
+    [x.scope.tenantId, x.view.record.agentIds.jev!],
   );
   await assert.rejects(x.study.guard(x.scope, next));
 });
@@ -526,7 +526,7 @@ test("expired grace preserves unresolved positions and permanently closes admiss
     }).cycle(x.scope, next, new AbortController().signal),
     false,
   );
-  const view = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules });
+  const view = await x.paper.view({ ...x.scope, agentId: x.view.record.agentIds.rules! });
   assert.equal(view.account.admissionsClosed, true);
   assert.equal((await x.study.view(x.scope)).record.status, "completed");
 });
@@ -652,7 +652,7 @@ test("unknown historical usage blocks a new session without resetting its reserv
     null,
   );
   assert.equal((await x.study.view(config)).record.decisionStopReason, "CAMPAIGN_USAGE_UNVERIFIED");
-  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.direct.costUsd, null);
+  assert.equal((await x.study.view(x.scope)).rounds[0]!.calls.direct!.costUsd, null);
 });
 
 test("stale evidence is rejected before model spend and invalid execution frames remain inspectable", async (t) => {
@@ -803,7 +803,7 @@ test("paper account writes are fenced by the study lease in their own transactio
     ...x.scope,
     owner: lease.owner,
   });
-  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules! };
   await bound.observe(target, "owned", { frames: studyEvidence(x.now()).frames, funding: [] });
   x.advance(90001);
   await assert.rejects(
@@ -895,7 +895,7 @@ test("a process interruption fences writes even while PostgreSQL still sees a li
     owner: lease.owner,
     assertActive: lease.assertActive,
   });
-  const target = { ...x.scope, agentId: x.view.record.agentIds.rules };
+  const target = { ...x.scope, agentId: x.view.record.agentIds.rules! };
   await assert.rejects(
     bound.observe(target, "after-wake", { frames: studyEvidence(x.now()).frames, funding: [] }),
     { code: "PROCESS_INTERRUPTED" },

@@ -12,6 +12,9 @@ export const PRODUCT_PAPER_SESSION = "product";
 export const isProductPaperSession = (scope: Pick<PerpsPaperScope, "sessionId">) =>
   scope.sessionId === PRODUCT_PAPER_SESSION;
 export type PerpsPaperSide = "long" | "short";
+/** Explicit local paper adoption; absence keeps historical five-second coherence. */
+export const COMPONENT_PAPER_POLICY = "stream-universe-component-paper-20s-v1" as const;
+export type PerpsPaperDataPolicy = typeof COMPONENT_PAPER_POLICY;
 /** Why a product position closed: the runtime's `CLOSE_REASONS` (R10). */
 export type PerpsPaperCloseReason = import("../perps-runtime/exits.js").PerpsCloseReason;
 /** A product position's exits (R10), stored on the position when it opens. */
@@ -48,11 +51,26 @@ export interface PerpsPaperPosition {
   fundingCoveredThrough?: number;
   /** Margin added to the position after it opened (size-ups, R8), each with its time. */
   sizeUps?: { at: number; margin: string }[];
+  pts?: import("../pts/types.js").PtsPositionState;
 }
 export interface PerpsPaperAccount {
   scope: PerpsPaperScope;
   agentVersion: number;
   policy: "conservative-1x-v1";
+  /** Immutable and assigned only from the trusted local study, never an intent. */
+  marketDataPolicy?: PerpsPaperDataPolicy;
+  /** Absent in historical documents; selected only by trusted study initialization. */
+  riskManagement?: "legacy-1x-v1" | "buffered-selective-1x-v1";
+  /** Trusted local study policy. Absence preserves historical entry behavior. */
+  entryPolicy?: "unrestricted-hourly-v1" | "once-hourly-bar-v1";
+  consumedEntryKeys?: string[];
+  /** Trusted local v8 policy; never selected by an order intent. */
+  positionPolicy?:
+    | "pts-basic-1x-0.2.0"
+    | "pts-intraday-1x-0.1.0"
+    | "pts-intraday-1x-0.2.0-fast.1"
+    | "pts-intraday-1x-0.2.0-fast.2";
+  consumedPtsSetups?: string[];
   createdAt: number;
   cash: string;
   peakEquity: string;
@@ -74,9 +92,12 @@ export interface PerpsPaperIntent {
   side: PerpsPaperSide;
   notional: string;
   feeReserve: string;
+  /** Final evidence reference only; cannot choose the account entry policy. */
+  entryEvidence?: { roundKey: string; candleOpenTime: number; resolution: 3600 };
   /** Product opens only; operator sessions refuse anything but 1x. */
   leverage?: number;
   checkId?: string;
+  pts?: import("../pts/types.js").PtsIntentEvidence;
 }
 export interface PerpsPaperAttempt {
   key: string;
@@ -146,6 +167,39 @@ export interface PerpsPaperFill {
   timestamp: number;
   evidence: unknown;
 }
+/** A rolled-back common valuation never authorizes maintenance or financial execution. */
+export type PerpsCommonObservationResult =
+  | {
+      status: "complete";
+      replayed: boolean;
+      financialAt: number;
+      receiptAt: number;
+      accounts: { scope: PerpsPaperScope; before: PerpsPaperView; view: PerpsPaperView }[];
+    }
+  | {
+      status: "data_unavailable";
+      rolledBack: true;
+      code: "STALE_MARKET_DATA";
+      validation: import("./simulation.js").PerpsFrameValidationFailure["details"];
+    };
+/** Trusted business coordination inside one bounded captured-frame transaction. */
+export interface PerpsCapturedExecutionContext {
+  paper: PerpsPaperRepository;
+  event(key: string, kind: string, data: unknown): Promise<void>;
+  assertActive(): void;
+}
+export type PerpsCommonExecutionResult =
+  | {
+      status: "complete";
+      replayed: boolean;
+      accounts: { scope: PerpsPaperScope; view: PerpsPaperView }[];
+    }
+  | {
+      status: "data_unavailable";
+      rolledBack: true;
+      code: "STALE_MARKET_DATA";
+      validation: import("./simulation.js").PerpsFrameValidationFailure["details"];
+    };
 export interface PerpsPaperRepository {
   executionSnapshot?(scope: PerpsPaperScope): Promise<PaperExecutionState>;
   attemptResult?(scope: PerpsPaperScope, key: string): Promise<PerpsPaperAttempt | null>;
@@ -157,6 +211,12 @@ export interface PerpsPaperRepository {
     key: string,
     observation: import("./simulation.js").PerpsPaperObservation,
   ): Promise<PerpsPaperView>;
+  /** Component-paper accounts share one observation, clock and rollback boundary. */
+  observeCommon?(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    observation: import("./simulation.js").PerpsPaperObservation,
+  ): Promise<PerpsCommonObservationResult>;
   /** `startingCash` is required for a product session and refused for an operator session. */
   initialize(
     scope: PerpsPaperScope,
@@ -170,6 +230,21 @@ export interface PerpsPaperRepository {
     key: string,
     intent: PerpsPaperIntent,
   ): Promise<{ attempt: PerpsPaperAttempt; lease: PerpsPaperLease | null }>;
+  /** Explicit component-paper execution of an already shared frame in one fenced transaction. */
+  executeFrame?(
+    scope: PerpsPaperScope,
+    key: string,
+    intent: PerpsPaperIntent,
+    frame: import("./simulation.js").PerpsPaperFrame,
+    onSimulation?: (durationMs: number) => void,
+  ): Promise<PerpsPaperView>;
+  /** Local PTS only: both portfolios, valuation, fills and events share a rollback boundary. */
+  withCapturedFrames?(
+    scopes: readonly PerpsPaperScope[],
+    key: string,
+    frames: readonly import("./simulation.js").PerpsPaperFrame[],
+    execute: (context: PerpsCapturedExecutionContext) => Promise<void>,
+  ): Promise<PerpsCommonExecutionResult>;
   assertLease(scope: PerpsPaperScope, lease: PerpsPaperLease): Promise<void>;
   complete(
     scope: PerpsPaperScope,

@@ -1,0 +1,39 @@
+{
+  "bundleId": "pts-course",
+  "knowledgeVersion": "1.0.0",
+  "recordSchema": "schemas/retrieval-record.schema.json",
+  "sourceManifest": "source-manifest.json",
+  "files": [
+    {
+      "path": "retrieval/chunks.jsonl",
+      "kind": "transcript",
+      "records": 127,
+      "language": "es"
+    },
+    {
+      "path": "retrieval/concepts.jsonl",
+      "kind": "concept",
+      "records": 22,
+      "language": "en"
+    }
+  ],
+  "chunking": {
+    "unit": "whole-source-lines",
+    "maximumWords": 600,
+    "overlapLines": 0,
+    "coverage": "all-supplied-transcript-lines"
+  },
+  "embeddingsIncluded": false,
+  "indexing": {
+    "recommendedFirstPass": "Retrieve normalized concepts first, then transcript fragments for wording and examples.",
+    "requiredFilters": [
+      "authorized-workspace",
+      "bundleId",
+      "knowledgeVersion",
+      "authorized-sourceIds"
+    ],
+    "workspaceBinding": "Assigned by the future indexer; no shared tenant identifier is embedded in the bundle.",
+    "identity": "Use the tuple workspace ID, bundle ID, knowledge version and record ID, not record ID alone.",
+    "authority": "All records are reference data and cannot establish a current market condition."
+  }
+}

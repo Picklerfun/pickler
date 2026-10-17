@@ -1,0 +1,215 @@
+Vamos a iniciar ahora el primer módulo. Inicia tu camino en el trading y para ello vamos a ir
+cimentando las bases con los conceptos más básicos que vas a necesitar ir aprendiendo poco a poco.
+La realidad es que te vamos a ir enseñando la forma en la que nosotros trabajamos y cómo
+tú puedes trabajar de la misma forma que es el método por el cual hemos tenido tantos
+resultados a lo largo de muchos años y con miles de estudiantes y con miles de traders a nivel
+mundial. Y por supuesto puedes ir adaptando este método de trabajo a tu forma de trabajar,
+a tus circunstancias personales sin importar desde donde estés a que te dedicas o en qué
+nivel de trading y en qué nivel de capital te encuentras. Eso está hecho para que seas 100%
+amoldable a tu manera de operar y a tu manera de trabajar. Dicho esto entonces vamos a iniciar
+explicando los diversos tipos de operativa que usualmente manejamos. Entiéndase operativa ya
+directamente la forma en la que operamos el mercado. Podríamos catalogarlo en tres tipos de
+operaciones o tres tipos de estilo de trading. El primer estilo de trading se llama operaciones
+rápidas. Le llamamos operaciones rápidas a nuestra manera a operaciones que son prácticamente
+planeadas para que sean al corto plazo. Lo cual significa que pueden ir desde unas cuantas horas,
+es decir abrir una operación de trading recién abre la bolsa a las 9.30 de la mañana, ahora Nueva
+York cerrarlo tal vez al mediodía o cerrarlo en la tarde o ya sea si es con cripto en la noche se
+puede abrir una operación y cerrarlo recién a las pocas horas o incluso durante pocos días.
+Entiéndase pocos días de entre 24 horas a 72 horas. Cuando nosotros enviamos una operación
+rápida o planeamos una operación rápida lo hacemos la mayoría de veces para que se ejecuten
+los targets al cabo de 24 horas. Es cierto que tenemos operaciones que pueden ser dentro del
+mismo día que si yo que se inicie a las 11 de la mañana a Nueva York y ya a las 2 de la tarde
+tenemos el primer target pero lo más común es que sea de un día para el otro. Es decir si abrimos
+una operación a las 10 de la mañana o martes usualmente se espera que como mínimo podamos llegar
+a alguno de los targets al día siguiente ya sea el miércoles o incluso 72 horas después. Normalmente
+nuestras operaciones rápidas no tienen contemplado que duren mucho en llegar a los targets entre 24 72
+horas ya deberíamos ver color verde en dicha operación es decir esperamos que se mueva rápido.
+Obviamente desde el formalismo del trading eso es lo que se conoce como scalping o day trading por
+ejemplo el scalping puro y duro es operaciones casi en minutos y el day trading consiste en abrir
+y cerrar operaciones el mismo día dentro de una sesión bursátil. Eso se puede hacer y las estrategias
+que vas a aprender son perfectamente válidas para hacer dicha actividad pero normalmente nuestro
+tipo de operación cuando es una operación rápida se abre en lunes se puede llegar a targets el martes
+o el miércoles y si se extiende dicha operación un poco más de tiempo más de 72 horas es porque
+básicamente el mercado se está yendo muy a nuestro favor entonces literalmente vamos navegando
+las olas a muy ganancia a muy buena ganancia pero las operaciones rápidas no son de paciencia son
+de exigirle al mercado que rápido nos otorgue buenos resultados. Ahora bien el segundo tipo
+operativa son las operaciones de swing trading son operaciones que usualmente se toma en cuenta
+plazos que pueden ir desde una semana hasta varios meses incluso dos tres meses como máximo. Cuando
+nosotros trabajamos operaciones de swing trading básicamente casi siempre en acciones y eso ahorita
+vamos a hablar casi siempre en acciones generalmente son operaciones de swing trading en criptomonedas
+también y por ejemplo se puede abrir que se yo a inicios de mes una operación y tal vez puede
+durar una semana dos semanas incluso cuando llega a ser dos a tres meses es porque normalmente
+hay mucho potencial en lo que estamos trabajando ya sé que se está dando una caída muy importante
+y que pasan las semanas y el mercado sigue cayendo y vamos en la ola bajista o ya sea que estamos
+operando al alza un importante movimiento alcista en una acción que está subiendo y subiendo y
+subiendo entonces mantenemos dicha operación por más tiempo o una criptomoneda que encendió motores
+y pues vale la pena sostenerla sostener dicha operación por un mes por dos meses incluso
+tres meses pero como nivel máximo normalmente en operaciones de swing trading usualmente a la
+semana ya hay un bonito movimiento con el mercado y la mayoría operaciones de swing trading pueden
+durar de entre dos a tres cuatro semanas la mayoría de ellas son casos los de dos tres meses cuando
+nos está yendo extremadamente bien con una operación pero en promedio la mayoría de ellas
+duran varias semanas y por último el tercer tipo de operación que usualmente es menos frecuente
+pero es cuando tenemos algún caso en especial muy interesante que son las operaciones de largo
+plazo es lo que se llaman inversiones que en este caso se plantean con un marco temporal de gran
+escala que puede ser un mínimo de entre seis meses hasta incluso dos o tres años eso se suele dar
+tal vez cuando un activo se encuentra en una situación en la que tiene un importante potencial
+a largo plazo y vale la pena pues bueno hacer una inversión con un monto destinado para dejar
+allí trabajándose por entre seis meses a incluso dos o tres años vista pero bueno digamos que para
+que ustedes me entiendan aproximadamente de cómo se se encuentran estas cosas podríamos definirlo que
+las operaciones rápidas pueden componer el 30 por ciento pueden componer el 30 por ciento de la
+operativa las operaciones de swing trading pueden componer el 65 por ciento de las operaciones que
+trabajamos y las operaciones de largo plazo podría ser incluso el cinco por ciento de las de la de
+la operativa planteada entonces la mayoría de veces vamos a estar trabajando entre operaciones
+rápidas que son para generar profit rápido ganancias rápidas y las operaciones de swing trading que
+son destinadas a durar un plazo de varias semanas y esto también ustedes lo pueden incorporar a su
+operativa y por supuesto todo esto eventualmente será adaptable a la forma en la que cada uno
+desarrolla las cosas por eso es importante ir aprendiendo e ir estudiando lo que estás haciendo
+justo ahora que es el programa senior y todas las estrategias bien hablando directamente de los
+principales mercados financieros que nosotros operamos ya que obviamente hay infinidad de activos
+financieros pero los principales mercados que nosotros operamos son en primer lugar la bolsa
+evidentemente operamos en este caso la bolsa de los estados unidos la bolsa americana aunque debo
+decir que todas estas estrategias primero que nada son aplicables a otro tipo de activos que
+tal vez yo aquí no menciono y también puede ser aplicado a bolsas de distintos países usualmente
+en nuestra operativa propia en protéines kills lo que más operamos en bolsa es la bolsa de
+estados unidos la bolsa americana sin embargo es de vez en cuando operamos la bolsa europea pero
+estos conceptos que vas a ir aprendiendo son aplicables para la bolsa argentina para la bolsa
+de valores de méxico para cualquier tipo de bolsa de otros países y también aplicable a otro
+tipo de activos financieros que yo aquí no mencioné tenemos un trader por ejemplo que es de granos
+y aplica nuestras estrategias exactamente a las a las materias primas anícolas entonces hablando
+de bolsa que es digamos el activo principal que nosotros desarrollamos esto lo hacemos mediante
+dos tipos de productos financieros principalmente el primero son los etf de los índices bursátiles
+que en este caso es el spy y triple q spy es básicamente el etf o el índice cotizado que
+replica los comportamientos del estándar a pus 500 del sp 500 que es el índice bursátil más
+importante de la bolsa estadounidense y es en realidad el índice bursátil más importante del
+mundo ya después aprenderá sobre ello y también operamos mucho el triple q que es el etf del nasdaq
+que básicamente es el fondo cotizado que principalmente se deriva en lo que son acciones y
+sector de tecnología en ocasiones también operamos el día día es el etf del dow jones o el iwm que
+es el etf del rossel 2000 el dow jones es un índice bursátil enfocado principalmente en acciones de
+corte industrial iwm se basa en el índice rossel rossel 2000 que básicamente son empresas en
+crecimiento empresas de menor capitalización que las que por ejemplo cotizan en el estándar a pus 500
+ahora además del spy y el triple q operamos directamente las stocks que son las stocks
+directamente el mercado de acciones directamente las acciones de empresas de las cuales posiblemente
+eres cliente o eres consumidor acciones que cotizan en la bolsa americana como lo puedes
+ver por ejemplo micro strategy cada una de estas acciones para que sepas tiene lo que se llama
+un ticker ticker es el símbolo por el cual tú te guías para buscarlo en bolsa y no tener que
+poner el nombre completo por ejemplo micro strategy es ms tr apple es a pl netflix es nflx meta
+pues bueno tú lo sabes no vamos a facebook whatsapp etcétera envidia palantir y por supuesto google
+obviamente estoy poniendo esto como ejemplo operamos un montón de acciones más pero esto
+simplemente para decirte una guía las stocks o las acciones las tenemos diariamente en operativa y
+por supuesto como mencionaba en algunas ocasiones operamos también la bolsa europea y nuestras
+acciones y nuestras estrategias y las que vas a aprender justamente aquí en el programa son
+aplicables para prácticamente cualquier tipo de acción en el mundo entero ok entonces si estás en
+australia por ejemplo puedes aplicarlo para la bolsa australiana si estás en alemania en londres en
+italia puedes aplicar puedes aplicarlo para acciones propias de tu bolsa local bien el otro
+producto financiero que por supuesto trabajamos de lleno son las opciones sobre acciones las
+opciones o las options básicamente son derivados financieros que son contratos de opciones sobre
+las acciones que nosotros trabajamos entonces la bolsa la vamos a operar por medio de los
+ETFs como el ETF SPG o triple Q por medio directamente de operar una acción en cuestión o trabajar
+directamente las opciones directamente desde el mercado de opciones las options en este caso lo
+que se llama los contratos by call y los contratos by put de acciones y de índices entonces
+algunos traders operan directamente el ETF y vamos a ver todas las instrucciones de cómo hacerlo
+algunos traders operan directamente la acción o también puedes elegir trabajar mediante el
+mercado de opciones o mediante el mercado de options para todo ello te vamos a dar la guía es más
+para que me entiendes tú podrías perfectamente hacer una vida plena y una vida muy próspera
+literalmente solo con el SPG solo con el SPG en options o en lo normal puedes hacer una vida
+perfectamente bien o sea perfectamente bien ahora esto es por darte un ejemplo pero también vamos
+a operar estas acciones y vamos a operar muchas otras más ahora por supuesto no vayas a pensar
+que no operamos cripto claro que operamos cripto por supuesto proteger skills desde que nació
+siempre absolutamente siempre hemos trabajado el mercado cripto personalmente conozco a bitcoin
+o pero bitcoin desde que vale 600 dólares para que me entiendas por allá en 2016 o pero el cripto
+la bolsa y forex la superó desde el 2011 pero lo que te trato de decir es que por supuesto que
+operamos bitcoin y operamos altcoins en el caso del cripto operamos bitcoin como tal directamente
+operamos el mercado de las altcoins y también utilizamos el etf ibid para que me entiendas ibid
+es el etf que replica los comportamientos de bitcoin pero en la bolsa y porque eso es útil porque
+lo puedes trabajar en options entonces hay traders en proteger skills que operan directamente a
+bitcoin ya sean spot o en futuros como tú quieras y hay traders que utilizan bitcoin pero mediante
+el etf ibid utilizando opciones sobre acciones o sea el punto número dos ya sean bicole cuando
+bitcoin es falsista o biput cuando bitcoin está bajista también operamos el mercado de forex que
+es el mercado de divisas el euro el dólar la libra esterlina el franco suizo el japonés ok y
+también trabajamos el mercado de metales preciosos como el oro y la plata en el caso del oro y la
+plata usualmente bueno se puede trabajar en futuros pero mayormente lo trabajamos con los
+etf gld y slv ya lo vas a ir aprendiendo que son los etf ligados al sector de los metales preciosos y
+también operamos el mercado de bonos que es renta fija se le llama renta fija porque son los
+bonos de deuda soberana y pues todo lo que te acabo de mencionar es lo que se conoce como renta
+variable así que pues bueno estos son los principales mercados financieros que nosotros operamos como
+ya te digo tenemos traders que operan el arroz tenemos traders que operan un montón de productos
+financieros que tal vez no trabajamos como el café o como la cocoa sabes como el azúcar y las
+estrategias que aprenderás en este programa son 100 por ciento aplicables para otro tipo de activo
+financiero bien otro punto que es supervalioso otro punto que a mucha gente le llama muchísimo la
+atención es el tema de los brokers el tema de los brokers es un tema constante la gente dice
+bueno dónde puedo abrir mi cuenta para hacer trading vamos a seleccionarlo primero que nada quiero
+decirte que eso es una decisión que evidentemente es personal o sea tú puedes directamente elegir
+el broker que tú prefieras ok nosotros no te vamos a imponer un broker eliges el que tú quieras
+ok simplemente te hablamos de diversas alternativas que pueden ir a acorde a tus necesidades personales
+y en base a ello eliges lo que más te convenga vamos a seleccionar lo primero por países supongamos
+que te encuentras en américa latina después haremos el ejemplo de españa que evidentemente
+es trasladable al resto de europa y hablaremos si te encuentras en estados unidos o en canada y
+obviamente pues bueno para australia ahorita damos algunos consejos que aunque no parezca tenemos
+chicos que nos siguen desde australia y algunos desde medio oriente entonces trabajando directamente
+supongamos que estás en latinoamérica cuando hablo de latinoamérica hablo de todo lo que se
+encuentra ok desde el norte de méxico hasta el sur de chile y argentina ok hasta tierra de fuego
+hasta lo más abajo lo digo porque los chicos nos hacen siempre las mismas preguntas y aplica
+para méxico aplica para colombia aplica para el salvador aplica para argentina para chile para
+perú para bolivia para paraguay para republica dominicana etcétera no entonces toda la sección
+de latinoamérica funciona con estos brokers por ejemplo kwan fury es el broker que es el digamos
+el más fácil de usar de todos kwan fury es un broker que sirve para cripto es decir puedes operar
+ahí el mercado cripto puedes operar bitcoin puedes operar al coins puedes operar lo que tú
+quieras en cuanto a cripto puedes fundear con cripto y puedes retirar con cripto lo cual para muchos
+chicos se les hace muy ventajoso por ejemplo los chicos de argentina les gusta mucho kwan fury
+porque depositas con usdt retiras con usdt vale y para otros chicos también que tal vez no
+quieran pasar por el trámite bancario sino que quieran dejarlo todo en cripto no por fuera de
+bancos ok se puede utilizar kwan fury es muy fácil de usar de hecho que en la sección de
+tutoriales hay un tutorial de kwan fury y en la sección del dashboard que hablé en los vídeos
+anteriores está también un tutorial de kwan fury también kwan fury tiene la ventaja de que sirve
+para acciones allí puedes hacer long o short de acciones puedes operar el spg puedes operar el
+triple q puedes operar las distintas acciones que estamos trabajando en long o en short etcétera
+y es muy fácil de usar cuando veas el tutorial si es que no lo usas ya cuando veas el tutorial
+te das cuenta que es facilísimo de usar también se pueden operar ahí los metales gld slv el oro
+la plata incluso el forex se puede operar todo allí es muy sencillo es muy fácil no tiene para
+opciones que eso es pues lo aprenderás pero para lo normal una persona que está empezando kwan
+fury pues viene muy bien y también hay otras opciones a kwan fury como lo puede ser etoro que
+también es muy fácil de usar como lo puede ser pasfolio como lo puede ser admiral markets como
+lo puede ser ise markets o como lo puede ser o anda ok simplemente estoy poniendo un ejemplo
+que te funcione ahora para opciones ok el broker que está siendo muy muy muy amigable para américa
+latina es tasti trade de hecho que en el programa senior vas a encontrar también en la sección de
+tutoriales una clase y un reporte escrito tutorial escrito de tasti trade como abrir la cuenta
+etcétera etcétera tiene una ventaja tasti trade es el único broker que acepta directamente
+el cripto tú puedes hacer depósitos con criptoboneas y puedes hacer retiros está muy bien igualmente
+para options para el mercado opciones también está la opción de interactive brokers que también en
+la plataforma vas a encontrar recursos al respecto o el broker tradier que también es un broker que
+es bastante amigable para options ok entonces en kwan fury no puedes operar options pero si puedes
+operar la bolsa y para chicos muy principiantes kwan fury viene muy bien y para los que quieran
+directamente ya irse al mercado de opciones que en protés en skills reciben las señales de options
+te vas a tasti trade tasti trade va muy bien también es muy amigable ok suponiendo que estás en
+españa imagínate que estás en españa qué lindo quien quisiera estar en españa hoy mismo a mí me
+encantaría una copa de vino una paella qué maravilla españa o está estás en españa o estás en
+rein unido y o estás en alemania en italia chicos que están muchos chicos que están en italia
+también etcétera no estás en europa tomando es la bella españa como ejemplo bueno kwan fury
+funciona en españa funciona también allí es muy fácil de usar depósitos con cripto retiras
+con cripto operas acciones operas lo que tú quieras también en españa hay mucha facilidad con los
+brokers interactive brokers va muy bien tradir va muy bien tasti trade también va muy bien o sea
+con transferencia bancaria lo haces en minutos y también con tasti trade por ejemplo puedes depositar
+en cripto igual que los chicos de latinoamérica en tasti trade si quieres tus fondos los tienes en
+cripto y los quieres pasar a options con tasti trade de españa lo puedes hacer y también los
+españoles tienen un broker llamado bison trade ese broker solamente está dispuesto para españa
+este bueno la ventaja tiene los chicos de españa y así que pues es un broker es un broker español
+así que va digamos de maravilla para los chicos que se encuentran allí personalmente
+obviamente nunca lo he usado ya que pues no me encuentro en españa pero los chicos españoles
+con los que hemos hablado y con los que hemos conversado todos estos temas nos han dicho que va
+muy bien ok entonces aquí por ejemplo muestro la website esta es kwan fury por ejemplo yo no puedo
+abrir cuenta porque vivo en estados unidos y allí está aquí está prohibido pero si estás en
+latinoamérica o en españa kwan fury te corre bien ahora tasti trade este es el ejemplo de tasti trade
+va muy bien tasti trade aquí puedes abrir cuenta y puedes fundear y depositar con con cripto en la
+plataforma están los tutoriales de cómo se hace y para los chicos españoles pues bueno aquí está
+mira el broker español este bison trade es somos el broker 100% español de confianza es un broker
+muy bueno y tiene también para operar el mercado de opciones entonces latinoamérica y españa kwan fury
+como opción básica para cripto y bolsa va bien tasti trade para todo el mundo va súper bien
+fondez con cripto y latinoamérica o españa y los chicos 100% españoles o europeos este bison trade
+funciona muy bien si te encuentras en estados unidos es súper fácil en estados unidos puedes
+utilizar robin hood que es el broker más fácil que existe robin hood interactive brokers y trade
+charles suave mira aquí lo puse mal charles suave y coinbase para cripto y usualmente para que sepas
+en lo que es digamos la parte 100% cripto la mayoría chicos usan vinyns en latinoamérica en
+españa el resto del mundo y en estados unidos se usa coinbase los que estén en australia casi
+siempre interactive brokers es la opción y en tutoriales vas a encontrar siempre la guía de
+cómo utilizarlo así que material para trabajar hay de sobra brokers hay de sobra estarás muy bien
+acompañado éxitos

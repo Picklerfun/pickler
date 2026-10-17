@@ -703,6 +703,16 @@ RPC admission and Kuru snapshots without rewriting historical V4 records. Never 
 Kuru as a fallback. Kuru remains blocked by its external readiness record; the V4 acceptance below is separate.
 See [Token operations](../../docs/market/token-launch-operations.md) for configuration and tests.
 
+## Node-only trading baseline
+
+`@pickler/infrastructure/trading-baseline` is an explicit local operator subpath, never the Worker
+barrel or provider composition. It shares a repeatable-read read-only snapshot between complete
+table fingerprints and pg_dump, then verifies restore in fresh databases on a different cluster.
+Keep URL/tool failures sanitized, credentials out of argv, child environments restricted, dumps
+private and sequence changes explicit. Restore copies default to read-only and never initialize
+budgets, sessions, applications or schedules. No migrations or financial policy changes belong
+here. Read [baseline recovery](../../apps/agent-service/TRADING-BASELINE.md).
+
 The shared Turnkey activity forwarder preserves the last accepted activity when a follow-up
 reader query fails. It stops bounded polling and returns that identity for explicit reconciliation;
 it never resubmits the accepted request or treats a read failure as signature rejection.
@@ -766,6 +776,209 @@ still commit atomically; no RPC work runs inside that transaction. Never replace
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in
 [the dated readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
+
+## Local PTS persistence and restricted composition
+
+`@pickler/infrastructure/perpl-public` exposes only public Perpl transport; `/perps-lab` exposes
+local research/paper/study persistence and the consistent read-only audit exporter. Neither subpath
+loads model or signing adapters. PTS uses existing tables/JSONB, not migrations.
+
+Configuration v8 initializes independent PTS/SMA accounts with immutable account policies and zero
+model calls/reservations. Under account and study ownership locks, reproduce the PTS final signal,
+verify the saved common evidence, native quantity and account policy, then confirm fill, proportional
+basis, reduction/target sequence, stop and consumed setup in one transaction. No intent may switch
+policy; legacy accounts cannot acquire PTS exceptions. Unknown funding and historic monetary
+reservations remain unchanged. Tests use disposable local PostgreSQL databases only.
+
+Independent PTS v9 accounts use `pts-intraday-1x-0.1.0`; v8 remains basic. Configuration, account,
+intent/setup versions and final gated evidence must agree under the same transactional fence.
+Version-qualified setup consumption and partial/funding postings remain atomic with fills. The
+24-hour intraday clock uses the shared five-minute calendar, zero calls and no budget reset.
+
+The local perps-lab export also exposes exportPerpsAuditParts and its typed sink contract.
+It pages rounds and events under the same REPEATABLE READ READ ONLY transaction, preserving
+scoping and deterministic order while the host persists bounded parts. Sink failure rolls back
+and releases the client. exportPerpsAudit retains its historical in-memory shape by collecting
+those same parts. Neither path recovers attempts, writes records, exports owners or loads models.
+
+The independent v9 fast account policy pts-intraday-1x-0.2.0-fast.1 is derived only from its trusted candidate configuration. Existing account locks reproduce that version's final signal and reject cross-version intents; no intent can change policy. The controlled PostgreSQL suite covers both intraday identities, immutable setup/target consumption, unknown reservations and lease rejection. No table, migration or production selector is added.
+
+PTS entry admission resolves the persisted final-gate arm from the trusted basic/intraday account version. Fast intraday versions reuse the intraday arm; a literal comparison with 0.1.0 must not send new versions to pts-basic. Controlled PostgreSQL regressions cover actual admission and atomic partial reductions for all three policies.
+
+Local PTS composition uses `guardPerpsLabPool` from `/perps-lab`. Borrowed-client and idle-pool
+errors latch `PERSISTENCE_CONNECTION_FAILED`, notify the host once and reject new connections,
+queries and success acknowledgements in that scope. Failed clients are discarded; cleanup remains
+available. Never retry uncertain writes or infer their rollback from the guard. Read-only audit
+sink disconnect tests terminate only a backend in a disposable test database and verify unchanged
+history. Other product/Worker pool composition remains unchanged.
+
+The guard also latches recognized fatal connection responses from query/connect promises before
+an error event arrives. It preserves the existing connection deadline and query timeout/cancellation
+codes. Its optional notification payload is `PerpsLabFailureDiagnostic` version 1: fixed operation,
+safe driver code, receipt time and backend PID when known. Never include SQL, values, messages,
+URLs, credentials or ownership tokens; an absent backend PID stays null. Diagnostic callbacks
+cannot undo the latch or throw from a driver event. Controlled disconnect tests must use an
+isolated PostgreSQL test instance, never the physical server running a prospective study.
+
+Local PTS v8/v9 cycleView projects only observation, observation-failed, observation-missed,
+profile-execution and exit-detected payloads. Other recent events retain keys/dates/kinds with
+empty data, avoiding repeated full-history transfer in the execution cycle. Cutoff, latest
+observation, ordering and ownership semantics are unchanged. Full view and both read-only audit
+formats still contain the original payloads; no stored evidence is rewritten.
+
+The restricted /perps-lab export includes observePerpsLabPool and PerpsLabQueryDiagnostic v1.
+Promise-based query/connect observations record started/finished phases, a static SQL SHA-256,
+allowlisted verb/code, receipt time, monotonic duration and driver backend PID only when known.
+Never retain SQL, parameters, results, error messages, URLs, credentials or owner tokens. Observers
+cannot replace results or failures, raise deadlines, retry statements or undo the connection
+failure latch. A statement timeout remains distinct from explicit cancellation; rollback and
+resource release retain the original guard semantics. The controlled PostgreSQL lock regression
+uses a disposable isolated server, never a prospective or historical study database.
+
+## Local PTS execution and report isolation
+
+`createLocalPerpsLabStore` on the restricted `/perps-lab` subpath validates an explicit loopback
+connection and partitions the existing five-connection local runtime capacity: four for execution,
+one for report capture. Report sessions start with `default_transaction_read_only=on`. Neither
+role initializes migrations, budgets, studies or applications. Hosted consumers retain their
+existing transport and two-connection limits; historical three-argument store construction is
+unchanged. Apply observation and the connection-failure guard before creating Drizzle so permission
+reads share the same failure latch as financial operations.
+
+Query diagnostics add optional safe pool counters, initial checkout disposition and exact
+`pool-queue`/`new-client` driver deadline branches. The initial disposition is not a retrospective
+causal explanation. Both reviewed deadlines remain `PERSISTENCE_CONNECTION_TIMEOUT`; query
+timeouts and explicit cancellation remain distinct. Never store SQL text, values, messages,
+credentials or ownership tokens. Tests shorten only a fixture queue wait, never production limits.
+See [PTS report persistence](../../apps/agent-service/PTS-REPORT-PERSISTENCE.md).
+
+## Local PTS nonlocking reads
+
+Study view/cycleView use read-only repeatable-read snapshots without an exclusive row lock.
+The permission guard uses explicit read-committed read-only isolation and retains its final
+current ownership/liveness check. All study mutations retain the exclusive lock and commit fence.
+Local PTS v8/v9 paper composition explicitly selects studyOwner.readPolicy=pts-snapshot-v1:
+account reads check current ownership/policies before and after the consistent read-only snapshot.
+Expired attempts are projected without recovery writes; financial mutations and callers without
+the opt-in keep their existing locks/recovery. Never check final ownership only inside repeatable
+read or apply this option to Studio/historical protocols. Controlled contention tests use the
+isolated disposable PostgreSQL server; historical blocker identities remain unverifiable unless
+original evidence identifies them. See [PTS read isolation](../../apps/agent-service/PTS-STUDY-READ-ISOLATION.md).
+
+Local audit parts additionally expose PerpsAuditSourceRevision/PerpsAuditCaptureStats and an
+optional trusted reuse callback. Native SHA-256 fingerprints of every current round/event are
+checked in the same read-only snapshot; misses fetch original payloads, and deletions disappear
+from the current inventory. Default full exports retain their existing projection. No watermark,
+xmin-only cache, account recovery, mutation or owner/credential export is introduced. Read
+[PTS incremental capture](../../apps/agent-service/PTS-REPORT-INCREMENTAL.md) for host verification
+and benchmark limits.
+
+Incremental audit fingerprints materialize the ordered page of keys before joining original
+round/event bodies. LIMIT alone does not bound JSONB work before a sort. Preserve the native hash
+input, scoped repeatable-read read-only snapshot and full inventory; this is not a watermark or
+constant-time export. Controlled PostgreSQL tests reject body hashing outside the selected page
+and verify original payload/fingerprint parity. See [PTS report page bounds](../../apps/agent-service/PTS-REPORT-PAGE-BOUNDS.md).
+
+Study permission guards project every original control field except unused metadata, without
+caching permission or ownership results. Lease renewal locks only the scoped identity/owner/expiry
+columns and keeps the final active-owner commit fence. Full views, audit exports and financial
+mutations retain their original document reads. Never use a metadata-free guard projection as
+historical evidence or a writable study document. The measured transfer reduction does not establish
+the cause of the preserved simultaneous query timeouts. See
+[study control reads](../../apps/agent-service/PTS-STUDY-CONTROL-READS.md).
+
+## Local PTS captured final transaction
+
+`PostgresPerpsPaperStore.withCapturedFrames` is opt-in to bound PTS v8/v9 component-paper accounts.
+It locks both portfolios and the study, retains cloned views/trusted policy only within those
+locks, and runs the existing financial functions on one client. Final gates, fills, targets,
+setups and the versioned completion marker commit together. Nested operations use savepoints,
+fresh ownership checks and a scoped context that rejects overlap, cross-scope access and later
+reuse. Drain pending work before rollback/release. Only confirmed full rollback on frame aging
+may become unavailable; unknown commit/rollback and lease loss remain fatal. Preserve original
+history and all financial/model reservations. See
+[the final execution guide](../../apps/agent-service/PTS-CAPTURED-FINAL-EXECUTION.md).
+
+## Local PTS connection readiness
+
+The restricted `/perps-lab` export adds `warmLocalPerpsLabStore` and its versioned readiness
+contract. Only registered local execution stores can verify four distinct clients in read-only
+transactions before admission. Retain those clients across idle gaps without raising the existing
+four-plus-one capacity or either ten-second deadline. Failed/cancelled readiness discards partial
+acquisition; no financial recovery, retry, owner grant or hosted/report behavior change is allowed.
+Captured final transactions reuse the study record only under their already-held study lock;
+account/agent locks and fresh ownership fences remain. See
+[local readiness](../../apps/agent-service/PTS-LOCAL-CONNECTION-READINESS.md).
+
+Local connection observation adds PerpsLabConnectionDiagnostic v1 on the restricted subpath.
+Observe the original pg constructor/events without replacing connect/query/auth behavior. Retain
+safe client/workload identity, socket/auth/protocol phases, monotonic duration, known backend PID
+and allowlisted codes only. Exclude addresses, authentication payloads, backend secrets, SQL and
+driver messages. Observer or metadata-access failure cannot affect the driver or failure latch;
+missing historical phases remain unverifiable. Tests use isolated databases and synthetic sockets.
+
+## Fixed hourly-breakout persistence
+
+The restricted `@pickler/infrastructure/perps-lab` subpath exports
+`PostgresPerpsHourlyBreakoutStore`, `PostgresPerpsDiagnosticStore` and
+`exportPerpsBreakoutAuditParts`. They reuse existing private study, event, paper account,
+position, attempt and movement tables; no schema migration or HTTP endpoint is added.
+
+Financial v10 initialization requires a separately accepted future UTC-midnight T0 and an
+operator, with `protocolDigest` equal to the prepared configuration's frozen research SHA.
+It atomically creates three new independent 1,000-AUSD operator accounts, immutable C/S/L
+identities and initial movements. The prepared disabled configuration alone grants no financial
+authority. Account position policy remains absent. The standalone diagnostic store instead
+references one existing agent and creates no agent, account, attempt or monetary reservation.
+Diagnostic leases are single-use, last 90 seconds and have no expired-run recovery. Database
+clock sampling always queries PostgreSQL, independently of the financial clock supplied by the
+trusted composition root.
+
+The v10 execution document contains at most five open positions per account, one authoritative
+unresolved native head and bounded current discovery/close/funding projections. Canonical closed
+positions, attempts, movements and immutable journals remain in their existing primary-keyed
+rows. All queued discoveries and tombstones commit independently with zero reservations; only
+the current head reserves the native 101 AUSD. Final fill, movements, release and close fences
+commit together. Exact owned, proved-unexecuted heads can be terminally rejected once before a
+due reduction; expired attempts are never recovered or silently released. Pending inventory
+queries expose up to two unresolved rows and reject mismatches or foreign ownership.
+
+Original financial inputs and acknowledgements are immutable. Pre-effect A runs synchronously
+before the opening clock; fresh owner, frame, hour/day, risk and due-close checks precede COMMIT.
+The first synchronous receipt hook immediately follows definitive COMMIT. Known effects with
+failed receipt proof stay known effects with unproved supervision. Uncertain COMMIT stops all
+new admissions and all financial writes to affected accounts. Original receipt replay uses a
+bounded cache or the immutable journal; a missing original receipt remains unavailable. Close
+replay requires the same original input hash. Closing effects cannot cross fixed TV, and funding
+effects cannot cross fixed TF, including transactions that cross an endpoint before COMMIT.
+Selective reconciliation only retires obsolete selective-only operational latches, preserves
+mandatory/multi-reason intents and journals the original intent and current native risk.
+
+Funding uses the native per-position kernel and a single account finalizer. Each canonical
+position records funding status and references content-addressed original/revised source events.
+Compact archive counters are transactionally maintained and checked against one authoritative
+aggregate under the account lock before funding. A mismatch fails; there is no repair/bootstrap
+API. Observations process live positions and primary-key pages of archives overlapping newly
+supplied ranges. Unchanged archives retain their known pending/disputed status without loading
+all historical sources each minute. `fundingRequirements` pages every canonical held interval,
+including closed positions; callers reset the cursor to revisit late or revised evidence.
+Partial new evidence never asserts complete coverage. A dispute, including on the last affected
+page, rolls back every provisional funding posting before one native cash/day/peak finalizer.
+
+The v3 breakout audit exporter takes a fresh repeatable-read, read-only snapshot and streams
+canonical positions, attempts, movements, rounds and journals in deterministic primary-key order.
+Its hash excludes page boundaries. V1/v2 exporters retain historical semantics; legacy study
+initialize/read/ownership/stop/continuation and paper lock/snapshot/init paths explicitly reject
+v10 before expiration recovery or monetary writes. Keep the existing four execution plus one
+report connection bounds and ten-second connection/query deadlines.
+
+Controlled PostgreSQL tests are `test/perps-breakout-store.test.ts`,
+`test/perps-diagnostic-store.test.ts` and `test/perps-breakout-volume.test.ts`. The volume fixture
+is adverse filled-history load, not financial or provider acceptance: 47,040 archived positions,
+94,080 native attempts, 188,163 movements and 100,000 small canonical events. It exercises actual
+funding observation against the archive and compares segmented export hashes at different page
+sizes. Fixtures must seed matching canonical funding statuses/counters explicitly. Never run
+these suites against an existing study database, provider or financial session.
 
 ## Owner curve swap driver
 

@@ -59,10 +59,7 @@
       "compositePrimaryKeys": {
         "agents_tenant_id_id_pk": {
           "name": "agents_tenant_id_id_pk",
-          "columns": [
-            "tenant_id",
-            "id"
-          ]
+          "columns": ["tenant_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -139,12 +136,8 @@
           "tableFrom": "events",
           "tableTo": "runs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -432,12 +425,8 @@
           "tableFrom": "live_orders",
           "tableTo": "runs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -446,14 +435,8 @@
           "tableFrom": "live_orders",
           "tableTo": "trading_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "agent_id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -681,12 +664,8 @@
           "tableFrom": "paper_orders",
           "tableTo": "runs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -695,14 +674,8 @@
           "tableFrom": "paper_orders",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -808,14 +781,8 @@
           "tableFrom": "perps_paper_accounts",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -963,12 +930,8 @@
           "tableFrom": "perps_paper_attempts",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -976,10 +939,7 @@
       "compositePrimaryKeys": {
         "perps_paper_attempts_account_id_key_pk": {
           "name": "perps_paper_attempts_account_id_key_pk",
-          "columns": [
-            "account_id",
-            "key"
-          ]
+          "columns": ["account_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -1017,12 +977,8 @@
           "tableFrom": "perps_paper_movements",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1030,10 +986,7 @@
       "compositePrimaryKeys": {
         "perps_paper_movements_account_id_key_pk": {
           "name": "perps_paper_movements_account_id_key_pk",
-          "columns": [
-            "account_id",
-            "key"
-          ]
+          "columns": ["account_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -1077,12 +1030,8 @@
           "tableFrom": "perps_paper_observations",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1090,10 +1039,7 @@
       "compositePrimaryKeys": {
         "perps_paper_observations_account_id_key_pk": {
           "name": "perps_paper_observations_account_id_key_pk",
-          "columns": [
-            "account_id",
-            "key"
-          ]
+          "columns": ["account_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -1285,12 +1231,8 @@
           "tableFrom": "perps_paper_positions",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1298,10 +1240,7 @@
       "compositePrimaryKeys": {
         "perps_paper_positions_account_id_id_pk": {
           "name": "perps_paper_positions_account_id_id_pk",
-          "columns": [
-            "account_id",
-            "id"
-          ]
+          "columns": ["account_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -1439,12 +1378,8 @@
           "tableFrom": "perps_study_events",
           "tableTo": "perps_studies",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "study_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1452,10 +1387,7 @@
       "compositePrimaryKeys": {
         "perps_study_events_study_id_key_pk": {
           "name": "perps_study_events_study_id_key_pk",
-          "columns": [
-            "study_id",
-            "key"
-          ]
+          "columns": ["study_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -1493,12 +1425,8 @@
           "tableFrom": "perps_study_rounds",
           "tableTo": "perps_studies",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "study_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["study_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1506,10 +1434,7 @@
       "compositePrimaryKeys": {
         "perps_study_rounds_study_id_key_pk": {
           "name": "perps_study_rounds_study_id_key_pk",
-          "columns": [
-            "study_id",
-            "key"
-          ]
+          "columns": ["study_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -1582,10 +1507,7 @@
       "compositePrimaryKeys": {
         "provider_quotas_key_window_start_pk": {
           "name": "provider_quotas_key_window_start_pk",
-          "columns": [
-            "key",
-            "window_start"
-          ]
+          "columns": ["key", "window_start"]
         }
       },
       "uniqueConstraints": {},
@@ -1816,14 +1738,8 @@
           "tableFrom": "runs",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1912,14 +1828,8 @@
           "tableFrom": "trading_accounts",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1927,10 +1837,7 @@
       "compositePrimaryKeys": {
         "trading_accounts_tenant_id_agent_id_pk": {
           "name": "trading_accounts_tenant_id_agent_id_pk",
-          "columns": [
-            "tenant_id",
-            "agent_id"
-          ]
+          "columns": ["tenant_id", "agent_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1980,12 +1887,8 @@
           "tableFrom": "trading_attempts",
           "tableTo": "runs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2020,12 +1923,8 @@
           "tableFrom": "budget_processed",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2033,10 +1932,7 @@
       "compositePrimaryKeys": {
         "budget_processed_agent_id_key_pk": {
           "name": "budget_processed_agent_id_key_pk",
-          "columns": [
-            "agent_id",
-            "key"
-          ]
+          "columns": ["agent_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -2086,12 +1982,8 @@
           "tableFrom": "budget_reservations",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2099,10 +1991,7 @@
       "compositePrimaryKeys": {
         "budget_reservations_agent_id_id_pk": {
           "name": "budget_reservations_agent_id_id_pk",
-          "columns": [
-            "agent_id",
-            "id"
-          ]
+          "columns": ["agent_id", "id"]
         }
       },
       "uniqueConstraints": {},
@@ -2142,12 +2031,8 @@
           "tableFrom": "budget_state",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2222,12 +2107,8 @@
           "tableFrom": "preview_events",
           "tableTo": "preview_runs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "preview_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["preview_run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2396,12 +2277,8 @@
           "tableFrom": "preview_runs",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2516,12 +2393,8 @@
           "tableFrom": "product_agents",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2530,12 +2403,8 @@
           "tableFrom": "product_agents",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2544,14 +2413,8 @@
           "tableFrom": "product_agents",
           "tableTo": "workspace_tenants",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "workspace_id",
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "workspace_id",
-            "tenant_id"
-          ],
+          "columnsFrom": ["workspace_id", "tenant_id"],
+          "columnsTo": ["workspace_id", "tenant_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2560,14 +2423,8 @@
           "tableFrom": "product_agents",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "runtime_agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "runtime_agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2642,12 +2499,8 @@
           "tableFrom": "studio_access_requests",
           "tableTo": "research_access",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2656,12 +2509,8 @@
           "tableFrom": "studio_access_requests",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2733,12 +2582,8 @@
           "tableFrom": "workspace_tenants",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2882,12 +2727,8 @@
           "tableFrom": "api_keys",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3463,12 +3304,8 @@
           "tableFrom": "workspace_members",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3476,10 +3313,7 @@
       "compositePrimaryKeys": {
         "workspace_members_workspace_id_user_id_pk": {
           "name": "workspace_members_workspace_id_user_id_pk",
-          "columns": [
-            "workspace_id",
-            "user_id"
-          ]
+          "columns": ["workspace_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -3651,12 +3485,8 @@
           "tableFrom": "agent_configs",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3664,10 +3494,7 @@
       "compositePrimaryKeys": {
         "agent_configs_agent_id_version_pk": {
           "name": "agent_configs_agent_id_version_pk",
-          "columns": [
-            "agent_id",
-            "version"
-          ]
+          "columns": ["agent_id", "version"]
         }
       },
       "uniqueConstraints": {},
@@ -3730,12 +3557,8 @@
           "tableFrom": "agent_credentials",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3844,12 +3667,8 @@
           "tableFrom": "agent_events",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -3858,12 +3677,8 @@
           "tableFrom": "agent_events",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -3990,12 +3805,8 @@
           "tableFrom": "agent_profiles",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4256,12 +4067,8 @@
           "tableFrom": "agents",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -4330,12 +4137,8 @@
           "tableFrom": "setup_versions",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4343,10 +4146,7 @@
       "compositePrimaryKeys": {
         "setup_versions_agent_id_version_pk": {
           "name": "setup_versions_agent_id_version_pk",
-          "columns": [
-            "agent_id",
-            "version"
-          ]
+          "columns": ["agent_id", "version"]
         }
       },
       "uniqueConstraints": {},
@@ -4428,12 +4228,8 @@
           "tableFrom": "x_accounts",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4443,9 +4239,7 @@
         "x_accounts_x_user_id_key": {
           "name": "x_accounts_x_user_id_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "x_user_id"
-          ]
+          "columns": ["x_user_id"]
         }
       },
       "policies": {},
@@ -4501,12 +4295,8 @@
           "tableFrom": "x_challenges",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4575,12 +4365,8 @@
           "tableFrom": "agent_wallets",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -4589,12 +4375,8 @@
           "tableFrom": "agent_wallets",
           "tableTo": "wallets",
           "schemaTo": "wallets",
-          "columnsFrom": [
-            "wallet_id"
-          ],
-          "columnsTo": [
-            "wallet_id"
-          ],
+          "columnsFrom": ["wallet_id"],
+          "columnsTo": ["wallet_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4685,12 +4467,8 @@
           "tableFrom": "deposits",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5270,12 +5048,8 @@
           "tableFrom": "budgets",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5283,10 +5057,7 @@
       "compositePrimaryKeys": {
         "budgets_agent_id_category_pk": {
           "name": "budgets_agent_id_category_pk",
-          "columns": [
-            "agent_id",
-            "category"
-          ]
+          "columns": ["agent_id", "category"]
         }
       },
       "uniqueConstraints": {},
@@ -5429,12 +5200,8 @@
           "tableFrom": "ledger_entries",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -5580,12 +5347,8 @@
           "tableFrom": "events",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -5682,12 +5445,8 @@
           "tableFrom": "idempotency_keys",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5695,11 +5454,7 @@
       "compositePrimaryKeys": {
         "idempotency_keys_workspace_id_endpoint_key_pk": {
           "name": "idempotency_keys_workspace_id_endpoint_key_pk",
-          "columns": [
-            "workspace_id",
-            "endpoint",
-            "key"
-          ]
+          "columns": ["workspace_id", "endpoint", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -5866,12 +5621,8 @@
           "tableFrom": "applications",
           "tableTo": "waitlist",
           "schemaTo": "growth",
-          "columnsFrom": [
-            "waitlist_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["waitlist_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -5880,12 +5631,8 @@
           "tableFrom": "applications",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -6131,12 +5878,8 @@
           "tableFrom": "candles",
           "tableTo": "tokens",
           "schemaTo": "market",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -6144,11 +5887,7 @@
       "compositePrimaryKeys": {
         "candles_token_id_bucket_bucket_start_pk": {
           "name": "candles_token_id_bucket_bucket_start_pk",
-          "columns": [
-            "token_id",
-            "bucket",
-            "bucket_start"
-          ]
+          "columns": ["token_id", "bucket", "bucket_start"]
         }
       },
       "uniqueConstraints": {},
@@ -6264,10 +6003,7 @@
       "compositePrimaryKeys": {
         "chain_blocks_chain_hash_pk": {
           "name": "chain_blocks_chain_hash_pk",
-          "columns": [
-            "chain",
-            "hash"
-          ]
+          "columns": ["chain", "hash"]
         }
       },
       "uniqueConstraints": {},
@@ -6441,12 +6177,7 @@
       "compositePrimaryKeys": {
         "chain_events_chain_block_hash_tx_hash_log_index_pk": {
           "name": "chain_events_chain_block_hash_tx_hash_log_index_pk",
-          "columns": [
-            "chain",
-            "block_hash",
-            "tx_hash",
-            "log_index"
-          ]
+          "columns": ["chain", "block_hash", "tx_hash", "log_index"]
         }
       },
       "uniqueConstraints": {},
@@ -6622,12 +6353,8 @@
           "tableFrom": "fee_payouts",
           "tableTo": "tokens",
           "schemaTo": "market",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -6636,12 +6363,8 @@
           "tableFrom": "fee_payouts",
           "tableTo": "pools",
           "schemaTo": "market",
-          "columnsFrom": [
-            "pool_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pool_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -6725,12 +6448,8 @@
           "tableFrom": "fee_splits",
           "tableTo": "tokens",
           "schemaTo": "market",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -6738,11 +6457,7 @@
       "compositePrimaryKeys": {
         "fee_splits_token_id_phase_role_pk": {
           "name": "fee_splits_token_id_phase_role_pk",
-          "columns": [
-            "token_id",
-            "phase",
-            "role"
-          ]
+          "columns": ["token_id", "phase", "role"]
         }
       },
       "uniqueConstraints": {},
@@ -6817,12 +6532,8 @@
           "tableFrom": "holders",
           "tableTo": "tokens",
           "schemaTo": "market",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -6830,10 +6541,7 @@
       "compositePrimaryKeys": {
         "holders_token_id_address_pk": {
           "name": "holders_token_id_address_pk",
-          "columns": [
-            "token_id",
-            "address"
-          ]
+          "columns": ["token_id", "address"]
         }
       },
       "uniqueConstraints": {},
@@ -6901,11 +6609,7 @@
       "compositePrimaryKeys": {
         "indexer_cursors_chain_contract_stream_pk": {
           "name": "indexer_cursors_chain_contract_stream_pk",
-          "columns": [
-            "chain",
-            "contract",
-            "stream"
-          ]
+          "columns": ["chain", "contract", "stream"]
         }
       },
       "uniqueConstraints": {},
@@ -7034,11 +6738,7 @@
       "compositePrimaryKeys": {
         "kuru_graduations_chain_token_block_hash_pk": {
           "name": "kuru_graduations_chain_token_block_hash_pk",
-          "columns": [
-            "chain",
-            "token",
-            "block_hash"
-          ]
+          "columns": ["chain", "token", "block_hash"]
         }
       },
       "uniqueConstraints": {},
@@ -7159,12 +6859,8 @@
           "tableFrom": "pools",
           "tableTo": "tokens",
           "schemaTo": "market",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -7428,12 +7124,8 @@
           "tableFrom": "tokens",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -7664,12 +7356,8 @@
           "tableFrom": "trades",
           "tableTo": "pools",
           "schemaTo": "market",
-          "columnsFrom": [
-            "pool_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pool_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -7825,11 +7513,7 @@
       "compositePrimaryKeys": {
         "uniswap_graduations_chain_token_block_hash_pk": {
           "name": "uniswap_graduations_chain_token_block_hash_pk",
-          "columns": [
-            "chain",
-            "token",
-            "block_hash"
-          ]
+          "columns": ["chain", "token", "block_hash"]
         }
       },
       "uniqueConstraints": {},
@@ -7913,12 +7597,8 @@
           "tableFrom": "agent_keys",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -7926,10 +7606,7 @@
       "compositePrimaryKeys": {
         "agent_keys_agent_id_chain_pk": {
           "name": "agent_keys_agent_id_chain_pk",
-          "columns": [
-            "agent_id",
-            "chain"
-          ]
+          "columns": ["agent_id", "chain"]
         }
       },
       "uniqueConstraints": {},
@@ -8106,12 +7783,8 @@
           "tableFrom": "drafts",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -8120,12 +7793,8 @@
           "tableFrom": "drafts",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -8309,12 +7978,8 @@
           "tableFrom": "metadata_versions",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -8606,11 +8271,7 @@
       "compositePrimaryKeys": {
         "presets_chain_preset_id_version_pk": {
           "name": "presets_chain_preset_id_version_pk",
-          "columns": [
-            "chain",
-            "preset_id",
-            "version"
-          ]
+          "columns": ["chain", "preset_id", "version"]
         }
       },
       "uniqueConstraints": {},
@@ -8784,12 +8445,8 @@
           "tableFrom": "grants",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -8798,14 +8455,8 @@
           "tableFrom": "grants",
           "tableTo": "agent_keys",
           "schemaTo": "launch",
-          "columnsFrom": [
-            "agent_id",
-            "chain"
-          ],
-          "columnsTo": [
-            "agent_id",
-            "chain"
-          ],
+          "columnsFrom": ["agent_id", "chain"],
+          "columnsTo": ["agent_id", "chain"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -8814,16 +8465,8 @@
           "tableFrom": "grants",
           "tableTo": "drafts",
           "schemaTo": "launch",
-          "columnsFrom": [
-            "draft_id",
-            "agent_id",
-            "chain"
-          ],
-          "columnsTo": [
-            "id",
-            "agent_id",
-            "chain"
-          ],
+          "columnsFrom": ["draft_id", "agent_id", "chain"],
+          "columnsTo": ["id", "agent_id", "chain"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9074,12 +8717,8 @@
           "tableFrom": "operations",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -9088,12 +8727,8 @@
           "tableFrom": "operations",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -9102,12 +8737,8 @@
           "tableFrom": "operations",
           "tableTo": "transaction_requests",
           "schemaTo": "launch",
-          "columnsFrom": [
-            "transaction_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["transaction_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9278,12 +8909,8 @@
           "tableFrom": "transaction_requests",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -9399,12 +9026,8 @@
           "tableFrom": "advice_calls",
           "tableTo": "advice_jobs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9412,10 +9035,7 @@
       "compositePrimaryKeys": {
         "advice_calls_job_id_lane_pk": {
           "name": "advice_calls_job_id_lane_pk",
-          "columns": [
-            "job_id",
-            "lane"
-          ]
+          "columns": ["job_id", "lane"]
         }
       },
       "uniqueConstraints": {},
@@ -9478,12 +9098,8 @@
           "tableFrom": "advice_events",
           "tableTo": "advice_jobs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9491,10 +9107,7 @@
       "compositePrimaryKeys": {
         "advice_events_job_id_sequence_pk": {
           "name": "advice_events_job_id_sequence_pk",
-          "columns": [
-            "job_id",
-            "sequence"
-          ]
+          "columns": ["job_id", "sequence"]
         }
       },
       "uniqueConstraints": {},
@@ -9732,12 +9345,8 @@
           "tableFrom": "advice_jobs",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "public_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["public_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -9746,14 +9355,8 @@
           "tableFrom": "advice_jobs",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -9968,12 +9571,8 @@
           "tableFrom": "advice_payments",
           "tableTo": "advice_jobs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["job_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -9982,12 +9581,8 @@
           "tableFrom": "advice_payments",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "public_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["public_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -10139,12 +9734,8 @@
           "tableFrom": "ai_credit_agent_limits",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10153,12 +9744,8 @@
           "tableFrom": "ai_credit_agent_limits",
           "tableTo": "ai_credit_accounts",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -10282,14 +9869,8 @@
           "tableFrom": "ai_credit_call_allocations",
           "tableTo": "ai_credit_operations",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "operation_id",
-            "check_id"
-          ],
-          "columnsTo": [
-            "id",
-            "check_id"
-          ],
+          "columnsFrom": ["operation_id", "check_id"],
+          "columnsTo": ["id", "check_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10298,14 +9879,8 @@
           "tableFrom": "ai_credit_call_allocations",
           "tableTo": "perps_check_calls",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id",
-            "call_key"
-          ],
-          "columnsTo": [
-            "check_id",
-            "key"
-          ],
+          "columnsFrom": ["check_id", "call_key"],
+          "columnsTo": ["check_id", "key"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -10474,12 +10049,8 @@
           "tableFrom": "ai_credit_ledger",
           "tableTo": "ai_credit_accounts",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10488,14 +10059,8 @@
           "tableFrom": "ai_credit_ledger",
           "tableTo": "ai_credit_operations",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "operation_id",
-            "account_id"
-          ],
-          "columnsTo": [
-            "id",
-            "account_id"
-          ],
+          "columnsFrom": ["operation_id", "account_id"],
+          "columnsTo": ["id", "account_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10504,14 +10069,8 @@
           "tableFrom": "ai_credit_ledger",
           "tableTo": "ai_credit_purchases",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "purchase_id",
-            "account_id"
-          ],
-          "columnsTo": [
-            "id",
-            "account_id"
-          ],
+          "columnsFrom": ["purchase_id", "account_id"],
+          "columnsTo": ["id", "account_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -10740,12 +10299,8 @@
           "tableFrom": "ai_credit_operations",
           "tableTo": "ai_credit_accounts",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10754,12 +10309,8 @@
           "tableFrom": "ai_credit_operations",
           "tableTo": "perps_checks",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10768,12 +10319,8 @@
           "tableFrom": "ai_credit_operations",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10782,12 +10329,8 @@
           "tableFrom": "ai_credit_operations",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -10796,12 +10339,8 @@
           "tableFrom": "ai_credit_operations",
           "tableTo": "ai_credit_pricing_versions",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "pricing_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pricing_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -10978,14 +10517,8 @@
           "tableFrom": "ai_credit_payment_events",
           "tableTo": "ai_credit_purchases",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "purchase_id",
-            "account_id"
-          ],
-          "columnsTo": [
-            "id",
-            "account_id"
-          ],
+          "columnsFrom": ["purchase_id", "account_id"],
+          "columnsTo": ["id", "account_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11201,12 +10734,8 @@
           "tableFrom": "ai_credit_purchases",
           "tableTo": "ai_credit_accounts",
           "schemaTo": "billing",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11287,12 +10816,8 @@
           "tableFrom": "x_account_history",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11351,12 +10876,8 @@
           "tableFrom": "x_api_calls",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11433,12 +10954,8 @@
           "tableFrom": "x_api_usage",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11446,10 +10963,7 @@
       "compositePrimaryKeys": {
         "x_api_usage_agent_id_day_pk": {
           "name": "x_api_usage_agent_id_day_pk",
-          "columns": [
-            "agent_id",
-            "day"
-          ]
+          "columns": ["agent_id", "day"]
         }
       },
       "uniqueConstraints": {},
@@ -11554,12 +11068,8 @@
           "tableFrom": "x_oauth_attempts",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -11568,12 +11078,8 @@
           "tableFrom": "x_oauth_attempts",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -11582,12 +11088,8 @@
           "tableFrom": "x_oauth_attempts",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11597,9 +11099,7 @@
         "x_oauth_attempts_state_hash_unique": {
           "name": "x_oauth_attempts_state_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "state_hash"
-          ]
+          "columns": ["state_hash"]
         }
       },
       "policies": {},
@@ -11714,12 +11214,8 @@
           "tableFrom": "x_oauth_grants",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -11728,12 +11224,8 @@
           "tableFrom": "x_oauth_grants",
           "tableTo": "profiles",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["user_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -11742,12 +11234,8 @@
           "tableFrom": "x_oauth_grants",
           "tableTo": "workspaces",
           "schemaTo": "identity",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspace_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -11810,12 +11298,8 @@
           "tableFrom": "x_oauth_revocations",
           "tableTo": "agents",
           "schemaTo": "agents",
-          "columnsFrom": [
-            "agent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["agent_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12046,12 +11530,8 @@
           "tableFrom": "perps_checks",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12060,14 +11540,8 @@
           "tableFrom": "perps_checks",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12244,12 +11718,8 @@
           "tableFrom": "perps_owner_actions",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12258,12 +11728,8 @@
           "tableFrom": "perps_owner_actions",
           "tableTo": "perps_proposals",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "proposal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["proposal_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12272,12 +11738,8 @@
           "tableFrom": "perps_owner_actions",
           "tableTo": "perps_checks",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12454,12 +11916,8 @@
           "tableFrom": "perps_proposals",
           "tableTo": "perps_checks",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12468,12 +11926,8 @@
           "tableFrom": "perps_proposals",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12482,14 +11936,8 @@
           "tableFrom": "perps_proposals",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12627,12 +12075,8 @@
           "tableFrom": "perps_check_calls",
           "tableTo": "perps_check_reservations",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "check_id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["check_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12716,12 +12160,8 @@
           "tableFrom": "perps_check_evidence",
           "tableTo": "perps_check_reservations",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "check_id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["check_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12838,12 +12278,8 @@
           "tableFrom": "perps_check_reservations",
           "tableTo": "perps_checks",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "check_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["check_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -12852,14 +12288,8 @@
           "tableFrom": "perps_check_reservations",
           "tableTo": "agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "tenant_id",
-            "agent_id"
-          ],
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsFrom": ["tenant_id", "agent_id"],
+          "columnsTo": ["tenant_id", "id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12910,12 +12340,8 @@
           "tableFrom": "perpl_live_accounts",
           "tableTo": "product_agents",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "product_agent_id"
-          ],
-          "columnsTo": [
-            "product_agent_id"
-          ],
+          "columnsFrom": ["product_agent_id"],
+          "columnsTo": ["product_agent_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12969,12 +12395,8 @@
           "tableFrom": "paper_daily_totals",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -12982,10 +12404,7 @@
       "compositePrimaryKeys": {
         "paper_daily_totals_account_id_day_pk": {
           "name": "paper_daily_totals_account_id_day_pk",
-          "columns": [
-            "account_id",
-            "day"
-          ]
+          "columns": ["account_id", "day"]
         }
       },
       "uniqueConstraints": {},
@@ -13108,12 +12527,8 @@
           "tableFrom": "paper_funding_epochs",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13214,12 +12629,8 @@
           "tableFrom": "paper_funding_postings",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -13228,12 +12639,8 @@
           "tableFrom": "paper_funding_postings",
           "tableTo": "paper_funding_epochs",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13241,10 +12648,7 @@
       "compositePrimaryKeys": {
         "paper_funding_postings_account_id_key_pk": {
           "name": "paper_funding_postings_account_id_key_pk",
-          "columns": [
-            "account_id",
-            "key"
-          ]
+          "columns": ["account_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -13322,12 +12726,8 @@
           "tableFrom": "paper_position_sizeups",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13335,11 +12735,7 @@
       "compositePrimaryKeys": {
         "paper_position_sizeups_account_id_position_id_key_pk": {
           "name": "paper_position_sizeups_account_id_position_id_key_pk",
-          "columns": [
-            "account_id",
-            "position_id",
-            "key"
-          ]
+          "columns": ["account_id", "position_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -13385,12 +12781,8 @@
           "tableFrom": "paper_position_totals",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13398,10 +12790,7 @@
       "compositePrimaryKeys": {
         "paper_position_totals_account_id_position_id_pk": {
           "name": "paper_position_totals_account_id_position_id_pk",
-          "columns": [
-            "account_id",
-            "position_id"
-          ]
+          "columns": ["account_id", "position_id"]
         }
       },
       "uniqueConstraints": {},
@@ -13488,12 +12877,8 @@
           "tableFrom": "paper_storage",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13539,12 +12924,8 @@
           "tableFrom": "paper_record_closes",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13552,10 +12933,7 @@
       "compositePrimaryKeys": {
         "paper_record_closes_account_id_position_id_pk": {
           "name": "paper_record_closes_account_id_position_id_pk",
-          "columns": [
-            "account_id",
-            "position_id"
-          ]
+          "columns": ["account_id", "position_id"]
         }
       },
       "uniqueConstraints": {},
@@ -13660,12 +13038,8 @@
           "tableFrom": "paper_record_facts",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13673,10 +13047,7 @@
       "compositePrimaryKeys": {
         "paper_record_facts_account_id_key_pk": {
           "name": "paper_record_facts_account_id_key_pk",
-          "columns": [
-            "account_id",
-            "key"
-          ]
+          "columns": ["account_id", "key"]
         }
       },
       "uniqueConstraints": {},
@@ -13722,12 +13093,8 @@
           "tableFrom": "paper_record_state",
           "tableTo": "perps_paper_accounts",
           "schemaTo": "pickler",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -13743,147 +13110,72 @@
     "identity.member_role": {
       "name": "member_role",
       "schema": "identity",
-      "values": [
-        "admin",
-        "manager",
-        "developer",
-        "auditor",
-        "viewer"
-      ]
+      "values": ["admin", "manager", "developer", "auditor", "viewer"]
     },
     "agents.accent": {
       "name": "accent",
       "schema": "agents",
-      "values": [
-        "lime",
-        "cyan",
-        "amber",
-        "orange",
-        "magenta",
-        "violet",
-        "blue"
-      ]
+      "values": ["lime", "cyan", "amber", "orange", "magenta", "violet", "blue"]
     },
     "agents.agent_status": {
       "name": "agent_status",
       "schema": "agents",
-      "values": [
-        "pending_policies",
-        "active",
-        "paused",
-        "suspended",
-        "draining",
-        "killed",
-        "draft"
-      ]
+      "values": ["pending_policies", "active", "paused", "suspended", "draining", "killed", "draft"]
     },
     "agents.agent_visibility": {
       "name": "agent_visibility",
       "schema": "agents",
-      "values": [
-        "private",
-        "public"
-      ]
+      "values": ["private", "public"]
     },
     "budget.category": {
       "name": "category",
       "schema": "budget",
-      "values": [
-        "infra",
-        "tokens",
-        "payments"
-      ]
+      "values": ["infra", "tokens", "payments"]
     },
     "budget.ledger_action": {
       "name": "ledger_action",
       "schema": "budget",
-      "values": [
-        "reserve",
-        "commit",
-        "release",
-        "record",
-        "configure",
-        "reset"
-      ]
+      "values": ["reserve", "commit", "release", "record", "configure", "reset"]
     },
     "market.candle_interval": {
       "name": "candle_interval",
       "schema": "market",
-      "values": [
-        "5m",
-        "1h",
-        "4h",
-        "1d"
-      ]
+      "values": ["5m", "1h", "4h", "1d"]
     },
     "market.fee_recipient_role": {
       "name": "fee_recipient_role",
       "schema": "market",
-      "values": [
-        "creator",
-        "agent",
-        "platform"
-      ]
+      "values": ["creator", "agent", "platform"]
     },
     "market.pool_phase": {
       "name": "pool_phase",
       "schema": "market",
-      "values": [
-        "pre_graduation",
-        "post_graduation"
-      ]
+      "values": ["pre_graduation", "post_graduation"]
     },
     "market.token_status": {
       "name": "token_status",
       "schema": "market",
-      "values": [
-        "reserved",
-        "launching",
-        "pre_graduation",
-        "graduated",
-        "failed"
-      ]
+      "values": ["reserved", "launching", "pre_graduation", "graduated", "failed"]
     },
     "market.trade_side": {
       "name": "trade_side",
       "schema": "market",
-      "values": [
-        "buy",
-        "sell"
-      ]
+      "values": ["buy", "sell"]
     },
     "launch.draft_status": {
       "name": "draft_status",
       "schema": "launch",
-      "values": [
-        "draft",
-        "validated",
-        "prepared",
-        "submitted",
-        "launched",
-        "abandoned"
-      ]
+      "values": ["draft", "validated", "prepared", "submitted", "launched", "abandoned"]
     },
     "launch.outbox_status": {
       "name": "outbox_status",
       "schema": "launch",
-      "values": [
-        "pending",
-        "delivered",
-        "failed"
-      ]
+      "values": ["pending", "delivered", "failed"]
     },
     "launch.transaction_status": {
       "name": "transaction_status",
       "schema": "launch",
-      "values": [
-        "prepared",
-        "submitted",
-        "included",
-        "finalized",
-        "reverted",
-        "replaced"
-      ]
+      "values": ["prepared", "submitted", "included", "finalized", "reverted", "replaced"]
     }
   },
   "schemas": {

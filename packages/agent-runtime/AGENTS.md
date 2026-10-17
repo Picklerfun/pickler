@@ -209,6 +209,45 @@ persisted position reads. No new plugin identity or alternative decision executo
 
 See [agent-selected Perpl markets](../../docs/studio-perpl-markets.md).
 
+## Public-only PTS composition
+
+`@pickler/agent-runtime/plugins/perps-paper/public-study` is the restricted public-reader entry
+point for evaluation v8; it bypasses the Mastra/model plugin barrel. `pts-history.ts` performs
+one bounded native Perpl capture (96 physical requests, ten minutes, shared one-second pacing,
+24 per session). Verify all eleven metadata identities; preserve native responses/holes/revisions.
+Never lower the 24-month/104-week minima. Fatal identity/schema/permission failures stop capture.
+
+`priority-study.ts` accepts saved history, merges guarded native windows and reports revisions.
+The common existing component stream remains explicit, with no REST fallback. Valuation/stops
+precede candle and funding preparation; missing required evidence blocks openings.
+
+The same public-study composition also accepts PTS v9 with five genuine native intraday frames.
+`pts-history.ts` takes a trusted candidate version; default basic capture remains unchanged.
+Intraday captures seven rolling days plus native warmup, paging 5m at 1,024 bars while preserving
+96-request/ten-minute global bounds and the shared request schedule. Priority history merges 15m/
+5m as well as 1d/4h/1h; permission/ownership checks precede cache reuse. No model/signing imports.
+
+Intraday hosts pass the frozen eligible symbol cohort from verified preparation. The priority
+reader keeps excluded original histories out of its working cache, candle requests and signal
+evaluation, recording common PTS_PREPARATION_NOT_ELIGIBLE omissions. Existing public identity,
+schema and ownership failures remain fatal; this is not data repair or a new signal policy.
+
+For v9 only, native daily refresh uses trading's frozen 24-bar minimum, not the generic sixty-bar
+SMA window. Keep sixty bars for shared 1h/15m/5m eligibility and unchanged v7/v8 behavior. Native
+working history still retains the full saved warmup and strict continuity; cache keys include
+the intraday protocol and refresh count. Original 52-day PUMP coverage is not a reason to require
+sixty daily bars. The interrupted repair study remains frozen at e506bc78; this correction does not
+rewrite its DATA_UNAVAILABLE omission or restart its process. No signal thresholds change.
+
+Explicit fast intraday 0.2.0-fast.1 preparation uses trading-owned native minima/roles, with no daily requirement. Preserve v8 and intraday 0.1.0 capture semantics and the 96-request/ten-minute bounds. No new transport, model, signer or deployed selector is introduced.
+
+Priority capture uses the same candidate-derived resolution list for preparation, cache windows and
+initial/final boundary validation. Fast 0.2.0-fast.1 must not acquire or require 1d. Its nonshared 4h
+refresh uses the declared 24-bar native minimum; shared 1h/15m/5m eligibility still requires 60 closed
+bars and full saved native warmup is retained. Legacy v7/v8 and intraday 0.1.0 behavior is unchanged.
+Controlled tests cover all eleven common frames, the exact 24/23-bar boundary, absence of daily
+requests, immutable input and rejection when an actually required 5m window changes.
+
 ## Bounded product Paper supervision
 
 Product checks, owner actions and exit supervision use compact execution snapshots and point

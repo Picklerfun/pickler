@@ -1,3 +1,4 @@
+import { isPtsAccount, ptsQuantityAtBlock, updatePtsStop } from "../pts/account.js";
 import { PilotError } from "@pickler/core";
 import type { PerpSnapshot, PerpOrderBook, PerpFundingHistory, PerpSymbol } from "@pickler/core";
 import type {
@@ -5,6 +6,7 @@ import type {
   PerpsPaperIntent,
   PerpsPaperFill,
   PerpsPaperMovement,
+  PerpsPaperPosition,
 } from "./types.js";
 import {
   PAPER_SCALE as S,
@@ -14,10 +16,20 @@ import {
   paperProduct,
 } from "./decimal.js";
 import { paperRisk } from "./policy.js";
+import { COMPONENT_PAPER_POLICY, type PerpsPaperDataPolicy } from "./types.js";
 export interface PerpsPaperFrame {
   snapshot: PerpSnapshot;
   book: PerpOrderBook;
   hash: string;
+  /** Copied stream continuity, independent of original price/book timestamps. */
+  streamEvidence?: {
+    policy: typeof COMPONENT_PAPER_POLICY;
+    generation: number;
+    copiedAt: number;
+    heartbeatSequence: number;
+    headBlock: number;
+    heartbeatReceivedAt: number;
+  };
 }
 export interface PerpsPaperObservation {
   marksOnly?: boolean;
@@ -26,10 +38,82 @@ export interface PerpsPaperObservation {
   frames: PerpsPaperFrame[];
   funding: PerpFundingHistory[];
 }
+export type PerpsFrameValidationReason =
+  | "invalid-native-date-or-block"
+  | "native-freshness-or-identity"
+  | "missing-stream-proof"
+  | "invalid-stream-proof"
+  | "heartbeat-after-buffer-copy"
+  | "buffer-copy-ahead-of-receipt-clock"
+  | "heartbeat-expired-at-receipt-clock"
+  | "mixed-stream-generation-or-reference";
+export class PerpsFrameValidationFailure extends PilotError {
+  readonly details: {
+    version: 1;
+    reason: PerpsFrameValidationReason;
+    symbol: PerpSymbol;
+    frameHash: string | null;
+    financialAt: number | null;
+    receiptAt: number | null;
+    tickerAt: number | null;
+    bookAt: number | null;
+    generation: number | null;
+    copiedAt: number | null;
+    heartbeatReceivedAt: number | null;
+  };
+  constructor(
+    code: string,
+    reason: PerpsFrameValidationReason,
+    frame: PerpsPaperFrame,
+    symbol: PerpSymbol,
+    financialAt: number,
+    receiptAt: number,
+  ) {
+    super(code, `Perpetual component validation failed: ${reason}`);
+    const safe = (value: unknown) =>
+      typeof value === "number" && Number.isSafeInteger(value) ? value : null;
+    this.details = {
+      version: 1,
+      reason,
+      symbol,
+      frameHash: /^[a-f0-9]{64}$/.test(frame.hash) ? frame.hash : null,
+      financialAt: safe(financialAt),
+      receiptAt: safe(receiptAt),
+      tickerAt: safe(frame.snapshot.ticker.provenance.providerTimestamp),
+      bookAt: safe(frame.book.provenance.providerTimestamp),
+      generation: safe(frame.streamEvidence?.generation),
+      copiedAt: safe(frame.streamEvidence?.copiedAt),
+      heartbeatReceivedAt: safe(frame.streamEvidence?.heartbeatReceivedAt),
+    };
+  }
+}
+/** Only demonstrated aging can be a recoverable observation after confirmed rollback. */
+export function isComponentFrameExpiry(error: unknown): error is PerpsFrameValidationFailure {
+  if (!(error instanceof PerpsFrameValidationFailure) || error.code !== "STALE_MARKET_DATA") {
+    return false;
+  }
+  const d = error.details;
+  if (d.reason === "heartbeat-expired-at-receipt-clock") {
+    return (
+      d.receiptAt !== null &&
+      d.heartbeatReceivedAt !== null &&
+      d.receiptAt - d.heartbeatReceivedAt > 5000
+    );
+  }
+  return (
+    d.reason === "native-freshness-or-identity" &&
+    d.financialAt !== null &&
+    d.tickerAt !== null &&
+    d.bookAt !== null &&
+    d.tickerAt <= d.financialAt + 5000 &&
+    d.bookAt <= d.financialAt + 5000 &&
+    (d.financialAt - d.tickerAt > 30000 || d.financialAt - d.bookAt > 30000)
+  );
+}
 const failure = (code: string): never => {
   throw new PilotError(code, "Perpetual paper data is not admissible");
 };
-export function validatePaperFrame(
+function validateFrameIdentityAndDates(
   frame: PerpsPaperFrame,
   network: string,
   symbol: PerpSymbol,
@@ -68,11 +152,131 @@ export function validatePaperFrame(
       failure("STALE_MARKET_DATA");
     }
   }
+}
+/** Shared component checks; this alone never authorizes a financial fill. */
+export function validatePaperFrameComponents(
+  frame: PerpsPaperFrame,
+  network: string,
+  symbol: PerpSymbol,
+  now: number,
+  reducing = false,
+) {
+  validateFrameIdentityAndDates(frame, network, symbol, now, reducing);
+  if (u(frame.snapshot.ticker.mark) <= 0n) {
+    failure("INCONSISTENT_MARKET_DATA");
+  }
+}
+export function validatePaperFrame(
+  frame: PerpsPaperFrame,
+  network: string,
+  symbol: PerpSymbol,
+  now: number,
+  policy?: PerpsPaperDataPolicy | boolean,
+  receiptNow = now,
+  reducing = false,
+) {
+  if (typeof policy === "boolean") {
+    reducing = policy;
+    policy = undefined;
+  }
+  if (policy !== undefined) {
+    if (policy !== COMPONENT_PAPER_POLICY) {
+      failure("INVALID_INPUT");
+    }
+    const rejected = (code: string, reason: PerpsFrameValidationReason): never => {
+      throw new PerpsFrameValidationFailure(code, reason, frame, symbol, now, receiptNow);
+    };
+    for (const provenance of [frame.snapshot.ticker.provenance, frame.book.provenance]) {
+      if (
+        ![provenance.providerTimestamp, provenance.block].every(
+          (value) => value !== null && Number.isSafeInteger(value) && value >= 0,
+        )
+      ) {
+        rejected("INVALID_MARKET_DATA", "invalid-native-date-or-block");
+      }
+    }
+    try {
+      validatePaperFrameComponents(frame, network, symbol, now, reducing);
+    } catch (error) {
+      if (error instanceof PilotError) {
+        rejected(error.code, "native-freshness-or-identity");
+      }
+      throw error;
+    }
+    const stream = frame.streamEvidence ?? rejected("INVALID_MARKET_DATA", "missing-stream-proof");
+    if (
+      stream.policy !== policy ||
+      ![
+        stream.generation,
+        stream.copiedAt,
+        stream.heartbeatSequence,
+        stream.headBlock,
+        stream.heartbeatReceivedAt,
+        now,
+        receiptNow,
+      ].every((value) => Number.isSafeInteger(value) && value >= 0) ||
+      stream.generation < 1
+    ) {
+      rejected("INVALID_MARKET_DATA", "invalid-stream-proof");
+    }
+    if (stream.heartbeatReceivedAt > stream.copiedAt) {
+      rejected("INVALID_MARKET_DATA", "heartbeat-after-buffer-copy");
+    }
+    if (stream.copiedAt > receiptNow) {
+      rejected("INVALID_MARKET_DATA", "buffer-copy-ahead-of-receipt-clock");
+    }
+    if (receiptNow - stream.heartbeatReceivedAt > 5000) {
+      rejected("STALE_MARKET_DATA", "heartbeat-expired-at-receipt-clock");
+    }
+    return;
+  }
+  validateFrameIdentityAndDates(frame, network, symbol, now, reducing);
   if (
-    Math.abs(ticker.providerTimestamp! - book.providerTimestamp!) > 5000 ||
-    u(s.ticker.mark) <= 0n
+    Math.abs(
+      frame.snapshot.ticker.provenance.providerTimestamp! -
+        frame.book.provenance.providerTimestamp!,
+    ) > 5000 ||
+    u(frame.snapshot.ticker.mark) <= 0n
   ) {
     failure("INCONSISTENT_MARKET_DATA");
+  }
+}
+/** A final set must come from one copied connection generation and a common clock. */
+export function validatePaperFrameSet(
+  frames: readonly PerpsPaperFrame[],
+  network: string,
+  now: number,
+  policy?: PerpsPaperDataPolicy,
+  receiptNow = now,
+) {
+  for (const frame of frames) {
+    validatePaperFrame(frame, network, frame.snapshot.market.symbol, now, policy, receiptNow);
+  }
+  if (policy === COMPONENT_PAPER_POLICY && frames.length) {
+    const first = frames[0]!.streamEvidence!;
+    if (
+      frames.some((frame) =>
+        Object.keys(first).some(
+          (key) =>
+            frame.streamEvidence![key as keyof typeof first] !== first[key as keyof typeof first],
+        ),
+      )
+    ) {
+      const divergent = frames.find((frame) =>
+        Object.keys(first).some(
+          (key) =>
+            frame.streamEvidence![key as keyof typeof first] !== first[key as keyof typeof first],
+        ),
+      )!;
+      throw new PerpsFrameValidationFailure(
+        "INVALID_MARKET_DATA",
+        "mixed-stream-generation-or-reference",
+        divergent,
+        divergent.snapshot.market.symbol,
+        now,
+        receiptNow,
+      );
+    }
   }
 }
 export function simulatePerpsFill(
@@ -80,8 +284,20 @@ export function simulatePerpsFill(
   intent: PerpsPaperIntent,
   frame: PerpsPaperFrame,
   now: number,
+  receiptNow = now,
 ): PerpsPaperFill {
-  validatePaperFrame(frame, account.scope.network, intent.symbol, now, intent.kind === "close");
+  if (account.scope.sessionId === "product" && account.marketDataPolicy !== undefined) {
+    failure("INVALID_INPUT");
+  }
+  validatePaperFrame(
+    frame,
+    account.scope.network,
+    intent.symbol,
+    now,
+    account.marketDataPolicy,
+    receiptNow,
+    intent.kind === "close",
+  );
   const held = account.positions.find(
     (position) => position.symbol === intent.symbol && position.closedAt === null,
   );
@@ -106,7 +322,16 @@ export function simulatePerpsFill(
   let quantity: bigint;
   if (intent.kind === "open") {
     // Upper price bound keeps the fill within the intent's notional for either side.
-    quantity = ((u(intent.notional) * S) / ((best * 10050n) / 10000n) / step) * step;
+    if (intent.pts?.quantity !== undefined && !isPtsAccount(account)) {
+      failure("INVALID_INPUT");
+    }
+    quantity =
+      isPtsAccount(account) && intent.pts?.quantity !== undefined
+        ? u(intent.pts.quantity)
+        : ((u(intent.notional) * S) / ((best * 10050n) / 10000n) / step) * step;
+    if (quantity % step !== 0n) {
+      failure("INVALID_INPUT");
+    }
   } else {
     const position = account.positions.find(
       (p) => p.closedAt === null && p.symbol === intent.symbol && p.side === intent.side,
@@ -114,7 +339,15 @@ export function simulatePerpsFill(
     if (!position) {
       failure("NO_POSITION");
     }
-    quantity = u(position!.quantity);
+    if (intent.pts?.quantity !== undefined && !isPtsAccount(account)) {
+      failure("INVALID_INPUT");
+    }
+    quantity = u(
+      isPtsAccount(account) ? (intent.pts?.quantity ?? position!.quantity) : position!.quantity,
+    );
+    if (quantity > u(position!.quantity) || quantity % step !== 0n) {
+      failure("INVALID_INPUT");
+    }
   }
   if (quantity <= 0n) {
     failure("QUANTITY_TOO_SMALL");
@@ -149,7 +382,7 @@ export function simulatePerpsFill(
   const fee = d(-u(paperCash(d((-notional * u(feeRate)) / S))));
   const average = (notional * S) / quantity;
   return {
-    ...(account.scope.sessionId === "product"
+    ...(account.scope.sessionId === "product" || isPtsAccount(account)
       ? { market: structuredClone(frame.snapshot.market) }
       : {}),
     quantity: d(quantity),
@@ -181,15 +414,61 @@ export function applyPaperObservation(
   observation: PerpsPaperObservation,
   key: string,
   now: number,
+  receiptNow = now,
+) {
+  const a = applyPaperMarks(account, observation.frames, now, receiptNow);
+  const movements: PerpsPaperMovement[] = [];
+  let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
+  for (const p of observation.marksOnly ? [] : a.positions) {
+    const result = applyPaperPositionFunding(
+      a,
+      p,
+      previous,
+      observation.funding.find((h) => h.market.symbol === p.symbol),
+      now,
+      observation.incrementalFunding === true,
+    );
+    pending ||= result.pending;
+    if (result.disputed) {
+      a.fundingDisputed = true;
+    }
+    movements.push(...result.movements);
+  }
+  if (a.fundingDisputed) {
+    for (const p of a.positions) {
+      const original = account.positions.find((item) => item.id === p.id)?.fundingCoveredThrough;
+      if (original === undefined) {
+        delete p.fundingCoveredThrough;
+      } else {
+        p.fundingCoveredThrough = original;
+      }
+    }
+  }
+  return finalizePaperObservation(a, movements, pending, observation.marksOnly === true, key, now);
+}
+
+/** Validate and mark only; cash/day/peak finalization is intentionally separate. */
+export function applyPaperMarks(
+  account: PerpsPaperAccount,
+  frames: readonly PerpsPaperFrame[],
+  now: number,
+  receiptNow = now,
 ) {
   const a = structuredClone(account);
-  const movements: PerpsPaperMovement[] = [];
-  for (const frame of observation.frames) {
+  if (a.scope.sessionId === "product" && a.marketDataPolicy !== undefined) {
+    failure("INVALID_INPUT");
+  }
+  if (a.marketDataPolicy) {
+    validatePaperFrameSet([...frames], a.scope.network, now, a.marketDataPolicy, receiptNow);
+  }
+  for (const frame of frames) {
     validatePaperFrame(
       frame,
       a.scope.network,
       frame.snapshot.market.symbol,
       now,
+      a.marketDataPolicy,
+      receiptNow,
       a.positions.some((p) => p.symbol === frame.snapshot.market.symbol),
     );
     for (const p of a.positions.filter(
@@ -208,98 +487,144 @@ export function applyPaperObservation(
       }
       p.mark = frame.snapshot.ticker.mark;
       p.markAt = frame.snapshot.ticker.provenance.providerTimestamp;
+      if (isPtsAccount(a)) {
+        updatePtsStop(p, frame, now);
+      }
     }
   }
-  let pending = observation.marksOnly ? a.fundingPending : (a.fundingDisputed ?? false);
-  for (const p of observation.marksOnly ? [] : a.positions) {
-    const history = observation.funding.find((h) => h.market.symbol === p.symbol);
-    const incremental = observation.incrementalFunding && a.scope.sessionId === "product";
-    const coverageFrom = incremental
-      ? Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)
-      : p.openedAt;
-    let positionPending = false;
+  return a;
+}
+
+/** Native held-interval kernel, including closed positions and late/revised histories. */
+export function applyPaperPositionFunding(
+  account: PerpsPaperAccount,
+  position: PerpsPaperPosition,
+  previous: readonly PerpsPaperMovement[],
+  history: PerpFundingHistory | undefined,
+  now: number,
+  incrementalFunding = false,
+): { movements: PerpsPaperMovement[]; pending: boolean; disputed: boolean } {
+  const a = account;
+  const p = position;
+  const movements: PerpsPaperMovement[] = [];
+  let pending = false;
+  let disputed = false;
+  const incremental = incrementalFunding && a.scope.sessionId === "product";
+  const coverageFrom = incremental
+    ? Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)
+    : p.openedAt;
+  if (
+    !history ||
+    (p.market !== undefined &&
+      (p.market.marketId !== history.market.marketId ||
+        p.market.perpetualId !== history.market.perpetualId ||
+        p.market.collateral.address !== history.market.collateral.address)) ||
+    history.market.provenance.network !== a.scope.network ||
+    !history.complete ||
+    history.from > coverageFrom ||
+    (incremental ? history.to < coverageFrom : history.to < (p.closedAt ?? now) - 30000)
+  ) {
+    pending = true;
+    return { movements, pending, disputed };
+  }
+  for (const event of history.events) {
     if (
-      !history ||
-      (p.market !== undefined &&
-        (p.market.marketId !== history.market.marketId ||
-          p.market.perpetualId !== history.market.perpetualId ||
-          p.market.collateral.address !== history.market.collateral.address)) ||
-      history.market.provenance.network !== a.scope.network ||
-      !history.complete ||
-      history.from > coverageFrom ||
-      (incremental ? history.to < coverageFrom : history.to < (p.closedAt ?? now) - 30000)
+      event.eventBlock <= p.entryBlock ||
+      (p.exitBlock !== null && event.eventBlock > p.exitBlock)
     ) {
+      continue;
+    }
+    if (event.estimated || event.appliesAt === null || event.appliesAt > now) {
       pending = true;
       continue;
     }
-    for (const event of history.events) {
+    const movementKey = `funding:${p.id}:${event.eventBlock}`;
+    const evidence = {
+      model: isPtsAccount(a) ? "quantity-timeline-index-rate-v2" : "quantity-index-rate-v1",
+      ...(isPtsAccount(a) ? { quantity: ptsQuantityAtBlock(p, event.eventBlock) } : {}),
+      symbol: p.symbol,
+      positionId: p.id,
+      eventBlock: event.eventBlock,
+      appliesAt: event.appliesAt,
+      rate: event.rate,
+      index: event.index,
+    };
+    const existing = previous.find((m) => m.key === movementKey);
+    if (existing) {
+      const old = existing.evidence as typeof evidence;
       if (
-        event.eventBlock <= p.entryBlock ||
-        (p.exitBlock !== null && event.eventBlock > p.exitBlock)
+        old.rate !== evidence.rate ||
+        old.index !== evidence.index ||
+        old.appliesAt !== evidence.appliesAt ||
+        (isPtsAccount(a) && old.quantity !== evidence.quantity)
       ) {
-        continue;
-      }
-      if (event.estimated || event.appliesAt === null || event.appliesAt > now) {
+        disputed = true;
         pending = true;
-        positionPending = true;
-        continue;
       }
-      const movementKey = `funding:${p.id}:${event.eventBlock}`;
-      const evidence = {
-        model: "quantity-index-rate-v1",
-        symbol: p.symbol,
-        positionId: p.id,
-        eventBlock: event.eventBlock,
-        appliesAt: event.appliesAt,
-        rate: event.rate,
-        index: event.index,
-      };
-      const existing = previous.find((m) => m.key === movementKey);
-      if (existing) {
-        const old = existing.evidence as typeof evidence;
-        if (
-          old.rate !== evidence.rate ||
-          old.index !== evidence.index ||
-          old.appliesAt !== evidence.appliesAt
-        ) {
-          a.fundingDisputed = true;
-          pending = true;
-        }
-        continue;
-      }
-      const delta = paperCash(
-        d(
-          ((u(paperProduct(p.quantity, event.index)) * u(event.rate)) / S) *
-            (p.side === "long" ? -1n : 1n),
-        ),
-      );
-      movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
+      continue;
     }
-    if (incremental && !positionPending && !a.fundingDisputed) {
-      p.fundingCoveredThrough = Math.max(
-        p.fundingCoveredThrough ?? p.openedAt,
-        Math.min(history.to, p.closedAt ?? now, now),
-      );
-      if (p.fundingCoveredThrough < (p.closedAt ?? now) - 30000) {
-        pending = true;
-      }
+    const delta = paperCash(
+      d(
+        ((u(
+          paperProduct(
+            isPtsAccount(a) ? ptsQuantityAtBlock(p, event.eventBlock) : p.quantity,
+            event.index,
+          ),
+        ) *
+          u(event.rate)) /
+          S) *
+          (p.side === "long" ? -1n : 1n),
+      ),
+    );
+    movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
+  }
+  if (incremental && !pending && !disputed && !a.fundingDisputed) {
+    p.fundingCoveredThrough = Math.max(
+      p.fundingCoveredThrough ?? p.openedAt,
+      Math.min(history.to, p.closedAt ?? now, now),
+    );
+    if (p.fundingCoveredThrough < (p.closedAt ?? now) - 30000) {
+      pending = true;
     }
   }
+  return { movements, pending, disputed };
+}
+
+/** Finalize once after all native position kernels; never reset a day/peak per position. */
+export function finalizePaperObservation(
+  account: PerpsPaperAccount,
+  originalMovements: readonly PerpsPaperMovement[],
+  pending: boolean,
+  marksOnly: boolean,
+  key: string,
+  now: number,
+) {
+  const a = structuredClone(account);
+  const movements = [...originalMovements];
   if (a.fundingDisputed) {
     movements.length = 0;
-    // Disputed observations have no partial accounting or checkpoint progress.
-    for (const p of a.positions) {
-      const original = account.positions.find((item) => item.id === p.id)?.fundingCoveredThrough;
-      if (original === undefined) {
-        delete p.fundingCoveredThrough;
-      } else {
-        p.fundingCoveredThrough = original;
-      }
-    }
   }
-  a.cash = d(u(a.cash) + movements.reduce((sum, m) => sum + u(m.delta), 0n));
+  const delta = d(movements.reduce((sum, m) => sum + u(m.delta), 0n));
+  const result = finalizePaperObservationDelta(a, delta, pending, marksOnly, key, now);
+  return { account: result.account, movements, key: result.key };
+}
+
+/** Bounded-history adapters sum exact native postings, then finalize the account once. */
+export function finalizePaperObservationDelta(
+  account: PerpsPaperAccount,
+  nativeCashDelta: string,
+  pending: boolean,
+  marksOnly: boolean,
+  key: string,
+  now: number,
+) {
+  const a = structuredClone(account);
+  if (a.fundingDisputed && u(nativeCashDelta) !== 0n) {
+    failure("FUNDING_DISPUTED");
+  }
+  a.cash = d(u(a.cash) + u(nativeCashDelta));
   a.fundingPending = pending;
-  if (a.scope.sessionId === "product" && !observation.marksOnly && !pending) {
+  if (a.scope.sessionId === "product" && !marksOnly && !pending) {
     a.lastFundingAt = now;
   }
   const risk = paperRisk(a, [], now);
@@ -329,7 +654,7 @@ export function applyPaperObservation(
     }
     a.lastValuationAt = now;
   }
-  return { account: a, movements, key };
+  return { account: a, key };
 }
 
 /** The provider's complete=true is the canonical contiguous-window coverage assertion. A missing

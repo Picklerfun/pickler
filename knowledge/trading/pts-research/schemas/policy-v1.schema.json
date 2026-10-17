@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Immutable offline PTS research policies v1",
+  "oneOf": [
+    {
+      "const": {
+        "format": "pts-offline-causal-policy-v1",
+        "version": "0.1.0",
+        "reference": "pts-intraday@0.2.0-fast.2",
+        "offlineOnly": true,
+        "enabled": false,
+        "nativeSeconds": [3600, 900, 300],
+        "minimumClosedBars": {
+          "1h": 24,
+          "15m": 240,
+          "5m": 180
+        },
+        "formationMs": 259200000,
+        "correctionMs": 86400000,
+        "triggerMs": 300000,
+        "executionAdmission": "NONE",
+        "financialResults": "NONE",
+        "id": "primary-er20",
+        "changedFactor": "primary-trend",
+        "primary": {
+          "nativeSeconds": 3600,
+          "closedBars": 21,
+          "changes": 20,
+          "efficiencyMinimumInclusive": "0.30",
+          "formula": "abs(close[20]-close[0])/sum(abs(close[i]-close[i-1]),i=1..20)",
+          "direction": "SIGN_OF_NET_CHANGE",
+          "zeroDenominator": "neutral",
+          "insufficientHistory": "unknown"
+        }
+      }
+    },
+    {
+      "const": {
+        "format": "pts-offline-causal-policy-v1",
+        "version": "0.1.0",
+        "reference": "pts-intraday@0.2.0-fast.2",
+        "offlineOnly": true,
+        "enabled": false,
+        "nativeSeconds": [3600, 900, 300],
+        "minimumClosedBars": {
+          "1h": 24,
+          "15m": 240,
+          "5m": 180
+        },
+        "formationMs": 259200000,
+        "correctionMs": 86400000,
+        "triggerMs": 300000,
+        "executionAdmission": "NONE",
+        "financialResults": "NONE",
+        "id": "persistent-setups",
+        "changedFactor": "setup-selection-and-lifecycle",
+        "maximumPerMarketDirection": 32,
+        "eviction": "OLDEST_C_CONFIRMATION_THEN_ASCENDING_ABC_ID",
+        "selection": "EARLIEST_FULLY_READY_ADMISSIBLE_THEN_ASCENDING_ABC_ID",
+        "frozen": ["A", "B", "C", "channel", "ATR14", "structural-stop"],
+        "retirement": ["C_EXPIRY", "VERIFIED_NEUTRAL_OR_OPPOSITE_PRIMARY", "CLOSED_5M_STOP_TOUCH"],
+        "missingLifecycleHistory": "NOT_VERIFIABLE",
+        "consumption": "EXPLICIT_CONFIRMED_FIXTURE_SIGNAL_ID_ONLY"
+      }
+    },
+    {
+      "const": {
+        "format": "pts-offline-causal-policy-v1",
+        "version": "0.1.0",
+        "reference": "pts-intraday@0.2.0-fast.2",
+        "offlineOnly": true,
+        "enabled": false,
+        "nativeSeconds": [3600, 900, 300],
+        "minimumClosedBars": {
+          "1h": 24,
+          "15m": 240,
+          "5m": 180
+        },
+        "formationMs": 259200000,
+        "correctionMs": 86400000,
+        "triggerMs": 300000,
+        "executionAdmission": "NONE",
+        "financialResults": "NONE",
+        "id": "ready-band-entry",
+        "changedFactor": "entry-trigger",
+        "recoveryExclusive": ["0.38", "0.495"],
+        "firstEligibleClose": "STRICTLY_AFTER_ALL_UNCHANGED_PREREQUISITES_READY",
+        "readinessIncludes": [
+          "A",
+          "B",
+          "C",
+          "primary",
+          "alignment",
+          "channel",
+          "ATR14",
+          "confluence"
+        ],
+        "expiry": "MIN_TRIGGER_PLUS_5M_C_CONFIRMATION_PLUS_24H",
+        "laterReferenceCrosses": "PRESERVED",
+        "repeatedPoll": "NEVER_REFRESH_TRIGGER_OR_TTL"
+      }
+    },
+    {
+      "const": {
+        "format": "pts-offline-causal-policy-v1",
+        "version": "0.1.0",
+        "reference": "pts-intraday@0.2.0-fast.2",
+        "offlineOnly": true,
+        "enabled": false,
+        "nativeSeconds": [3600, 900, 300],
+        "minimumClosedBars": {
+          "1h": 24,
+          "15m": 240,
+          "5m": 180
+        },
+        "formationMs": 259200000,
+        "correctionMs": 86400000,
+        "triggerMs": 300000,
+        "executionAdmission": "NONE",
+        "financialResults": "NONE",
+        "id": "retracement-control",
+        "changedFactor": "retracement-band",
+        "referenceInclusive": ["0.61", "0.78"],
+        "candidateInclusive": ["0.40", "0.57"],
+        "width": "0.17"
+      }
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+Antes de iniciar toda la sección operativa y toda la sección de estrategia y todo lo
+pendiente que tenemos por aprender, lo más importante que quiero literalmente inculcarte
+y que literalmente quiero que reflexionemos juntos sobre esto es la gestión de riesgo.
+La gestión de riesgo es literalmente la parte más importante de la operativa, más importante
+de las inversiones, más importante de todo lo que es la industria de los mercados financieros.
+Y te voy a decirlo al grano el punto, sin gestión de riesgo, y ya vamos a entrar profundidad
+con esto, no es posible sobrevivir, la gestión de riesgo es la base del éxito a largo plazo.
+De forma simple y directa, ¿qué es gestión de riesgo?
+Básicamente es tener el control de cada uno de los riesgos en la operativa, tener claro
+y controlado cuánto se va a arriesgar a perder en caso de que una operación salga mal y
+cómo proteger la cuenta ante movimientos y momentos volátiles o de incertidumbre.
+¿Por qué? Porque obviamente cuando las operaciones y cuando todo sale bien, pues la gestión de riesgo
+no importa, pero en realidad piensen ustedes que cualquier persona podría tener un buen día de suerte
+en el casino, cuántos no han ido al casino en Las Vegas o al casino en un crucero, tienen un buen día
+de suerte y se ganan un montón de dinero. La gestión de riesgo es lo que nos separa de los
+apostadores. Un trader que no usa gestión de riesgo no tiene ninguna diferencia a un apostador
+que está todo el día chinchin con la maquinita, dándole a la maquinita o que está todo el día
+tirando a la ruleta, apostando a rojo, apostando al negro, tirando los dados o jugando a las cartas.
+Lo que nos profesionaliza no es que seamos muy buenos analizando leyendo los mercados,
+lo que verdaderamente nos profesionaliza es la gestión de riesgo, proteger nuestro capital
+como prioridad máxima. Entiende esa gestión de riesgo como les decía, al porcentaje calculado y
+premeditado de la cuenta y que vamos a arriesgar a pérdida en caso de que una operación salga mal
+y se deba ejecutar un estoblos. Y ahorita vamos a aprender de eso, pero un estoblos básicamente
+es una orden que cierra de forma abrupta una operación cuando el mercado va en contra del
+análisis que nosotros planteamos, ya sea el de nosotros, ya sea el tuyo. Un estoblos es algo
+absolutamente normal, no es un drama, es una actividad totalmente cotidiana del trading,
+es algo totalmente normal en la vida del trading. Evidentemente dentro de las estrategias de
+análisis se buscan minimizar los estobloses, así como un portero de fútbol busca minimizar la
+cantidad de goles que recibe, así como tal vez un boxeador busca minimizar la cantidad de
+golpes que recibe, evidentemente, pero estamos claros que un portero que no reciba goles no
+existe, un trader que no tenga estobloses no existe, ¿vale? La diferencia está en que gestión de
+riesgo es que vamos a calcular de forma premeditada y fría el monto que se arriesga en cada operación
+si sale mal, porque obviamente si sale bien es simplemente ganancia y maravilla y es la idea,
+pero siempre vamos a estar serios y fríos a la hora de calcular los riesgos ligados en nuestra
+cuenta y usualmente es la razón número uno de fracaso, no solo para trades particulares,
+sino también para incluso gestores de fondos de inversión y empresas institucionales,
+la mayoría de todos los fondos de inversión que han quebrado lo largo de la historia y no han
+sido pocos, han sido bastantes bien en realidad por faltas en la gestión de riesgo, incluso a
+nivel institucional. Entonces básicamente la gestión de riesgo se va a hacer una premisa básica
+y es una pregunta que usted siempre, siempre, siempre se va a hacer a la hora de abrir una
+operación de trading y es cuánto vamos a asumir de pérdida en caso en que se debe ejecutar el
+estoblos. Cuando nosotros abrimos una operación no sabemos si saldrá bien o mal, pero lo que sí
+debemos saber es cuánto vamos a asumir de pérdida si llega a salir mal y si nunca has usado gestión
+de riesgo y tal vez de allí derivan grandes pérdidas que has tenido el pasado, esta lección es
+perfecta para que puedas meditar en ello porque eso es lo primero que vamos a cambiar y si nunca
+has hecho trading y esta es tu primera experiencia quiero que te grave esa fuego en la frente que
+la gestión de riesgo es la base del éxito a largo plazo. De hecho en cada una de las operaciones
+que se plantean en el programa senior se indica siempre el nivel de riesgo que asumimos y el
+nivel de pérdida que estriamos dispuestos a poner en riesgo a la hora de hacer una operación y eso
+usualmente se calcula en base a un porcentaje de la cuenta de cada trader ya que como cada
+trader y cada cuenta es diferente utilizamos un porcentaje fijo para cada una. En operaciones
+rápidas como te había comentado esto es en torno al 1% de pérdida en operaciones de la
+cuenta total importante no del monto opuesto en escena sino de la cuenta global. En operaciones de su
+trading usualmente colocamos un 2% de monto a riesgo y en casos muy extraordinarios utilizamos
+el máximo permitido un proté de skills nuestro máximo permitido es un 4% un menos 4%
+que de una vez te digo un menos 4% lo vas a ver como mucho dos veces en un año entero o incluso hay
+años enteros donde no ves una operación al menos 4% o tal vez una vez en un año entero vas a ver
+una operación nuestra de un menos 4% tal vez porque es un momento muy crítico de mercado y es un caso
+muy extraordinario cuando hablo de menos 4% es de la cuenta total que vas a tener ok o sea no del
+monto que inviertes en ese momento sino de toda tu cuenta completa la gran mayoría de operaciones
+van a estar entre el menos uno y el menos 2% de hecho si nos vamos por ejemplo a hablar de
+algunos ejemplos hablemos lo siguiente vamos a ponernos de caso imaginario que tienes una cuenta
+de mil dólares suponiendo digamos que tienes una cuenta de mil dólares este ejemplo aplica si
+tienes menos aplica si tienes más aplica si tienes 100 dólares si tienes 50 si tienes 300 y aplica
+también si tienes 50 mil dólares 500 mil si tienes 20 millones de dólares ok bien
+si una operación rápida enviamos un reporte que llega a operación rápida están las operaciones
+puestas si sale mal obviamente porque si sale bien es ganancia todos felices si sale mal y salta
+el estoblos debes esperar que tu pérdida sea de 10 dólares para un ejemplo de mil si salta
+el estoblos lo que deberías perder serían únicamente 10 dólares sobre esa operación lo cual
+significa que te debe quedar un saldo restante de 990 ok suponiendo que hacemos una operación rápida
+tienes una cuenta de mil dólares abre la operación y por la razón que sea salta el estoblos deberías
+haber perdido 10 dólares únicamente y te tiene que quedar 990 en la cuenta si pierdes más estás
+cometiendo un error nosotros siempre en cada una de nuestras operaciones ponemos las instrucciones
+claras para que vaya a acorde a la gestión de riesgo que aquí te lo estamos explicando ahora
+para una operación de su intrading si salta el stop y tienes una cuenta de mil dólares que es el
+ejemplo al que nos estamos guiando deberías tener una pérdida de 20 dólares únicamente o sea
+tendría que quedar un saldo restante de tu cuenta completa de 980 dólares ok y el caso máximo
+permitido que ya te digo eso es un caso especial no es que tú vas a agarrar todas nuestras entradas
+y le vas a meter menos 4 por ciento a cada una no un caso muy especial es que si tenemos que entrar
+a operar con el máximo de agresividad permitido para un ejemplo de mil dólares sería que pierdas
+40 dólares y que te queden 960 dólares en tu cuenta de trading ok por ejemplo si nos vamos aquí
+esta es una señal de su intrading como la puedes ver y mira lo que aquí decimos para una cuenta de
+mil dólares puedes comprar dos acciones entonces digamos que tienes mil dólares compran dos
+acciones de ubre si sale bien genera ganancias y si sale mal para esta operación en cuestión el
+monto de pérdida sería de 20 dólares aproximadamente perdería más o menos unos 20 dólares te
+deberían quedar aproximadamente unos 980 dólares en la cuenta ok eso es gestión de riesgo o sea ya
+se sabe que si llega a salir mal lo que tú pierdes ok es absolutamente controlado mira aquí cuenta
+ok si sale mal tienes muy bien controlado cuánto vas a perder lo sabes de antemano obviamente se
+espera que todo salga bien pero la gestión de riesgo se trata de que tengas muy claro los
+montos y los riesgos que vas a trabajar ahora cada operación que nosotros damos en los reportes
+es muy sencilla estas reglas la puedes aplicar para tu propia operativa de hecho que esta es la idea
+que también tus propias operaciones de aquí de por vida vayan con gestión de riesgo cada operación
+tiene estas reglas que son muy sencillas siempre indicamos el número de acciones que debes
+trabajar para tu cuenta es decir si operamos a apol cuántas acciones debes comprar para un
+ejemplo de mil dólares si operamos en vía cuántas acciones debes comprar para un ejemplo de mil
+dólares obviamente si tienes menos si tienes 500 compras la mitad acciones si tienes 300 compras
+una tercera parte si tienes 5000 puedes comprar cinco veces más o sea siempre los hemos basado
+en ejemplo mil dólares si alguien tiene una cuenta de 14 mil dólares pues simplemente compra 14
+veces más de lo que se plantea ok en el caso aquí de uber por ejemplo dice dos acciones máximo por
+cada mil dólares en cuenta entonces un chico que tiene 500 pues se compra una acción cita de uber
+por cierto cuán fuel y para cuentas pequeñas de 100 dólares 200 dólares y así cuán fuel y
+permite comprar tracciones de acción para que lo sepa y si un chico tiene 7 mil dólares pues bueno
+dice 7 por 2 cuánto es 14 puede comprarse 14 acciones de uber ok bien adicionalmente adicionalmente
+cuando lo hacemos con cripto esto cuando son acciones cuando lo hacemos con cripto ya sea
+bitcoin altcoins lo que sea lo que trabajamos es porcentaje de tu capital en compra tal vez
+no decimos compren tantas shiba inus compren tanto dogecoin compren tanto seterion compren
+un determinado número de litecoin no lo que hacemos es que le decimos de tu cuenta completa
+cuál es el porcentaje que debes comprar para seguir la gestión de riesgo y en caso de que
+la operación salga mal la gestión de riesgo nos va a proteger y obviamente si sale bien ganamos
+evidentemente que es la meta y bien por ejemplo en esta cripto y esta es algo coin vean que la
+instrucción dice vamos a revisar menos 2.1 aproximadamente un puntito más no importa
+y ven lo que se dice se dice exposición equivalente a una compra del 10 por ciento en
+espoto es decir que si tienen mil dólares compras 100 dólares de algo coin si la operación sale
+mal vas a perder menos 21 dólares que sería aproximadamente el menos 2.1 por ciento o sea
+te quedarían más o menos 979 dólares por un ejemplo de mil dólares ok y obviamente aquí el
+monto que compraría de algo coin sería de 100 dolaritos 100 dolaritos en spot si usas apalan
+camionto no es para comprar más es simplemente para utilizar menos de tu cuenta por ejemplo digamos
+que entras en algo coin apalancado a 2x pues compras 50 dolaritos de tu dinero eso hará que la
+pérdida siga siendo menos 21 dólares aproximadamente o sea siempre dentro del menos 2% de la cuenta
+total ok de la cuenta total cuál es la ventaja de usar apalancamiento no usar apalancamiento que
+si por ejemplo tienen mil dólares y lo haces en spot compras 100 dólares de algo coin te van
+a quedar 900 dólares para poder seguir invirtiendo en más operaciones pero como nosotros operamos
+dinámicamente el mercado si utilices apalancamiento por ejemplo a 2x 50 dolaritos te van a quedar
+950 o sea te va a quedar más dinero disponible para más operaciones y créeme cuando el mercado
+se pone bueno ya verás el montón de operaciones que trabajamos literalmente te vas a quedar sin
+plata vas a tener toda la plata metida en un montón de operaciones que van a generar muy buena
+ganancia pero el riesgo de cada una va a ser muy muy muy controlado ok bien ahora si nos vamos con
+todo esto de una vez que lo mencionamos el apalancamiento no se debe utilizar para entrar pesado
+en una operación sino que se debe usar para tener la capacidad de abrir más operaciones eso es
+muy importante el apalancamiento funciona no para entrar muy duro en una sola operación sino para
+utilizar en cada operación cada vez menos dinero de tu cuenta y así poder tener más capital para
+abrir mayores operaciones algo muy importante es entender el ciclo el trader perdedor esto es un
+ciclo que le pasa a todo el mundo que no sigue la gestión de riesgo todo inicia en la estación
+número 1 que es la varicia y la codicia y básicamente consiste en que un trader que usualmente pierde
+dinero en los mercados abre una posición extremadamente grande para su cuenta abre sobre
+apalancado sobre expuesto y por qué por avaricia por codicia porque quiere ganar mucho dinero muy
+rápido en el trading puede dejar excelentes ganancias y puede ser una cosa maravillosa en tu vida pero
+tienes que ir despacio si por avaricia y codicia un trader abre una operación demasiado expuesta y
+pierde la operación lo cual es muy normal que haya operaciones buenas y malas al perder esa
+operación que iba muy expuesta va a tener grandes pérdidas y cuando tiene grandes pérdidas
+inmediatamente se enoja ya que los sentimientos de avaricia y codicia ahora se encuentran en
+sentimientos de desesperación de dolor de tristeza y quiere recuperar el dinero que acaba de perder
+y lo que hace el trader es abrir otra operación buscando venganza buscando recuperar ese dinero lo
+más rápido posible y eso causa que vuelva a perder y eso causa que vuelva a tener grandes
+pérdidas y eso causa que vuelva a querer operar de forma desesperada y así y así y así hasta que
+queda liquidado este tipo de traders quedan liquidados y si alguna vez te ha pasado puedes
+reflexionar aprovechar esto para reflexionar y romper esas conductas esos patrones así como
+también si estás empezando debes evitar esto a toda costa y todo nace de la estación número 1
+debe dejar de lado la avaricia y la codicia vas a ganar mucho dinero pero vas a ir poco a poco ok
+vamos a ir a paso tranquilo y necesitas evitar la estación 1 evitar la avaricia y la codicia
+como calculando el riesgo de cada operación y asumir que podría salir mal es decir si la operación
+sale mal calculo el porcentaje que sea un menos 1 por ciento que sea un menos 2 por ciento y
+asumo que si llega a salir mal ejecutó la gestión de riesgo ahora si sale mal se ejecuta y si sale
+bien en buena hora tenemos ganancias pero este sistema de gestión de riesgo es el que va a
+proteger nuestro capital a largo plazo y esa es ese es el requisito número 1 para poder sobrevivir
+a largo plazo en el trading y en las inversiones

@@ -263,16 +263,18 @@ test("four-way round keeps independent portfolios and one common final refresh",
   await runner.cycle(config, lease, new AbortController().signal);
   assert.equal(finalRefreshes, 1);
   assert.deepEqual(seen.slice(0, 3), [
-    view.record.agentIds.deepseek,
-    view.record.agentIds.jev,
-    view.record.agentIds.combined,
+    view.record.agentIds.deepseek!,
+    view.record.agentIds.jev!,
+    view.record.agentIds.combined!,
   ]);
   assert.equal(new Set(seen).size, 3);
-  assert.equal(seen.filter((id) => id === view.record.agentIds.combined).length, 2);
+  assert.equal(seen.filter((id) => id === view.record.agentIds.combined!).length, 2);
   const saved = await study.view(config);
   assert.equal(saved.rounds[0]!.executionStatus, "complete");
   assert.equal(
-    Object.values(saved.rounds[0]!.calls).filter((c) => c.status === "completed").length,
+    Object.values(saved.rounds[0]!.calls)
+      .filter((c): c is NonNullable<typeof c> => c !== undefined)
+      .filter((c) => c.status === "completed").length,
     4,
   );
   await study.release(config, lease);

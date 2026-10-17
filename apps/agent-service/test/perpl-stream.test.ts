@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { PerplStreamState, PerplPublicStream, type PerplSocket } from "@pickler/infrastructure";
 import { normalizePerplBook, normalizePerplTicker } from "@pickler/infrastructure";
 import { choosePerplTransport, acquirePerpsFrames } from "@pickler/trading/perps";
-import { PilotError } from "@pickler/core";
+import { PilotError, PERPL_LAB_SYMBOLS } from "@pickler/core";
 import { studyFrame } from "./perps-study-fixtures.js";
 const now = 1800000000000;
 const markets = [studyFrame(now).snapshot.market, studyFrame(now, "ETH").snapshot.market];
@@ -98,6 +98,21 @@ test("heartbeat gap proves discontinuity; duplicate heartbeat is harmless", () =
     code: "PERPL_STREAM_DISCONTINUITY",
   });
 });
+test("continuity proof preserves receipt of the last advancing heartbeat and resets with the book", () => {
+  const state = ready();
+  assert.equal(state.continuity(), undefined);
+  state.apply({ mt: 100, sn: 1, h: 100 }, now);
+  state.apply({ mt: 100, sn: 1, h: 100 }, now + 10000);
+  const proof = state.continuity()!;
+  assert.equal(proof.heartbeatReceivedAt, now);
+  proof.heartbeatReceivedAt = now + 99999;
+  assert.equal(state.continuity()!.heartbeatReceivedAt, now);
+  state.apply({ mt: 100, sn: 2, h: 101 }, now + 10001);
+  assert.equal(state.continuity()!.heartbeatReceivedAt, now + 10001);
+  assert.equal(state.frame("BTC", now + 10001).snapshot.ticker.provenance.providerTimestamp, now);
+  state.reset();
+  assert.equal(state.continuity(), undefined);
+});
 test("invalid levels and bounded state reject excessive data", () => {
   const state = ready();
   assert.throws(() => state.apply({ ...snapshot(), bid: [{ p: 999, s: 0, o: 1 }] }, now));
@@ -145,6 +160,135 @@ class Socket implements PerplSocket {
     this.emit("close");
   }
 }
+test("thirteen subscriptions yield an immutable eleven-market buffer; heartbeat preserves dates", () => {
+  const universe = PERPL_LAB_SYMBOLS.map((symbol, index) => ({
+    ...structuredClone(markets[0]!),
+    symbol,
+    marketId: index + 1,
+    perpetualId: index + 1,
+  }));
+  const state = new PerplStreamState(universe, "wss://app.perpl.xyz/ws/v1/market-data", 143);
+  assert.equal(state.streams().length, 13);
+  state.apply({ mt: 6, subs: state.streams().map((stream, i) => ({ stream, sid: i + 1 })) }, now);
+  state.apply(
+    { mt: 9, d: Object.fromEntries(universe.map((m) => [m.marketId, ticker().d[1]])) },
+    now,
+  );
+  for (let i = 0; i < 11; i++) {
+    state.apply(snapshot(i + 3), now);
+  }
+  const copy = state.components(PERPL_LAB_SYMBOLS, now);
+  copy[0]!.snapshot!.market.marketId = 1000;
+  copy[0]!.book!.bids[0]!.price = "0";
+  state.apply({ mt: 100, sn: 1, h: 101 }, now + 31000);
+  const unchanged = state.components(PERPL_LAB_SYMBOLS, now + 31000);
+  assert.equal(unchanged.length, 11);
+  assert.equal(unchanged[0]!.snapshot!.market.marketId, 1);
+  assert.equal(unchanged[0]!.book!.bids[0]!.price, "99.9");
+  assert.ok(
+    unchanged.every(
+      (c) =>
+        c.snapshot!.ticker.provenance.providerTimestamp === now &&
+        c.book!.provenance.providerTimestamp === now,
+    ),
+  );
+});
+
+test("queue overflow closes the reader without silently discarding required updates", async () => {
+  let release: () => void = () => {};
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let blocking = false;
+  const socket = new Socket();
+  const events: unknown[] = [];
+  const stream = new PerplPublicStream({
+    markets,
+    signal: new AbortController().signal,
+    now: () => now,
+    guard: async () => {
+      if (blocking) {
+        await blocked;
+      }
+    },
+    event: (event) => events.push(event),
+    socket: () => {
+      queueMicrotask(() => {
+        socket.readyState = 1;
+        socket.emit("open");
+      });
+      return socket;
+    },
+  });
+  await stream.connect(new AbortController().signal);
+  blocking = true;
+  for (let i = 0; i < 33; i++) {
+    socket.emit("message", { data: JSON.stringify({ mt: 100, sn: i + 1, h: i + 100 }) });
+  }
+  assert.equal(socket.readyState, 3);
+  release();
+  await stream.close();
+  await assert.rejects(stream.latest(["BTC", "ETH"], new AbortController().signal), {
+    code: "PERPL_STREAM_MESSAGE_LIMIT",
+  });
+  assert.match(JSON.stringify(events), /PERPL_STREAM_MESSAGE_LIMIT/);
+  assert.deepEqual(
+    (
+      events.find((event) => (event as { kind: string }).kind === "error") as {
+        limit: unknown;
+      }
+    ).limit,
+    { component: "message-queue", observed: 33, maximum: 32 },
+  );
+});
+
+test("queued messages from a disconnected generation cannot seed its replacement", async () => {
+  const sockets: Socket[] = [];
+  let blocking = false;
+  let release: () => void = () => {};
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const stream = new PerplPublicStream({
+    markets,
+    signal: new AbortController().signal,
+    now: () => now,
+    guard: async () => {
+      if (blocking) {
+        await blocked;
+      }
+    },
+    socket: () => {
+      const socket = new Socket();
+      sockets.push(socket);
+      queueMicrotask(() => {
+        socket.readyState = 1;
+        socket.emit("open");
+      });
+      return socket;
+    },
+  });
+  try {
+    await stream.connect(new AbortController().signal);
+    blocking = true;
+    sockets[0]!.emit("message", {
+      data: JSON.stringify({
+        mt: 6,
+        subs: stream.streams().map((stream, i) => ({ stream, sid: i + 1 })),
+      }),
+    });
+    sockets[0]!.emit("message", { data: JSON.stringify(snapshot()) });
+    sockets[0]!.close();
+    blocking = false;
+    release();
+    await stream.connect(new AbortController().signal);
+    const copy = await stream.latest(["BTC", "ETH"], new AbortController().signal);
+    assert.ok(copy.components.every((c) => c.snapshot === undefined && c.book === undefined));
+    assert.equal(sockets.length, 2);
+  } finally {
+    await stream.close();
+  }
+});
 test("revocation closes socket, discards buffer and blocks reuse", async () => {
   let revoked = false;
   const socket = new Socket();
@@ -173,7 +317,9 @@ test("revocation closes socket, discards buffer and blocks reuse", async () => {
     // The periodic fence must also revoke an idle connection.
     await new Promise((resolve) => setTimeout(resolve, 1050));
     assert.equal(socket.readyState, 3);
-    assert.throws(() => stream.state.frame("BTC", now), { code: "DATA_UNAVAILABLE" });
+    await assert.rejects(stream.latest(["BTC"], new AbortController().signal), {
+      code: "LEASE_LOST",
+    });
   } finally {
     await stream.close();
   }
@@ -203,11 +349,11 @@ test("repeated timestamp delays only public acquisition; BTC alone cannot return
     signal: new AbortController().signal,
     guard: async () => {},
     hash: () => "a".repeat(64),
-    snapshot: async (symbol: string) => {
+    snapshot: async (symbol: "BTC" | "ETH") => {
       clock += 1000;
       return studyFrame(symbol === "BTC" ? clock : now - 15000, symbol).snapshot;
     },
-    book: async (symbol: string) => {
+    book: async (symbol: "BTC" | "ETH") => {
       clock += 1000;
       return studyFrame(clock, symbol).book;
     },
@@ -263,7 +409,7 @@ test("disconnect discards all state and reconnect requires a new snapshot", asyn
     const signal = new AbortController().signal;
     await stream.connect(signal);
     sockets[0]!.close();
-    assert.throws(() => stream.state.frame("BTC", now), { code: "DATA_UNAVAILABLE" });
+    await assert.rejects(stream.latest(["BTC"], signal), { code: "DATA_UNAVAILABLE" });
     await stream.connect(signal);
     sockets[1]!.close();
     await assert.rejects(stream.connect(signal), { code: "DATA_UNAVAILABLE" });
@@ -299,10 +445,12 @@ test("message bounds invalidate the socket without retaining an authenticated pa
     await stream.close();
   }
   const oversized = new Socket();
+  const sizeEvents: unknown[] = [];
   const bounded = new PerplPublicStream({
     markets,
     signal: new AbortController().signal,
     guard: async () => {},
+    event: (event) => sizeEvents.push(event),
     socket: () => {
       queueMicrotask(() => {
         oversized.readyState = 1;
@@ -315,6 +463,14 @@ test("message bounds invalidate the socket without retaining an authenticated pa
     await bounded.connect(new AbortController().signal);
     oversized.emit("message", { data: "x".repeat(2 * 1024 * 1024 + 1) });
     assert.equal(oversized.readyState, 3);
+    assert.deepEqual(
+      (
+        sizeEvents.find((event) => (event as { kind: string }).kind === "error") as {
+          limit: unknown;
+        }
+      ).limit,
+      { component: "message-bytes", observed: 2 * 1024 * 1024 + 1, maximum: 2 * 1024 * 1024 },
+    );
   } finally {
     await bounded.close();
   }
@@ -355,9 +511,7 @@ test("proven discontinuity resubscribes within its bound and cannot reuse the pr
   const subscribe = (socket: Socket) =>
     message(socket, {
       mt: 6,
-      subs: stream.state
-        .streams()
-        .map((name, i) => ({ stream: name, sid: i + 1, status: { code: 0 } })),
+      subs: stream.streams().map((name, i) => ({ stream: name, sid: i + 1, status: { code: 0 } })),
     });
   try {
     await stream.connect(signal);

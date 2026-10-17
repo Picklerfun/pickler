@@ -1,0 +1,112 @@
+Vamos a ver más ejemplos sobre cómo aplicar entonces el retroceso Fibonashi con la lectura
+de estructuras de canales en el mercado y cómo respetar la zona de reversión en algunos
+casos es vital y al mismo tiempo proyectar targets con eventuales quiebres alcistas o
+quiebres bajistas. Vayámonos a diversos activos financieros. Vamos a empezar por uno que muchos
+chicos aman y les gusta y les encanta. Vamos a irnos al cripto directamente en este caso.
+Vamos a ver el caso de Solana. Iremos a Solana y vamos a empezar a ver algunas cosas interesantes.
+Vayámonos al gráfico semanal. En el gráfico semanal trasaremos el canal alcista que Solana
+en este caso está presentando que nace desde el año 2023 en adelante y lo vamos a graficar
+sobre este nivel. Entonces tenemos por ejemplo un canal alcista sobre Solana. Va muy bien.
+Ahora un punto importante que podemos tomar aquí es que si trazamos el retroceso de mínimo a máximo
+desde la base del canal en el octubre del 23 al nivel actual y le ponemos directamente los valores
+de la zona de reversión. 0.61, 0.78, quitamos todo lo demás. Todo lo demás lo podemos quitar con
+trading videos es una buena herramienta y vamos a tener aquí claro nivel del 0.61, nivel del 0.78.
+Vean ustedes que Solana en las últimas semanas ingresa a este canal, ingresa al nivel entre
+0.61 y 0.78 y a partir de allí inicia el rebote. Ok, muy bien. Entonces para trabajar aquí vamos a
+irnos otra vez a la herramienta de Fibonacci, del retroceso de Fibonacci vamos a irnos de la
+zona de máximos a la zona de mínimos. Ok, y vamos ahora así a colocar los niveles 0.20 en el nivel
+de 0, 0.23, 0.38, 0.61, 0.78 y 1. Ok, va. Todos los niveles de una vez. Entonces lo primero que
+podemos ver aquí interesante es que en la zona del 0.23 que es aproximadamente, pongámosle la
+etiqueta de precio es aproximadamente el nivel de 141 dólares. A partir de allí rompiendo ese 0.23
+es que Solana prácticamente nos confirma que efectivamente está respetando el canal alzista,
+está respetando la zona de reversión y está rebotando de aquí en adelante hacia la zona de
+reversión hacia la zona de reversión alzista. Por lo tanto un trade fácil sería que en esta
+ruptura del 23 en la zona de los 141 dólares se hubiese hecho una entrada en long y se hubiera
+puesto un stop por ejemplo por debajo de este mínimo que en este caso sería el mínimo de 89 dólares.
+Obviamente más adelante veremos estrategias para ajustar esto simplemente estoy mostrando el
+ejemplo más básico y de hecho para mencionarles algo como que a su referencia en la operativa real
+de proteína skills la entrada de Solana fue por ahí más o menos 138, 139, 141,
+fue en las inmediaciones de este nivel efectivamente. Ahora vean que interesante que
+recientemente ha roto el 38 que es otro punto confirmatorio de entrada, otro punto de trabajo
+importante. Obviamente quien entra desde la zona del 23 ya para el 38 ya va en ganancias,
+ya va en positivo. Ahora los niveles a los que se esperaría que Solana pueda subir sería la zona
+de reversión 061 y la zona 078 que en este caso sería 219 y 252. Ahora si nos ponemos a
+atar cabos un poco vamos a ver varias cosas importantes sobre esta estrategia. Si ustedes
+se dan cuenta el canal principal es alzista ahora esto nos puede hacer especular entonces
+algo bastante interesante y es que como el canal principal es alzista podemos especular que del
+078 o sea de la zona de reversión en lugar que Solana venga y la rechace conste puede pasar por
+esos que uno entra desde los 140 y desde los 172 como nivel máximo y ya para cuando vamos aquí
+llamamos con stop de ganancia pero como el canal principal es alzista existe la especulación que
+si se rompe el nivel de 252 tengamos un quiebre alzista. Ese quiebre alzista sería como un primer
+target el nivel de 1 que sería el nivel de 295 y el siguiente nivel sería el 127 y el 161 por
+lo tanto ya esos niveles de target estaríamos hablando de 350 dólares y 420 dólares. Ven que
+es interesante como por ejemplo con la herramienta de canales y el retroceso podemos utilizar sobre
+un canal alzista la identificación de la zona de reversión que si hace confluencia con la base
+del canal alzista le da doble refuerzo al análisis y el punto de activación o sea el punto de entrada
+es el nivel del 023. La zona del 023 ese es el nivel que activa el fibonashi y es el nivel en el que
+podemos entrar ponemos el stop por debajo del mínimo o los y los que quieran un punto de máxima
+máxima seguridad en el sentido de darle un poco más de espacio al mercado por debajo del 078 y el
+siguiente nivel sería el 038. En este caso el 038 se puede utilizar como una entrada más confirmada
+si se desea o simplemente ya como un nivel en el cual usted puede poner el stop en breakeven ve nosotros
+llamamos ve al breakeven que es breakeven que usted si entra desde los 141 en 172 ya va en ganancias
+y usted puede poner su stop ya en el punto de entrada o sea en vez de tener un stop loss en el
+que arriesgamos el menos 2 por ciento como habíamos hablado o el menos 1 por ciento en casos extremos
+el menos 4 ya usted aquí lo que puede hacer directamente es poner su stop aquí en punto de
+entrada o sea sobre esta zona y cuando eso pasa cuando tenemos el stop en ve breakeven o sea en
+punto de entrada la ventaja es que si el mercado pasa una noticia mal algo inesperado y se devuelve
+no perdemos nada porque ya el stop loss está en punto de entrada ahora dicho esto si el mercado
+sigue subiendo a la zona de reversión que sería lo ideal ya llegamos a estos primeros
+dos targets y si los rompe a la alza llegamos a estos targets mucho más importantes y estos
+targets a la alza más importantes los podemos proyectar como targets factibles gracias a que
+el canal principal es un canal alcista ahora vamos a irnos a otros ejemplos un ejemplo es coinbase
+que por cierto está teniendo una subida espectacular hemos hecho diversas operaciones con
+coinbase a lo largo del tiempo y vamos a ver cosas muy muy interesantes ok como podemos ver aquí el
+canal principal de coinbase es un canal alcista entonces vamos a notar algo desde los mínimos
+de agosto del 2023 en adelante vean que el punto que cayó coinbase hoy fue la zona de reversión
+vamos a irnos y vamos a quitar todas las casillas y vamos a dejar solamente 61 y 78 qué bonito
+miren qué hermosura como coinbase aquí está respetando la zona de reversión ahora para delimitar
+el el el trasfondo la magnitud de esta rebote vamos a irnos del máximo al mínimo y vamos a ponerles
+ahora si 023 0 38 1 ok entonces ponemos los valores y vamos a ver algo bastante interesante noten
+ustedes que en el caso de coinbase la entrada habría sido esta por ahí de los 196 dólares el 0
+38 que aquí lo pasó con gapa alcista después hablaremos de eso sería el 0 38 sería 226
+ahorita va a entrar a la zona de reversión que sería el nivel de 273 y como está en
+canal alcista podríamos especular que pueda ir a romper los 308 si puede llegar a romper
+eventualmente los 308 podría en este caso moverse hacia el nivel de 1.00 y si rompe el nivel de 1.00
+los siguientes será el nivel de 127 y el nivel de 161 ven que interesante aquí está
+1.27 1.61 ahí estarían esos niveles adicionales y esto ya sería una mega operación pero mega
+operación más de un 100% de recorrido a la hora de trabajar en este caso coinbase bien si
+nos vamos a buscar otros ejemplos vamos a ver pongamos pongamos el caso de a&e vamos a poner
+el caso un ejemplo de una acción que es un poco más bajista por ejemplo entonces poniendo en el
+caso de a&e que es una acción que suele tener un comportamiento normalmente es un comportamiento
+muy muy bajista ok que ocurriría cómo se interpretaría aquí en este sentido bueno en
+este sentido podríamos interpretar los siguientes si a&e en los próximos días por dar un ejemplo
+vuelve a tener una caída hacia el nivel de 0 de 104 y después de allí baja a 99 y después de allí
+tiene un movimiento de corrección a la zona de reversión 90 y 84 como el canal principal que
+en este momento podríamos trabajar es un canal bajista si a&e llega a la zona de 84 eventualmente
+se podría especular hacia el nivel de 1.00 al nivel de 127 y el nivel de 161 que sería en pocas
+palabras los 54 dólares o sea un un movimiento bastante bajista cabe mencionar y destacar que
+el retroceso Fibonacci se activa en el 23 a partir de allí es de donde se puede operar más sin
+embargo para tener una confirmación más potente el nivel del 038 también es un nivel perfectamente
+válido para buscar una eventual entrada y la diferencia con los ejemplos anteriores es que
+como aquí es un canal principalmente bajista es allí donde uno se puede uno como trader se
+puede dar la libertad de especular con una ruptura de la zona de reversión ok por lo tanto haciendo
+un pequeño resumen de esto podríamos decir entonces que cuando el cuando tenemos una zona de
+reversión digamos que en términos de probabilidades se espera que si el canal es principalmente
+altista la zona de reversión en este caso a favor de tendencia sea respetada o sea que tengamos
+una zona de reversión si es un canal altista el retroceso 61 78 se respete y de ahí pueda
+moverse a la alza y la zona de reversión contra tendencia pueda ser perforada o sea
+podamos tener un quiebre alzista esto evidentemente en ejemplo salar alza si tenemos en este caso
+un canal bajista la zona de reversión a favor de la tendencia que en este caso sería una resistencia
+eso debería respetarse o el mercado debería ser capaz de respetarlo y en este caso la zona
+de reversión contra tendencia podría generar un quiebre bajista o decir un quiebre al contrario
+normalmente obviamente pues puede darse el caso de que del canal principal y de la zona de reversión
+el mercado se rompa ya sea al alza o a la baja casi siempre esto va acompañado de otros elementos
+macroeconómicos y otros elementos de contexto gráfico que más adelante vamos a ir también
+enumerando y vamos a ir también trabajando pero entonces un esquema básico como lo hemos mencionado
+en varias ocasiones sería por ejemplo que si tenemos cualquier tipo de activo financiero
+y llega a la zona de reversión del canal alzista por ejemplo sea capaz de romper la zona de
+reversión de la resistencia anterior y de ahí irse hacia los niveles de 1 27 y de 1 61 vamos
+a ponerlo aquí sería sobre zona de reversión y aquí sería sobre quiebre alzista estoy poniendo
+obviamente ya los niveles especificados ahora en acciones como palantir o criptomoneas que están
+rompiendo máximos el mismo bitcóin como podríamos proyectar los targets más importantes eso lo
+vamos a ver ahora en la siguiente clase

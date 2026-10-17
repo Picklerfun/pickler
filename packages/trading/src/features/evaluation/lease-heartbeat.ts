@@ -12,9 +12,11 @@ export function startLeaseHeartbeat(input: {
   lease: { expiresAt: number };
   renew: () => Promise<void>;
   now?: () => number;
+  monotonic?: () => number;
   diagnostic?: (event: LeaseDiagnostic) => void;
 }) {
   const now = input.now ?? Date.now;
+  const monotonic = input.monotonic ?? now;
   const lost = new AbortController();
   let pending: Promise<void> | undefined;
   let lastSuccessAt: number | null = null;
@@ -49,6 +51,7 @@ export function startLeaseHeartbeat(input: {
       return;
     }
     const started = now();
+    const startedMono = monotonic();
     const delay = Math.max(0, started - expected);
     expected = started + 20000;
     pending = input
@@ -59,7 +62,7 @@ export function startLeaseHeartbeat(input: {
         input.diagnostic?.({
           kind: "renewed",
           at: now(),
-          durationMs: now() - started,
+          durationMs: monotonic() - startedMono,
           timerDelayMs: delay,
           lastSuccessAt,
           expiresAt: input.lease.expiresAt,
@@ -75,7 +78,7 @@ export function startLeaseHeartbeat(input: {
         input.diagnostic?.({
           kind: "renewal-failed",
           at: now(),
-          durationMs: now() - started,
+          durationMs: monotonic() - startedMono,
           timerDelayMs: delay,
           lastSuccessAt,
           expiresAt: input.lease.expiresAt,

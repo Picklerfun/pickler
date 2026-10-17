@@ -17,6 +17,11 @@ Both output directories must be new, with an existing parent. Export parses only
 from the selected private environment; it never populates process.env. Only loopback PostgreSQL
 is accepted. Diagnostics are optional and allowlisted, with a 32 MiB limit. Missing diagnostics
 remain unavailable. No command permits `--allow-paid`.
+Export accepts every registered perpetual protocol, including the model-free SMA profile
+comparison. The generic model-decision analyzer below remains limited to the historical
+`perps-comparison-v1` and `perps-four-way-v2` records; other protocols are rejected explicitly
+and must use their own offline business/report path. Export support does not reconstruct model
+arms or change historical interpretation.
 
 `audit` requires only an explicit export and output directory. It rejects environment and study
 configuration options, and loads no database, dotenv, provider transport or model adapter. The

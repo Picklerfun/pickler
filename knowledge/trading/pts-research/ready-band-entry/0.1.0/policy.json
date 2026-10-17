@@ -1,0 +1,26 @@
+{
+  "format": "pts-offline-causal-policy-v1",
+  "version": "0.1.0",
+  "reference": "pts-intraday@0.2.0-fast.2",
+  "offlineOnly": true,
+  "enabled": false,
+  "nativeSeconds": [3600, 900, 300],
+  "minimumClosedBars": {
+    "1h": 24,
+    "15m": 240,
+    "5m": 180
+  },
+  "formationMs": 259200000,
+  "correctionMs": 86400000,
+  "triggerMs": 300000,
+  "executionAdmission": "NONE",
+  "financialResults": "NONE",
+  "id": "ready-band-entry",
+  "changedFactor": "entry-trigger",
+  "recoveryExclusive": ["0.38", "0.495"],
+  "firstEligibleClose": "STRICTLY_AFTER_ALL_UNCHANGED_PREREQUISITES_READY",
+  "readinessIncludes": ["A", "B", "C", "primary", "alignment", "channel", "ATR14", "confluence"],
+  "expiry": "MIN_TRIGGER_PLUS_5M_C_CONFIRMATION_PLUS_24H",
+  "laterReferenceCrosses": "PRESERVED",
+  "repeatedPoll": "NEVER_REFRESH_TRIGGER_OR_TTL"
+}

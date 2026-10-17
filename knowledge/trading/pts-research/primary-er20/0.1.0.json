@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/candidate-v1.schema.json",
+  "format": "pts-research-candidate-v1",
+  "formatVersion": 1,
+  "catalog": "pts-research-candidates-v1",
+  "id": "primary-er20",
+  "candidateVersion": "0.1.0",
+  "status": "disabled-offline-research",
+  "executionScope": "offline-only",
+  "enabled": false,
+  "financialExecutable": false,
+  "studioSelectable": false,
+  "publicTrialStarted": false,
+  "singleChange": true,
+  "reference": {
+    "bundleId": "pts-course",
+    "knowledgeVersion": "1.0.0",
+    "path": "../../pts/bundle.json",
+    "sha256": "e860f1912b2b09fcb97202fd3354fc594b42e573dd82a91f7271532d84c1ca30"
+  },
+  "baseline": {
+    "identity": "pts-intraday@0.2.0-fast.2",
+    "path": "../../pts-versions/pts-intraday/0.2.0-fast.2/policy.json",
+    "sha256": "0631f6aba79b239b7c0957d0fbbad871d5bf99bff359263f38020f4d3a24d875"
+  },
+  "policy": {
+    "path": "0.1.0/policy.json",
+    "sha256": "a88d0f2bcb818c6dd558b8622a2b7369701268438eebf7fb4c38d148de974949"
+  },
+  "decisions": {
+    "path": "../DECISIONS-1.0.0.md",
+    "version": "1.0.0"
+  },
+  "literature": {
+    "path": "../LITERATURE-1.0.0.md",
+    "version": "1.0.0"
+  }
+}
