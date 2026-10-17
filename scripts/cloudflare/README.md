@@ -17,12 +17,50 @@ For each Worker, open **Settings → Build** and use:
 - Paste included watch paths as a comma-separated list, using the values below. The dashboard
   converts each path into its own chip; verify the saved entries before starting a build. A single
   space-separated entry does not represent multiple filters and can prevent builds from starting.
-- Build Variables and Secrets: `NODE_VERSION=24.19.0` and
+- Build Variables and Secrets: `NODE_VERSION=22.23.2` and
   `SKIP_DEPENDENCY_INSTALL=true`.
 
 The commands below explicitly install npm 10.9.3 and dependencies. Do not rely on
 `NPM_VERSION`: the Workers build image documentation does not list it as a supported version
 selector. Build variables are separate from runtime variables and secrets.
+
+As of 12 October 2026, the official Workers build image includes Node 22.23.2. This pin satisfies the repository's Node 22.22+ requirement; a listed preinstalled version does
+not establish that a particular remote installer run will succeed. Recheck the official build image before changing the pin. The dashboard build
+variable is authoritative; editing a local `.env` or a Wrangler runtime variable does not
+change the Node version selected before the build command starts.
+
+### Recovering a Node installation failure
+
+If a build ends at `Installing nodejs ...` with `Failed: error occurred while installing tools
+or dependencies`, the repository's build command has not started. On 12 October 2026 (UTC) the web
+build of main commit `a21124a4574ad1290656a6bb05e9e7bdafb39629` and its retry failed at this
+step while selecting Node 24.19.0. An owner-approved retry with Node 22.23.2 also failed there.
+The API build of the same commit installed Node 24.19.0 successfully. The previous web release
+remained active; these observations do not establish a bad Node release or an application error.
+
+In the affected Worker's **Settings → Build → Build Variables and Secrets**, save
+`NODE_VERSION=22.23.2`, then retry the failed main build through the existing Cloudflare pipeline.
+Preserve the other build variables, runtime bindings and secrets. Do not substitute a manual
+Wrangler deployment. A saved version pin is a proposed recovery, not proof of success: verify
+that the next log selects the expected Node version, that the build and publication finish,
+and that the active release serves the intended public page before reporting completion.
+
+If the installer still fails with the intended version, stop changing versions speculatively.
+Use **Clear cache** under the affected Worker's build settings to remove regenerable build
+artifacts, preserving variables and the cache setting, then perform one clean retry. Clearing
+cache does not change the active release. If the same installation boundary remains broken,
+retain the failed build IDs and the matching successful control build for Cloudflare support;
+no successful publication or cause has been established.
+
+The clean web retry `e755c830-7d54-49f3-bc33-63e21953134a` subsequently completed the build
+and automatic deployment for the same main commit, publishing version
+`5f41bd19-f94a-408c-a4df-3c83eb57a28e`. The normal public agent profile at
+[the confirmed token profile](https://pickler.fun/agents/teterabob) then loaded the real price,
+valuation, curve progress and distribution from the public API. Its history and recent trades
+were empty because no curve trades were recorded. The successful clean retry establishes
+recovery after clearing the cache; it does not establish why the earlier installer failed or
+that the version pin alone resolved it. Only the web build variable was changed; the other
+Workers, runtime bindings and secrets were preserved.
 
 ## API, research, and trading
 
