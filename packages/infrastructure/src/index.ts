@@ -166,11 +166,15 @@ export {
 export { ViemChainReader, type ViemChainReaderOptions } from "./chain/viem-chain-reader.js";
 
 export {
+  adviceNonce,
   authorizationTypedData,
   createAusdAuthorizationGateway,
-  transferMatches,
+  settlementTransfersMatch,
+  type AusdAuthorizationGateway,
   type AusdAuthorizationGatewayInput,
+  type ExpectedSettlement,
   type PublicClientLike,
+  type SplitterSettleRequest,
   type TransferLog,
   type WalletClientLike,
 } from "./chain/ausd-authorization.js";
@@ -249,6 +253,7 @@ export * from "./launch/metadata.js";
 export * from "./launch/grant-issuer.js";
 
 export * from "./launch/driver.js";
+export { createConfirmedLaunchPublisher } from "./launch/confirmed-launch.js";
 
 export type { Pool as TokenLaunchDatabase } from "pg";
 
@@ -260,3 +265,16 @@ export {
   timeEvaluationPool,
   type EvaluationDatabaseTiming,
 } from "./persistence/evaluation-timing.js";
+
+export * from "./launch/public-trading.js";
+
+export { PerplDashboardGateway, PerplDashboardError } from "./perpl/dashboard.js";
+
+export { PostgresExecutionReads } from "./persistence/execution-reads.js";
+
+export { PaperFundingEpochs } from "./persistence/paper-funding-epochs.js";
+
+export {
+  createPaperFundingAnchor,
+  type PaperFundingAnchor,
+} from "./persistence/paper-funding-anchor.js";
