@@ -24,7 +24,10 @@ export interface OperationOptions {
   errors?: z.ZodType;
   errorStatuses?: number[];
   /** Request headers beyond the security and idempotency ones. */
-  headers?: Record<string, { required?: boolean; description: string }>;
+  headers?: Record<
+    string,
+    { required?: boolean; description: string; schema?: Record<string, unknown> }
+  >;
   /** Statuses with their own JSON body, documented after (and over) the error statuses. */
   responses?: Record<number, { description: string; schema: z.ZodType }>;
 }
@@ -114,7 +117,7 @@ export function operation(id: string, options: OperationOptions) {
       in: "header",
       required: header.required ?? false,
       description: header.description,
-      schema: { type: "string" },
+      schema: header.schema ?? { type: "string" },
     });
   }
   if (options.idempotent) {

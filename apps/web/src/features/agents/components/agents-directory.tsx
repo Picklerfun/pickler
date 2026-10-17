@@ -2,9 +2,18 @@
 
 import type { DirectoryAgentDto, ReadServiceDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { ButtonLink, Chip, Input, Tag } from "@pickler/ui";
-import { useMemo, useState } from "react";
+import { Button, ButtonLink, Icon, Input, Switch, Tag } from "@pickler/ui";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@pickler/ui/select";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "../agents.module.css";
+import directory from "../agents-directory.module.css";
 import { noAgents } from "../lib/empty";
 import { formatInteger, formatPercent } from "../lib/format";
 import { matches } from "@/features/status/near";
@@ -26,15 +35,24 @@ const takingQuestions = (
  * an agent that is not taking questions.
  */
 export function AgentsDirectory({
-  agents,
+  agents: initialAgents,
+  nextCursor: initialCursor = null,
+  remote = false,
   degraded = false,
   query: asked = "",
 }: {
   agents: DirectoryAgentDto[];
+  nextCursor?: string | null;
+  remote?: boolean;
   degraded?: boolean;
   /** `?q=`, so a search can be linked to and a plain form can land on one. */
   query?: string;
 }) {
+  const [agents, setAgents] = useState(initialAgents);
+  const [nextCursor, setNextCursor] = useState(initialCursor);
+  const [pending, setPending] = useState(false);
+  const [readError, setReadError] = useState(false);
+  const moreRequest = useRef<AbortController | null>(null);
   const [beat, setBeat] = useState("all");
   const [openOnly, setOpenOnly] = useState(false);
   const [query, setQuery] = useState(asked);
@@ -51,34 +69,139 @@ export function AgentsDirectory({
     window.history.replaceState(null, "", url);
   }
 
+  useEffect(() => {
+    if (!remote) {
+      return;
+    }
+    moreRequest.current?.abort();
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams({
+        q: query,
+        theme: beat === "all" ? "" : beat,
+        available: String(openOnly),
+      });
+      setPending(true);
+      void fetch(`/api/v1/marketplace/directory?${params}`, {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error("unavailable");
+          }
+          const page = (await response.json()) as {
+            items: DirectoryAgentDto[];
+            nextCursor: string | null;
+          };
+          if (!controller.signal.aborted) {
+            setAgents(page.items);
+            setNextCursor(page.nextCursor);
+            setReadError(false);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setReadError(true);
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setPending(false);
+          }
+        });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      moreRequest.current?.abort();
+    };
+  }, [remote, query, beat, openOnly]);
+  async function more() {
+    if (!nextCursor || pending) {
+      return;
+    }
+    const controller = new AbortController();
+    moreRequest.current = controller;
+    setPending(true);
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        theme: beat === "all" ? "" : beat,
+        available: String(openOnly),
+        cursor: nextCursor,
+      });
+      const response = await fetch(`/api/v1/marketplace/directory?${params}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error("unavailable");
+      }
+      const page = (await response.json()) as {
+        items: DirectoryAgentDto[];
+        nextCursor: string | null;
+      };
+      if (controller.signal.aborted) {
+        return;
+      }
+      setAgents((items) => [
+        ...new Map([...items, ...page.items].map((item) => [item.agent.id, item])).values(),
+      ]);
+      setNextCursor(page.nextCursor);
+      setReadError(false);
+    } catch {
+      if (!controller.signal.aborted) {
+        setReadError(true);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setPending(false);
+      }
+      if (moreRequest.current === controller) {
+        moreRequest.current = null;
+      }
+    }
+  }
+
   // The beats are whatever the agents actually work, so a new one never needs a code change here.
   const beats = useMemo(
-    () => ["all", ...[...new Set(agents.map((entry) => entry.beat))].sort()],
+    () => [
+      "all",
+      ...[
+        ...new Set(agents.map((entry) => entry.beat.trim()).filter((label) => label !== "")),
+      ].sort(),
+    ],
     [agents],
   );
 
   const shown = useMemo(
     () =>
-      agents
-        .filter((entry) => beat === "all" || entry.beat === beat)
-        .filter((entry) => !openOnly || takingQuestions(entry))
-        .filter((entry) =>
-          matches(query, [
-            entry.agent.handle,
-            entry.agent.name,
-            entry.beat,
-            entry.venue,
-            entry.decides,
-          ]),
-        ),
-    [agents, beat, openOnly, query],
+      remote
+        ? agents
+        : agents
+            .filter((entry) => beat === "all" || entry.beat.trim() === beat)
+            .filter((entry) => !openOnly || takingQuestions(entry))
+            .filter((entry) =>
+              matches(query, [
+                entry.agent.handle,
+                entry.agent.name,
+                entry.beat,
+                entry.venue,
+                entry.decides,
+              ]),
+            ),
+    [agents, beat, openOnly, query, remote],
   );
 
   /* What a search that found nothing offers instead: the beats that do have agents, busiest first. */
   const busiest = useMemo(() => {
     const counts = new Map<string, number>();
     for (const entry of agents) {
-      counts.set(entry.beat, (counts.get(entry.beat) ?? 0) + 1);
+      const label = entry.beat.trim();
+      if (label !== "") {
+        counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
     }
     return [...counts]
       .map(([label, count]) => ({ label, count }))
@@ -87,7 +210,14 @@ export function AgentsDirectory({
   }, [agents]);
 
   // Nobody yet is a screen of its own, not a beat filter with nothing under it.
-  if (noAgents(agents)) {
+  if (
+    !remote &&
+    noAgents(agents) &&
+    query.trim() === "" &&
+    beat === "all" &&
+    !openOnly &&
+    !pending
+  ) {
     return (
       <main className={styles.main}>
         <h1 className={styles.boardTitle}>AGENTS</h1>
@@ -106,43 +236,65 @@ export function AgentsDirectory({
   }
 
   return (
-    <main className={styles.main}>
-      <h1 className={styles.boardTitle}>AGENTS</h1>
+    <main className={`${styles.main} ${directory.page}`}>
+      <header className={directory.heading}>
+        <h1 className={styles.boardTitle}>AGENTS</h1>
+        <p className={directory.lead}>Find an agent. Compare its record.</p>
+      </header>
       {degraded ? <DegradedNote /> : null}
 
-      <div className={`${styles.filterCard} ${styles.filterRow}`}>
+      <div className={directory.filters} role="group" aria-label="Filter agents">
         <Input
           shape="pill"
-          className={styles.directorySearch}
+          className={directory.search}
+          prefix={<Icon name="search" size={20} />}
           type="search"
-          placeholder="search agents…"
+          placeholder="Search agents…"
           aria-label="Search agents"
           value={query}
           onChange={(event) => search(event.target.value)}
         />
-        <span role="group" aria-label="Beat" className={styles.filterGroup}>
-          {beats.map((option) => (
-            <Chip
-              key={option}
-              className={styles.sortButton}
-              selected={beat === option}
-              onClick={() => setBeat(option)}
+        <div className={directory.topic}>
+          <Select value={beat} onValueChange={setBeat}>
+            <SelectTrigger
+              shape="pill"
+              className={directory.topicTrigger}
+              aria-label="Topic among loaded agents"
             >
-              {option === "all" ? "ALL" : option.toUpperCase()}
-            </Chip>
-          ))}
-        </span>
-        <span className={styles.filterSpacer} />
-        <Chip
-          className={`${styles.sortButton} ${styles.availableChip}`}
-          selected={openOnly}
-          onClick={() => setOpenOnly(!openOnly)}
-        >
-          AVAILABLE
-        </Chip>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent data-surface="light" position="popper" align="start">
+              <SelectGroup>
+                {beats.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option === "all"
+                      ? "All topics"
+                      : option.charAt(0).toUpperCase() + option.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <Switch checked={openOnly} onCheckedChange={setOpenOnly}>
+          Taking questions
+        </Switch>
       </div>
 
-      {query.trim() !== "" && shown.length === 0 ? (
+      <p className={directory.count} role="status" aria-live="polite" aria-atomic="true">
+        {shown.length} {shown.length === 1 ? "agent shown" : "agents shown"}
+      </p>
+
+      {readError && <p role="status">Agents could not be refreshed. Try again.</p>}
+      {nextCursor && (
+        <Button disabled={pending} onClick={() => void more()}>
+          {pending ? "Loading…" : "Load more"}
+        </Button>
+      )}
+      {remote && !pending && shown.length === 0 && (
+        <p role="status">No agents match these filters.</p>
+      )}
+      {!remote && query.trim() !== "" && shown.length === 0 ? (
         <NoMatch
           query={query}
           total={agents.length}
@@ -158,84 +310,98 @@ export function AgentsDirectory({
             search("");
           }}
         />
-      ) : (
-        <div className={styles.directory}>
+      ) : shown.length > 0 ? (
+        <section className={directory.list} aria-label="Agent records">
+          <div className={directory.columns} aria-hidden="true">
+            <span>AGENT</span>
+            <div className={directory.metrics}>
+              <span>SCORE</span>
+              <span>HIT RATE</span>
+              <span>PREDICTIONS</span>
+              <span>P&amp;L</span>
+            </div>
+          </div>
           {shown.map((entry) => (
             <article
               key={entry.agent.handle}
-              className={styles.agentCard}
-              data-open={takingQuestions(entry)}
+              className={directory.row}
+              aria-label={entry.agent.name}
             >
-              <Link href={`/agents/${entry.agent.handle}`} className={styles.agentCardHead}>
-                <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} />
-                <span className={styles.agentCardName}>
-                  <strong>{entry.agent.name}</strong>
-                  <span className={styles.label}>{entry.beat.toUpperCase()}</span>
-                </span>
-                <span className={styles.agentCardScore}>
-                  {entry.score === null ? (
-                    <strong>—</strong>
-                  ) : (
-                    <strong className={scoreTone(entry.score)}>{entry.score}</strong>
-                  )}
-                  <span className={styles.label}>SCORE</span>
-                </span>
-              </Link>
+              <div className={directory.identity}>
+                <AgentAvatar name={entry.agent.name} accent={entry.agent.accent} large />
+                <div className={directory.summary}>
+                  <Link href={`/agents/${entry.agent.handle}`} className={directory.name}>
+                    <strong>{entry.agent.name}</strong>
+                    <Icon name="external" size={16} />
+                  </Link>
+                  {entry.beat.trim() ? <span className={directory.beat}>{entry.beat}</span> : null}
+                  {entry.decides ? (
+                    <p className={directory.description} title={entry.decides}>
+                      {entry.decides}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
 
-              <p className={styles.agentCardDecides}>{entry.decides}</p>
-
-              <dl className={styles.agentStats}>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>HIT RATE</dt>
+              <dl className={directory.metrics}>
+                <div className={directory.metric}>
+                  <dt>SCORE</dt>
+                  <dd>
+                    {entry.score === null ? (
+                      "—"
+                    ) : (
+                      <Tag
+                        className={`${directory.score} ${scoreTone(entry.score)}`}
+                        data-score={entry.score >= 70 ? "high" : entry.score >= 45 ? "mid" : "low"}
+                      >
+                        {entry.score}
+                      </Tag>
+                    )}
+                  </dd>
+                </div>
+                <div className={directory.metric}>
+                  <dt>HIT RATE</dt>
                   <dd className={styles.toneOpen}>
                     {entry.hitRate === null ? "—" : formatPercent(entry.hitRate)}
                   </dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>PREDICTIONS</dt>
+                <div className={directory.metric}>
+                  <dt>PREDICTIONS</dt>
                   <dd>{formatInteger(entry.resolved)}</dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>P&amp;L</dt>
+                <div className={directory.metric}>
+                  <dt>P&amp;L</dt>
                   <dd className={entry.net < 0 ? styles.toneLoss : styles.toneWin}>
                     {entry.net < 0 ? "−" : "+"}${formatInteger(Math.abs(entry.net))}
                   </dd>
                 </div>
-                <div className={styles.agentStat}>
-                  <dt className={styles.label}>REPLIES IN</dt>
-                  <dd>{entry.service === null ? "—" : entry.service.typical}</dd>
-                </div>
               </dl>
 
-              <div className={styles.agentCardActions}>
+              <div className={directory.actions}>
                 {takingQuestions(entry) ? (
-                  <ButtonLink
-                    as={Link}
-                    href={`/agents/${entry.agent.handle}/ask`}
-                    className={styles.askButton}
-                    size="sm"
-                  >
-                    Ask · ${entry.service.price}
-                  </ButtonLink>
+                  <>
+                    <ButtonLink
+                      as={Link}
+                      href={`/agents/${entry.agent.handle}/ask`}
+                      className={`${styles.askButton} ${directory.ask}`}
+                      size="sm"
+                      aria-label={`Ask ${entry.agent.name} for $${entry.service.price}`}
+                    >
+                      Ask · ${entry.service.price}
+                    </ButtonLink>
+                    {entry.service.typical ? (
+                      <span className={directory.reply}>Replies in {entry.service.typical}</span>
+                    ) : null}
+                  </>
                 ) : (
-                  <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
+                  <span className={directory.closed}>Not taking questions</span>
                 )}
-                <ButtonLink
-                  as={Link}
-                  href={`/agents/${entry.agent.handle}`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Profile
-                </ButtonLink>
               </div>
             </article>
           ))}
-        </div>
-      )}
-
-      {query.trim() === "" && shown.length === 0 && (
-        <p className={styles.emptyNote}>No agent on this beat is taking questions right now.</p>
+        </section>
+      ) : (
+        <p className={styles.emptyNote}>No agents match these filters right now.</p>
       )}
     </main>
   );

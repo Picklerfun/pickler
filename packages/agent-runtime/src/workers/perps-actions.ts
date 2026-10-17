@@ -3,6 +3,7 @@ import {
   PRODUCT_PAPER_SESSION,
   createPerpsPaperService,
   dayLossReached,
+  paperFundingRange,
   exitLevels,
   proposalRefusal,
   paperDecimal,
@@ -84,9 +85,11 @@ function openPositions(view: PerpsPaperView) {
 }
 
 function closePnl(view: PerpsPaperView, positionId: string) {
-  return view.movements
-    .filter((m) => m.key.startsWith(`close:${positionId}:`))
-    .reduce((sum, m) => sum + Number(m.delta), 0);
+  return view.accounting?.closePnl !== undefined
+    ? Number(view.accounting.closePnl)
+    : view.movements
+        .filter((m) => m.key.startsWith(`close:${positionId}:`))
+        .reduce((sum, m) => sum + Number(m.delta), 0);
 }
 
 export { proposalRefusal } from "@pickler/trading/perps";
@@ -291,21 +294,18 @@ async function approveProposal(
           ]);
         }
         const frame = await runtime.exitFrame(network, proposal.instrument, signal);
-        const beforeFunding = await runtime.paper.view(scope);
+        const beforeFunding = await runtime.paper.executionSnapshot(scope);
         if (runtime.funding && beforeFunding.account.positions.length) {
           const histories = [];
           for (const symbol of new Set(beforeFunding.account.positions.map((p) => p.symbol))) {
             await fence(runtime, holder, signal);
+            const { from, to } = paperFundingRange(beforeFunding.account.positions, symbol, now());
             histories.push(
               await runtime.funding(
                 network,
                 symbol,
-                Math.min(
-                  ...beforeFunding.account.positions
-                    .filter((p) => p.symbol === symbol)
-                    .map((p) => p.openedAt),
-                ),
-                now(),
+                from,
+                to,
                 signal,
                 beforeFunding.account.positions.find((position) => position.symbol === symbol)
                   ?.market,
@@ -320,7 +320,7 @@ async function approveProposal(
           });
         }
 
-        const view = await runtime.paper.view(scope);
+        const view = await runtime.paper.executionSnapshot(scope);
         if (view.account.fundingPending) {
           return await settleRefused("FUNDING_PENDING", "FUNDING PENDING", [
             "Reconcile funding before increasing exposure",
@@ -351,12 +351,16 @@ async function approveProposal(
           config: { ...config, spend: config.spend },
           open,
           position,
-          newMarginToday: await runtime.paper.newMarginSince(scope, dayStart),
-          realizedToday: paperDecimal(
-            view.movements
-              .filter((m) => m.kind !== "initial" && m.at >= dayStart)
-              .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
-          ),
+          newMarginToday:
+            view.accounting?.newMarginToday ??
+            (await runtime.paper.newMarginSince(scope, dayStart)),
+          realizedToday:
+            view.accounting?.realizedToday ??
+            paperDecimal(
+              view.movements
+                .filter((m) => m.kind !== "initial" && m.at >= dayStart)
+                .reduce((sum, m) => sum + paperUnits(m.delta), 0n),
+            ),
           freeEquity: free,
           takerFee: frame.book.market.fees.taker,
         });
@@ -421,7 +425,10 @@ async function approveProposal(
         );
         const opened = after.account.positions.find((p) => p.id === key);
         if (!opened) {
-          const reason = after.attempts.find((a) => a.key === key)?.reason ?? "REJECTED";
+          const reason =
+            (await runtime.paper.attemptResult?.(scope, key))?.reason ??
+            after.attempts.find((a) => a.key === key)?.reason ??
+            "REJECTED";
           return await settleRefused("PAPER_REJECTED", `BLOCKED · ${reason.split(",")[0]}`, [
             `You approved ${label} · ${ausd(margin)}`,
             `The paper account refused · ${reason}`,
@@ -481,15 +488,15 @@ async function closePositions(
         steps.push(STOP_ALL_TEXT);
       }
     }
-    const accounts = ((await runtime.paper.openProductAccounts?.()) ?? []).filter(
-      (item) => item.productAgentId === check.productAgentId,
-    );
+    const accounts = (
+      (await runtime.paper.openProductAccounts?.(check.productAgentId)) ?? []
+    ).filter((item) => item.productAgentId === check.productAgentId);
     const targets: {
       position: import("@pickler/trading/perps").PerpsPaperPosition;
       scope: PerpsPaperScope;
     }[] = [];
     for (const item of accounts) {
-      const view = await runtime.paper.snapshot(item.scope);
+      const view = await runtime.paper.executionSnapshot(item.scope);
       for (const position of openPositions(view).filter(
         (p) => stopAll || p.id === action.positionId,
       )) {
@@ -546,8 +553,10 @@ async function closePositions(
     if (closed && !stopAll && !agent.paused) {
       let realized = 0;
       for (const item of accounts) {
-        const after = await runtime.paper.snapshot(item.scope);
-        realized += realizedSince(after.movements, utcDayStart((runtime.clock ?? Date.now)()));
+        const after = await runtime.paper.executionSnapshot(item.scope);
+        realized += after.accounting
+          ? Number(after.accounting.realizedToday)
+          : realizedSince(after.movements, utcDayStart((runtime.clock ?? Date.now)()));
       }
       if (dayLossReached(realized, effectiveRisk(agent.config))) {
         if (await runtime.store.pauseAgent(check.productAgentId, DAY_LOSS_TEXT)) {

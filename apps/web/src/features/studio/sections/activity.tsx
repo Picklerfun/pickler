@@ -1,5 +1,7 @@
 "use client";
 import { Button, Icon } from "@pickler/ui";
+import { useEffect, useRef, useState } from "react";
+import { studioApi } from "../api";
 import type { Run, RunEvent } from "../api";
 import { clock, duration, runMark, runSummary, type Tint } from "../decision";
 import styles from "../studio.module.css";
@@ -62,18 +64,75 @@ function offset(event: RunEvent, run: Run): string {
   return `${seconds >= 0 ? "+" : ""}${seconds.toFixed(1)}s`;
 }
 
+function EventBody({ event }: { event: RunEvent }) {
+  const ref =
+    event.data && typeof event.data === "object"
+      ? (event.data as { oversized?: boolean; detailUrl?: string })
+      : null;
+  const [detail, setDetail] = useState<unknown>(null);
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  async function read() {
+    if (!ref?.detailUrl || pending) {
+      return;
+    }
+    const controller = new AbortController();
+    request.current = controller;
+    setPending(true);
+    try {
+      const value = await studioApi<RunEvent>(ref.detailUrl.replace(/^\/v1\/studio/, ""), {
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) {
+        setDetail(value.data);
+        setFailed(false);
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setFailed(true);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setPending(false);
+      }
+    }
+  }
+  if (ref?.oversized) {
+    return (
+      <>
+        <span>This event exceeds the page size.</span>
+        {detail === null ? (
+          <Button variant="ghost" size="sm" disabled={pending} onClick={() => void read()}>
+            {pending ? "Loading…" : "Load event detail"}
+          </Button>
+        ) : (
+          <pre>{JSON.stringify(detail, null, 2)}</pre>
+        )}
+        {failed && <span role="status">Event detail could not be read. Retry.</span>}
+      </>
+    );
+  }
+  return <>{describe(event.data)}</>;
+}
+
 export function Activity({
   runs,
   runId,
   events,
   onSelect,
   onDecision,
+  more = false,
+  onMore,
 }: {
   runs: Run[];
   runId: string | null;
   events: RunEvent[];
   onSelect(id: string): void;
   onDecision(id: string): void;
+  more?: boolean;
+  onMore?(): void;
 }) {
   const selected = runs.find((run) => run.id === runId) ?? runs[0];
   const failed = runs.filter((run) => run.status === "failed").length;
@@ -83,10 +142,15 @@ export function Activity({
       <div className={styles.sectionHead}>
         <h1>Activity</h1>
         <span className={styles.count}>
-          {runs.length} RUNS · {failed} FAILED
+          {runs.length} RUNS SHOWN · {failed} FAILED
         </span>
         <p>how each run got where it got</p>
       </div>
+      {more && (
+        <Button variant="secondary" size="sm" onClick={onMore}>
+          Load older runs
+        </Button>
+      )}
       {!runs.length ? (
         <p className={styles.empty}>
           Nothing has run yet. Start one from the overview and the trace fills in step by step while
@@ -184,7 +248,9 @@ export function Activity({
                           {event.type}
                           <time>{offset(event, selected)}</time>
                         </span>
-                        <span className={styles.eventData}>{describe(event.data)}</span>
+                        <span className={styles.eventData}>
+                          <EventBody event={event} />
+                        </span>
                       </span>
                     </div>
                   ))

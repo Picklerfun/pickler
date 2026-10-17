@@ -223,7 +223,7 @@ test("an agent holding 3 AUSD cannot run alone, and the schedule is refused as N
     balanceAusd: 3,
   });
   assert.deepEqual(body.canSchedule, { ok: false, reason: "unfunded" });
-  assert.deepEqual(body.canCreateAnother, { ok: false, reason: "unfunded_agent" });
+  assert.equal(body.canCreateAnother, null);
   assert.equal(body.productId, FIRST);
 
   const refused = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
@@ -242,7 +242,7 @@ test("an agent with 10 AUSD and a successful manual run can be scheduled", async
   const body = await (await app.request(`/agents/${FIRST}`)).json();
 
   assert.deepEqual(body.canSchedule, { ok: true, reason: null });
-  assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
+  assert.equal(body.canCreateAnother, null);
 
   const accepted = await app.request(`/agents/${FIRST}/schedule`, put({ enabled: true }));
 
@@ -303,15 +303,15 @@ test("one agent's page reads its own balance; another agent's failed read does n
   const body = await response.json();
   assert.equal(body.wallet.balanceAusd, 12);
   // An unknown balance is not an unfunded agent; the create decides again with a real read.
-  assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
+  assert.equal(body.canCreateAnother, null);
 });
 
-test("one agent's page still says when another agent is known to be unfunded", async () => {
+test("one agent's page leaves fleet creation eligibility to its dedicated read", async () => {
   const { app } = fixture({ agents: [FIRST, SECOND], balances: { [FIRST]: 12, [SECOND]: 3 } });
 
   const body = await (await app.request(`/agents/${FIRST}`)).json();
 
-  assert.deepEqual(body.canCreateAnother, { ok: false, reason: "unfunded_agent" });
+  assert.equal(body.canCreateAnother, null);
 });
 
 test("an agent's own failed balance read fails its page", async () => {
@@ -370,7 +370,7 @@ test("an agent without a wallet reads as unfunded and does not block creation", 
 
   assert.equal(body.wallet, null);
   assert.deepEqual(body.canSchedule, { ok: false, reason: "unfunded" });
-  assert.deepEqual(body.canCreateAnother, { ok: true, reason: null });
+  assert.equal(body.canCreateAnother, null);
 });
 
 test("saving limits keeps the version, the schedule lock open and readiness", async () => {

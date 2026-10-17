@@ -78,17 +78,6 @@
   letter-spacing: -0.01em;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 12px;
-  border: 1px solid var(--pk-rule-strong);
-  border-radius: var(--pk-radius-pill);
-  font: 500 10px/1 var(--pk-font);
-  letter-spacing: 0.12em;
-  color: var(--pk-ink-muted);
-}
-
 .spacer {
   flex: 1 1 20px;
 }

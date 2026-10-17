@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { UNISWAP_V4_MONAD_MAINNET, UNISWAP_V4_MONAD_TESTNET } from "../src/deployments.js";
+import {
+  PICKLER_MONAD_TESTNET,
+  UNISWAP_V4_MONAD_MAINNET,
+  UNISWAP_V4_MONAD_TESTNET,
+} from "../src/deployments.js";
 
 const VENUES = [UNISWAP_V4_MONAD_MAINNET, UNISWAP_V4_MONAD_TESTNET];
 
@@ -50,4 +54,24 @@ test("sharing an address across chains does not mean sharing code", () => {
 
   assert.equal(testnetPermit2.address, mainnetPermit2.address);
   assert.notEqual(testnetPermit2.codeHash, mainnetPermit2.codeHash);
+});
+
+test("the advice splitter record pins what was read back from Monad testnet", () => {
+  const splitter = PICKLER_MONAD_TESTNET.contracts.adviceSplitter;
+
+  assert.equal(PICKLER_MONAD_TESTNET.chainId, 10143);
+  assert.equal(splitter.chainId, 10143);
+  assert.equal(splitter.address, "0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a");
+  assert.equal(splitter.deploymentBlock, 70562565n);
+  assert.equal(
+    splitter.codeHash,
+    "0x188e0eff98004d1ef3e1200ca4bd1d6de3a378be884db138c5a3cb32be3aa3fe",
+  );
+  assert.equal(splitter.codeSize, 1576);
+  assert.equal(PICKLER_MONAD_TESTNET.adviceSplitter.creatorBps, 6500);
+  assert.equal(
+    PICKLER_MONAD_TESTNET.adviceSplitter.asset,
+    "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+  );
+  assert.match(PICKLER_MONAD_TESTNET.deploymentTx, /^0x[0-9a-f]{64}$/);
 });

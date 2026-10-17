@@ -1,3 +1,5 @@
+import type { PerplReadKeyInputDto, PerplReadKeyPayloadDto } from "@pickler/api-schema";
+import type { PublicTokenTradePreparedDto } from "@pickler/api-schema";
 import type { ConnectResult } from "./connect";
 
 /**
@@ -22,6 +24,8 @@ export type ConnectMode = "create" | "existing";
 
 export interface SignerAccount {
   address: string;
+  /** Pinned browser provider identity; absent for the passkey wallet. */
+  providerId?: string | undefined;
   /** The chain the signer is pointed at, or null when it is not pointed at one. */
   chainId: number | null;
   /** Native balance in wei. Null when unknown or the chain is unreachable. */
@@ -54,7 +58,7 @@ export interface SignerAdapter {
    * Pick up a connection that already exists, without prompting. Null when there is nothing to
    * pick up, which includes a signer that cannot resume silently at all.
    */
-  resume: () => Promise<SignerAccount | null>;
+  resume: (signal?: AbortSignal) => Promise<SignerAccount | null>;
   /** The one call allowed to prompt. Null when the person closed the prompt. */
   connect: (mode?: ConnectMode) => Promise<SignerAccount | null>;
   /**
@@ -74,9 +78,20 @@ export interface SignerAdapter {
     token: string,
     joining: string,
   ) => Promise<{ address: string; session: ConnectResult } | null>;
+  signPerplReadKey?: (
+    payload: PerplReadKeyPayloadDto,
+    input: PerplReadKeyInputDto,
+  ) => Promise<string>;
+  sendTokenTransaction?: (
+    prepared: PublicTokenTradePreparedDto,
+    wallet: string,
+    token: string,
+  ) => Promise<string>;
   disconnect: () => Promise<void>;
   /** Follow changes made outside the page. Only an injected wallet has them. */
   subscribe?: (onChange: (account: SignerAccount | null) => void) => () => void;
   /** Only where the signer can be pointed at the wrong chain. */
   switchChain?: () => Promise<SignerAccount | null>;
 }
+
+export type PublicTokenTransaction = PublicTokenTradePreparedDto["transaction"];

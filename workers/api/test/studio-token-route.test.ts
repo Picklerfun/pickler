@@ -7,7 +7,9 @@ import {
   buildUserPrincipal,
   createTokenLaunchService,
   createTokenOperationService,
+  TokenPreparationError,
   type TokenOperationDriver,
+  type TokenLaunchRepository,
   tokenReferenceEconomics,
 } from "@pickler/core";
 import { tokenFixture } from "@pickler/infrastructure/testing/token";
@@ -181,6 +183,24 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
       400,
     );
   }
+  for (const trade of [
+    undefined,
+    { amount: "0", slippageBps: 50 },
+    { amount: "1e6", slippageBps: 50 },
+    { amount: "1000000", slippageBps: 101 },
+    { amount: "1000000", slippageBps: 50, recipient: grant.params.creator },
+  ]) {
+    assert.equal(
+      (
+        await request("/operations", {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({ action: "buy", expectedVersion: 0, trade }),
+        })
+      ).status,
+      400,
+    );
+  }
   const preparedResponse = await request("/operations", {
     method: "POST",
     headers: authHeaders,
@@ -220,6 +240,130 @@ test("owner JWT -> private draft -> controlled grant -> stored state; no browser
     tokenStateSchema.parse(await (await request("", { headers })).json()).confirmation,
     "pending",
   );
+  // The HTTP state read repairs an older finalized app operation, then serves stored state.
+  const storedTokens = services.tokens!;
+  const storedOperations = services.tokenOperations!;
+  let repaired = false;
+  let repairCalls = 0;
+  services.tokens = {
+    ...storedTokens,
+    state: async (target) => {
+      const state = await storedTokens.state(target);
+      return repaired
+        ? {
+            ...state,
+            confirmation: "confirmed" as const,
+            token: {
+              name: "Controlled",
+              ticker: "$CTRL",
+              address: "0x" + "2".repeat(40),
+              chainId: 10143 as const,
+              imageUri: null,
+              avatar: { accent: "lime" as const, pattern: 1 },
+            },
+          }
+        : state;
+    },
+  };
+  services.tokenOperations = {
+    ...storedOperations,
+    status: async (target, id) => {
+      assert.deepEqual(target, f.scope);
+      assert.equal(id, sent.id);
+      repairCalls++;
+      const result = await storedOperations.status(target, id);
+      repaired = true;
+      return result;
+    },
+  };
+  assert.equal(
+    tokenStateSchema.parse(await (await request("", { headers })).json()).confirmation,
+    "confirmed",
+  );
+  await request("", { headers });
+  assert.equal(repairCalls, 1, "confirmed state must remain database-only");
+  assert.deepEqual({ signs, sends }, { signs: 1, sends: 1 });
+  services.tokens = storedTokens;
+  services.tokenOperations = storedOperations;
+
+  const baseRepository = f.repository;
+  const tradeRepository: TokenLaunchRepository = {
+    transaction: (scope, chain, work) =>
+      baseRepository.transaction(scope, chain, (tx) =>
+        work({
+          ...tx,
+          context: {
+            ...tx.context,
+            token: {
+              name: "Controlled",
+              ticker: "CTRL",
+              address: "0x" + "2".repeat(40),
+              chainId: 10143,
+              imageUri: null,
+              avatar: { accent: "lime", pattern: 1 },
+            },
+          },
+        }),
+      ),
+  };
+  let receivedTrade: unknown;
+  const originalPrepare = driver.prepare;
+  driver.prepare = async (scope, intent) => {
+    receivedTrade = intent.trade;
+    return originalPrepare(scope, intent);
+  };
+  services.tokenOperations = createTokenOperationService({
+    repository: tradeRepository,
+    tokens: f.service,
+    driver,
+    chainId: 10143,
+  });
+  const trade = { amount: "1000000", slippageBps: 50 };
+  const tradeResponse = await request("/operations", {
+    method: "POST",
+    headers: { ...headers, "Idempotency-Key": "controlled_api_trade_01" },
+    body: JSON.stringify({ action: "buy", expectedVersion: 1, trade }),
+  });
+  assert.equal(tradeResponse.status, 200);
+  assert.deepEqual(receivedTrade, trade);
+  const tradePrepared = tokenOperationPreparedSchema.parse(await tradeResponse.json());
+  const tradeConfirm = await request(`/operations/${tradePrepared.operation.id}/confirm`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      expectedVersion: tradePrepared.operation.version,
+      signed: {
+        url: tradePrepared.activity!.url,
+        body: tradePrepared.activity!.body,
+        stamp: { stampHeaderName: "X-Stamp-Webauthn", stampHeaderValue: "controlled" },
+      },
+    }),
+  });
+  assert.equal(tradeConfirm.status, 200);
+  assert.equal(tokenOperationSchema.parse(await tradeConfirm.json()).action, "buy");
+  await request(`/operations/${tradePrepared.operation.id}`, { headers });
+  assert.deepEqual({ signs, sends }, { signs: 2, sends: 2 });
+  // A known unsent preparation failure has one persisted DTO, not an unrelated HTTP error.
+  driver.prepare = async () => {
+    throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+  };
+  const refused = await request("/operations", {
+    method: "POST",
+    headers: { ...headers, "Idempotency-Key": "controlled_api_gas_001" },
+    body: JSON.stringify({ action: "collect_curve_fees", expectedVersion: 1 }),
+  });
+  assert.equal(refused.status, 200);
+  assert.match(refused.headers.get("cache-control")!, /private.*no-store/);
+  const failure = tokenOperationPreparedSchema.parse(await refused.json());
+  assert.equal(failure.operation.status, "failed");
+  assert.equal(failure.operation.error, "GAS_LIMIT_EXCEEDED");
+  assert.equal(failure.operation.txHash, null);
+  assert.equal(failure.activity, null);
+  const storedFailure = tokenOperationSchema.parse(
+    await (await request(`/operations/${failure.operation.id}`, { headers })).json(),
+  );
+  assert.equal(storedFailure.error, "GAS_LIMIT_EXCEEDED");
+  assert.deepEqual({ signs, sends }, { signs: 2, sends: 2 });
   services.tokens = createTokenLaunchService({
     repository: f.repository,
     chainId: 10143,

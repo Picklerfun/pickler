@@ -39,6 +39,7 @@ import {
   type SetupVersion,
 } from "../api";
 import { startPolling } from "../lib/polling";
+import { usePerplExecution, type PerplExecution } from "../perpl-execution/use-execution";
 import {
   useAgentStudio,
   type AgentStudioData,
@@ -67,6 +68,8 @@ export interface LiveData extends AgentStudioData {
   details: Record<string, MarketDetailDto | null>;
   /** `GET /marketplace/directory`, read the first time Agents opens. */
   directory: LiveRead<DirectoryAgentDto[]>;
+  directoryCursor: string | null;
+  loadMoreDirectory(): Promise<void>;
   /** `GET /marketplace/leaderboard`, read the first time Leaderboard opens. */
   leaderboard: LiveRead<LeaderboardDto>;
   /**
@@ -175,6 +178,7 @@ function runtimeError(caught: unknown): Error {
  * in its own field (each section draws it with Retry), not in the shell's `error`.
  */
 export interface UseLive extends UseAgentStudio, LiveData {
+  execution: PerplExecution;
   /** The board and the watched markets' details again (Retry on "Couldn't read Perpl."). */
   readMarkets(): Promise<void>;
   readVersions(): Promise<void>;
@@ -235,6 +239,11 @@ export function useLive({
   section: LiveSectionKey;
   onRefreshAgent(): Promise<void>;
 }): UseLive {
+  const execution = usePerplExecution(
+    agent.productId ?? agent.id,
+    preview || !!staged,
+    staged?.execution ?? null,
+  );
   const [versions, setVersions] = useState<LiveRead<SetupVersion[]>>(staged?.versions ?? null);
   const [markets, setMarkets] = useState<MarketsRead>(staged?.markets ?? null);
   const [details, setDetails] = useState<Record<string, MarketDetailDto | null>>(
@@ -500,6 +509,8 @@ export function useLive({
     [saveSetupOnce, readVersions],
   );
 
+  const [directoryCursor, setDirectoryCursor] = useState<string | null>(null);
+  const directoryLoading = useRef(false);
   const readDirectory = useCallback(async () => {
     if (offline) {
       return;
@@ -507,7 +518,8 @@ export function useLive({
     try {
       const read = await marketplaceDirectory();
       if (alive.current) {
-        setDirectory(read);
+        setDirectory(read.items);
+        setDirectoryCursor(read.nextCursor);
       }
     } catch {
       if (alive.current) {
@@ -515,6 +527,33 @@ export function useLive({
       }
     }
   }, [offline, alive]);
+
+  const loadMoreDirectory = useCallback(async () => {
+    if (offline || !directoryCursor || directoryLoading.current) {
+      return;
+    }
+    directoryLoading.current = true;
+    try {
+      const page = await marketplaceDirectory(undefined, directoryCursor);
+      if (alive.current) {
+        setDirectory((current) => [
+          ...new Map(
+            [...(Array.isArray(current) ? current : []), ...page.items].map((item) => [
+              item.agent.id,
+              item,
+            ]),
+          ).values(),
+        ]);
+        setDirectoryCursor(page.nextCursor);
+      }
+    } catch {
+      if (alive.current) {
+        setDirectory("failed");
+      }
+    } finally {
+      directoryLoading.current = false;
+    }
+  }, [offline, directoryCursor, alive]);
 
   const readLeaderboard = useCallback(async () => {
     if (offline) {
@@ -754,11 +793,14 @@ export function useLive({
 
   return {
     ...studio,
+    execution,
     saveSetup,
     versions,
     markets,
     details,
     directory,
+    directoryCursor,
+    loadMoreDirectory,
     leaderboard,
     readMarkets,
     readVersions,

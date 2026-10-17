@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./perpl-live": {
+      "types": "./src/perpl-live.ts",
+      "import": "./dist/perpl-live.js"
+    },
     ".": {
       "types": "./src/index.ts",
       "import": "./dist/index.js"
@@ -45,6 +49,7 @@
     "build": "tsc -p tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=../../apps/agent-service/.env --import tsx src/persistence/migrate.ts",
+    "perpl:storage": "node --env-file-if-exists=../../apps/agent-service/.env --import tsx src/persistence/perpl-live-migration-cli.ts",
     "research-access": "tsx src/studio/operator.ts",
     "trading-access": "tsx src/trading/access.ts",
     "turnkey:delegated-key": "tsx src/turnkey/delegated-key-cli.ts"

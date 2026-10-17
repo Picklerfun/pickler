@@ -274,6 +274,7 @@ test("same runtime ID in two tenants has isolated reservations, ownership and hi
   await assert.rejects(f.peer.enqueue(user, publicId, "BTC", "same-key", policy), {
     code: "ADVICE_BUSY",
   });
+  f.advance(1);
   const second = await f.peer.enqueue(randomUUID(), publicId, "ETH", "same-key", policy);
   assert.notEqual(first.tenantId, second.tenantId);
   assert.equal(first.agentId, second.agentId);
@@ -291,4 +292,32 @@ test("same runtime ID in two tenants has isolated reservations, ownership and hi
   await assert.rejects(f.peer.enqueue(randomUUID(), publicId, "BTC", "private", policy), {
     code: "NOT_FOUND",
   });
+});
+
+test("advice status excludes snapshots/results and single-agent identity reads stay workspace scoped", async (t) => {
+  const f = await setup(t);
+  const user = randomUUID();
+  const job = await f.advice.enqueue(user, f.id, "BTC", "narrow-status", policy);
+  const status = await f.advice.getStatus(job.id);
+  assert.equal(status.id, job.id);
+  assert.equal(status.status, "queued");
+  assert.equal(status.resultAvailable, false);
+  assert.ok(!("config" in status) && !("result" in status) && !("policy" in status));
+  const { PostgresExecutionReads } = await import("../src/persistence/execution-reads.js");
+  const reads = new PostgresExecutionReads(f.db.pool);
+  const workspace = (
+    await f.db.pool.query(
+      "SELECT workspace_id FROM pickler.product_agents WHERE product_agent_id=$1",
+      [f.id],
+    )
+  ).rows[0].workspace_id;
+  const identity = await reads.studioIdentity(workspace, f.tenant, f.id);
+  assert.equal(identity?.name, "Analyst");
+  assert.equal(identity?.scope.agentId, "runtime-advice");
+  assert.equal(await reads.studioIdentity(randomUUID(), f.tenant, f.id), null);
+  await f.db.pool.query(
+    "UPDATE agents.agents SET visibility='private',published_at=NULL WHERE id=$1",
+    [f.id],
+  );
+  assert.equal((await f.advice.getStatus(job.id)).published, false);
 });

@@ -13,6 +13,10 @@ Read the root and affected dependency AGENTS.md files before changes. Keep docum
 
 ## Responsibility and structure
 
+Perpl Controls obtains current collateral minimums from the owner state. Funding keeps the
+owner's exact entered amount; insufficient daily limits link to the existing Limits section
+and disable preparation. The UI never raises limits or funds a wallet automatically.
+
 Next.js owns presentation and authentication transport. Hono in `workers/api` is the only
 business API. All web API requests use the same origin and delegate through a Service Binding.
 The web has no database, provider-secret, Mastra or infrastructure dependency. Public Supabase
@@ -47,7 +51,7 @@ application are the "Pickler Landing Trade v2" and "Pickler Create Agent" canvas
 and the application" below). The marketplace reads `/api/v1/marketplace/*`: agents come from the
 database, the perpetuals board is read from Perpl (without `PERPL_BOARD_NETWORK` the API answers 503 and the board shows its
 catching-up state; the sample board lives only with the design harness), and research results never appear there automatically.
-The landing reads only public agent activity (docs/specs/marketplace-real-only-v1.md N8). Hono sets
+The landing reads public agent activity and canonical tokens of published agents from the marketplace directory. Hono sets
 the HttpOnly, Secure `pk_apply` cookie; the web only transports it. Never put that bearer token in
 URLs or JSON.
 
@@ -87,7 +91,44 @@ Controls come from `@pickler/ui`: `Button`/`ButtonLink` for actions (`glow` is t
 
 Market data is drawn with `CandleChart` and `BarChart` from `@pickler/ui` — the price panel on a token page and every series under the leaderboard. Features hand them timestamped buckets and nothing else; colours and type come from the surface. The library's own logo is off, so `PublicShell` carries the TradingView credit its licence asks for; any new surface that shows a chart needs that credit too.
 
+## Product network selector
+
+The shared navbar network selector is the only app-owned UI that says Testnet. Content headings,
+forms, status labels, wallet instructions and reviewed errors use network-neutral copy or refer
+back to the selected Monad network. Funding and transaction reviews retain the actual chain ID;
+network identity, RPC endpoints, wallet-switch metadata and execution guards remain unchanged.
+
+`features/site/network-selector.tsx` renders a custom network menu using `Button` and `Icon` from `@pickler/ui` in
+the shared public `SiteNav` and all three Studio top bars (home, creation and draft/live shell). Its presentation
+catalogue in `features/site/networks.ts` uses `@pickler/chain` metadata: Testnet is active;
+Mainnet is visible as "Coming soon" and disabled. The accessible description explains why.
+The wallet-style compact trigger carries the `network` icon, Monad's mark and plain Testnet text.
+Below 640px the trigger keeps the two marks with an accessible network name; in the agent Studio
+header it contracts to the Monad mark while another global disclosure expands.
+The menu contains only the two network rows, with no decorative heading, descriptions or footer.
+Opening focuses the active radio menu
+item; arrow keys/Home/End navigate enabled items, Escape restores trigger focus, and outside clicks
+or focus leaving close the menu. Positioning keeps the panel within the mobile viewport. Motion
+respects reduced-motion preferences. `Select` remains a generic native UI export for other forms.
+There is no persistence, wallet ceremony or API request on selection: both products remain on
+Testnet. This is not backend authorization or a mainnet launch switch. See
+[Network selector and mainnet readiness](../../docs/network-selector.md) before enabling a second
+network. Keep the selected product network distinct from the browser wallet's connected chain.
+
 ## The wallet
+
+Browser extensions are discovered through EIP-6963 in `injected-providers.ts`, with a legacy
+EIP-1193 fallback. The chooser names each discovered extension, pins the explicit selection for
+account reads, sign-in, network changes and trades, and remembers only its provider ID alongside
+the existing signer kind. Provider names are untrusted plain text; no supplied icons/HTML execute.
+Reload never falls through from a missing remembered extension to another installed wallet.
+Subscriptions follow provider identity even when two extensions expose the same account.
+Adding Monad testnet is followed by a switch and a bounded actual-chain check. The wallet context
+serializes switch requests, exposes progress and reviewed failures, and ignores superseded results.
+`wallet-request-error.ts` preserves nested RPC codes and reviewed actionable explanations without
+rendering provider payloads. Public trades expose compact expandable error details; progress stays
+in the primary button. Definitive pre-send failures keep the amount and require a fresh preparation;
+ambiguous sends remain blocked and never authorize another transaction.
 
 `features/wallet/` owns the connection. `lib/signer.ts` is the contract the rest of the site talks to — address, chain, balance, connect, disconnect — and two adapters implement it, the marketplace's two wallets and no others (`docs/specs/mera-web-v1.md`):
 
@@ -116,7 +157,7 @@ What cannot be wiped, and no comment or document may claim otherwise: the mnemon
 
 - The passkey wallet connects and signs in with one prompt, so it skips `signin`. A browser wallet answers its account prompt and lands on `signin`, whose button asks for one `personal_sign` over the same message. That step cannot be closed, only disconnected out of (below). A session that has since expired is asked for again by whatever first needs it (`signInWithWallet`).
 - With the session, the context reads `GET /api/v1/profile` (`readProfile` in `lib/handles.ts`: the profile, `false`, or null when it could not be read). No profile opens `username`, whichever wallet signed in; the form is `useHandleClaim` (`lib/use-handle-claim.ts`), and the claim uses the session without signing again. A profile, or a read that failed, closes the chooser.
-- **The username is not optional, and neither is signing in.** A wallet that connected finishes arriving or is disconnected. `mustFinish(state)` in `lib/connect-flow.ts` names the steps that cannot simply be closed — `signin`, `username`, `join`, and `prf` while joining — and on them the chooser ignores Escape and a click outside and draws **Disconnect** where the close button was (`onLeave`, which disconnects the wallet). Disconnect is never disabled, not even while a wallet is being asked to sign: a browser wallet that does not answer would otherwise leave a modal with every control dead. It supersedes whatever is in flight, and a sign-in that answers afterwards is dropped with the session it made. On load a remembered wallet is picked up only if the browser still holds a session — any session: a studio account that linked the wallet is opened by it, so the test cannot be "a wallet account's" — and nothing is picked up when nothing is remembered (a browser wallet goes on listing its accounts after a disconnect it could not revoke). So a reload does not bring back a wallet in a browser that is signed out; a build with no Supabase configured has no accounts, and there a browser wallet simply connects. An account found without a username when no chooser is open — after a reload the page adopts the browser's wallet-account session and reads its profile — is shown the username step at once, derived from `hasProfile === false` rather than dispatched, on every page that is not the studio's (`ownerOf(pathname)`). Only a known `false` holds anybody: `null` never does. There is no username panel on `/portfolio` any more. An adopted session may be another address's (the person switched account in their wallet between visits), so every sign-in that issues a session reads the profile again (`keep`), and what the page shows is about the account that signed. `hasProfile` is forgotten only when the session is let go of, not on a change of chain.
+- **The username is not optional, and neither is signing in.** A wallet that connected finishes arriving or is disconnected. `mustFinish(state)` in `lib/connect-flow.ts` names the steps that cannot simply be closed — `signin`, `username`, `join`, and `prf` while joining — and on them the chooser ignores Escape and a click outside and draws **Disconnect** where the close button was (`onLeave`, which disconnects the wallet). Disconnect is never disabled, not even while a wallet is being asked to sign: a browser wallet that does not answer would otherwise leave a modal with every control dead. It supersedes whatever is in flight, and a sign-in that answers afterwards is dropped with the session it made. On load a remembered browser wallet is restored from the extension's existing `eth_accounts` permission independently of the Pickler auth session. Missing auth still requires explicit wallet sign-in for account actions; restoration never signs, requests account access or opens the chooser. The injected adapter waits up to three seconds for delayed injection, bounds provider reads, and ignores superseded account events. The context's `restoring` state distinguishes silent reconnection from an explicit wallet prompt. Disconnect or a newer connection invalidates pending restoration and auth adoption. Nothing is picked up when nothing is remembered, even if the extension still shares accounts. The Mera adapter retains its existing auth-session gate. `scripts/design/wallet-reload.mjs` checks delayed injection, slow balance reads, locked wallets and explicit disconnect in a controlled browser; it also runs against a compiled local web with authentication configured but no session. An account found without a username when no chooser is open — after a reload the page adopts the browser's wallet-account session and reads its profile — is shown the username step at once, derived from `hasProfile === false` rather than dispatched, on every page that is not the studio's (`ownerOf(pathname)`). Only a known `false` holds anybody: `null` never does. There is no username panel on `/portfolio` any more. An adopted session may be another address's (the person switched account in their wallet between visits), so every sign-in that issues a session reads the profile again (`keep`), and what the page shows is about the account that signed. `hasProfile` is forgotten only when the session is let go of, not on a change of chain.
 - A passkey that returns no PRF output is the step `prf`, not an error line: it says which password managers work and offers the other way.
 - A closed prompt returns to the step it came from with no error. A choice this browser cannot offer stays in the list with the reason on it; there is no "unsupported" state. The chooser can be closed on its first step, on its last, and on `prf` reached from the first; a wallet whose prompt is approved after the person closed it on the first step is connected and brings the next step with it. A passkey ceremony always ends (its prompt is modal, its requests time out), so a second pick waits for it. A browser wallet may never answer, so closing the chooser stops the site saying it is waiting (a late answer still connects), and a later pick takes over, after which whatever the earlier one answers is dropped.
 
@@ -130,7 +171,7 @@ The chooser's card is drawn from the canvas "Pickler Connect Link Wallet" (Claud
 
 The account menu names which wallet you are looking at (`PASSKEY WALLET` or `BROWSER WALLET`), so a portfolio is never shown without saying whose it is. The passkey wallet has no chain of its own to be pointed at, so it is never "on the wrong network": `onTargetChain` is true for it and `canSwitchChain` is how a page asks whether the verb exists at all.
 
-Signing in is the only thing either wallet signs here. Nothing sends a transaction: paying for a read, trading and enabling Perpl from the web are a later specification, and the buttons that would do it stay disabled with the reason on them.
+The marketplace wallet signs in, submits canonical token trades through the public trade flow, and explicitly authorizes Perpl scope-1 reads through the dashboard. Perpl order sending and exchange-account funding from the web remain outside those operations.
 
 **A wallet account is not a creator account.** The account at `/signin` is for people building agents, with a Turnkey wallet under a passkey for `app.pickler.fun`; the wallet account is for people reading and backing them. Do not fold one into the other.
 
@@ -140,7 +181,7 @@ A wallet session belongs to one address. `lib/wallet-session.ts` keeps the token
 
 Three pages only mean something for a connected wallet — `/portfolio`, `/activity` and `/reads` — and they say so through `ConnectGate` rather than showing an empty table. Following an agent is kept in the browser against the address, so a different wallet in the same browser has a different list and nothing about it reaches a server.
 
-What is real today: the address, the chain and the native balance. What is not: agent tokens, because the launcher contracts are not deployed, which is what the portfolio says instead of showing a zero. Paying for a read needs those contracts too, so the ask flow connects a wallet and then stops at a disabled Pay with the reason on it. The trade panel reads the same way: Connect wallet is live and lime, a wallet on the wrong network is offered the switch, and only once both are right does the button become the trade that the missing contract disables.
+Native address, chain and balance are real. Canonical agent tokens trade on their public profiles. The legacy `/portfolio` does not read token holdings or Perpl positions: both counts stay unknown, and Positions links to `/perpl` for the real read-only portfolio. Paid legacy reads still stop at their disabled Pay action.
 
 ## One navigation bar
 
@@ -148,7 +189,8 @@ What is real today: the address, the chain and the native balance. What is not: 
 application included: the same brand, the same Explore / Build / Resources menus, the same height.
 It ends in a secondary "Get the app" link (`/#app`) and one primary "Create agent" action
 (`/create`). The action appears once, in the header or the compact menu footer; Build does not
-repeat it. Tokens, Leaderboard and Reputation remain Soon without links. `/create` changes only
+repeat it. Tokens links to the existing public launch section at `/#tokens`; Leaderboard and Reputation
+remain Soon without links. `/create` changes only
 the secondary link to "Trade with AI" (`/`). The landing
 and the explore routes (everything inside `PublicShell`) also carry the wallet with `connect`: Connect
 wallet beside the pills, and once connected the address, its balance, and the three pages that only
@@ -161,8 +203,8 @@ graduated token — not for who made it.
 Both are specified in `docs/specs/landing-trade-v1.md`. `/` (`features/landing/`) is the "Pickler
 Landing Trade v2" canvas: a light page with four dark blocks, each a subtree taking
 `data-surface="dark"` — the hero phone (`#hero-phone`), the three ways in (`#how`, cards
-`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/tokens` and `/markets`), the FOUR STEPS
-phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The one thing the page reads from an API is the agents' latest actions, `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
+`#how-hire`, `#how-back`, `#how-trade`, to `/agents`, `/#tokens` and `/markets`), the FOUR STEPS
+phone (`#steps-phone`, under `#app`) and the closing block (`#download`). The page reads eight confirmed public agent tokens from `/api/v1/marketplace/tokens` into `components/token-market.tsx`, below the hero. Only `launchedToken` entries appear; cards link to the existing public agent profile and its Buy/Sell form. Missing tokens and failed reads have distinct messages. This read never queries RPC or asks for a wallet signature. The agents' latest actions are read from `/api/v1/marketplace/activity`, which the tape above the bar runs through — ticker or handle, the call, what came of it, ON PAPER (`lib/actions.ts`, pure and pinned in `apps/web/test/landing-actions.test.ts`; with nothing on record the tape is not drawn; marketplace-real-only-v1.md N8). The hero's dialogue beside the phone is the canvas's worked example of the kinds of action, not a read. Every other figure is the canvas's worked example inside the card that explains it (`lib/demo.ts`, pure
 and pinned in `apps/web/test/landing-demo.test.ts`: the six question/answer pairs over the phone,
 the candle game, the token curve, the padlock, the steps, the questions), drawn `aria-hidden` where
 it is decoration and still under `prefers-reduced-motion` (`lib/use-ticker.ts` is the one clock,
@@ -213,7 +255,7 @@ local fixture servers for responsive geometry, keyboard, touch, menu navigation 
 `/markets` lists every perpetual market Perpl has open and `/markets/[symbol]` is one of them. The
 API reads them from the venue through the parser the mobile app trades on
 (`docs/specs/perps-board-live-v1.md`), and every market carries its `source`: the line over the
-title names the venue, the network and the time of the read, adds `STALE` when the venue has not
+title names the venue and the time of the read, adds `STALE` when the venue has not
 answered since, and says `SAMPLE DATA` for the harness's sample board (`sourceEyebrow` and `sourceFootnote`
 in `lib/format.ts`). A count nobody has measured — agents reading, open calls — is `null` on the
 wire and a dash on the page, never a zero; a `null` reach refuses no square. When the venue cannot be
@@ -260,7 +302,9 @@ Nothing charges yet: the pay button carries the note rather than pretending. A r
 
 ## Dashboard and the public site
 
-The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` answer 404 while their products are soon, and the navigation announces them as such (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
+The private creator studio lives at `/studio` and calls the Hono API. The studio lived at `/console` until 2026-09-25; no redirect is kept because nobody had launched. The public surface is the landing, `/create`, the auth screens, `/agents`, `/markets` and `/reads`; `/tokens` and `/leaderboard` remain unmounted; the Tokens navigation entry and landing Back action
+link to the existing `/#tokens` section, whose confirmed cards open `/agents/<handle>` for Buy/Sell.
+Leaderboard remains Soon (docs/specs/marketplace-real-only-v1.md N1, N2). Keep private research and public demonstration data separate; share visual components without automatically publishing results.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -295,6 +339,21 @@ holds (`callbackDestination` in `features/auth/lib/callback.ts`): no master wall
 provisions a workspace. Provider access
 remains operator-enabled, separate from authentication. The completed signup screen links to
 ^the studio; public wallet/token/read demonstrations retain their existing design and limits.
+
+## Request proxy
+
+`src/proxy.ts` exports the Next.js 16 `proxy` request handler and the unchanged host/session
+decision rules. Keep the matcher, temporary uncached redirects, callback query and Studio rewrite
+intact. API JWT authorization remains independent. The request and routing regressions retain
+their historical middleware test filenames. OpenNext 1.20.6 can bundle this Node.js proxy for
+workerd, but labels that support experimental; a Next build alone is insufficient validation.
+Run the Worker build and controlled workerd routing checks before accepting the migration.
+For that controlled build, set `NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_test`. Start the generated Worker through
+`wrangler dev --local` using a temporary config without live service bindings, then run
+`PROXY_BASE_URL=http://127.0.0.1:8833 node scripts/design/proxy-routing.mjs` from the root.
+The suite refuses remote targets and verifies 12 host, cookie, redirect and rewrite scenarios.
+These synthetic build values are not user preview or deployment configuration.
 
 ## Worker build
 
@@ -409,7 +468,7 @@ No link in the studio, account or auth screens names a cross-product path as a l
 studio host the studio is `/` and `/studio`, `/agents`, `/agents/<handle>` and `/leaderboard` are
 404s, so the studio's home comes from `useStudioHref()` and a marketplace path from `useMarketplaceHref(path)`
 (`features/site/studio-href.tsx`, over `marketplaceUrl` in `server/hosts.ts`): relative on a host
-serving both products, `https://<marketplace host>/path` from the studio host. The middleware's
+serving both products, `https://<marketplace host>/path` from the studio host. The request proxy's
 rewrite of the studio root keeps the query, so `/?agent=<id>&section=<key>` is
 `/studio?agent=<id>&section=<key>` there.
 
@@ -667,7 +726,10 @@ bought, so the creator prices it after Go Public. A "For sale" toggle and a pric
 analysis (0.10–100, up to 6 decimals) are saved with `PUT /agents/:id/advice-price`
 (`saveAdvicePrice` on `use-agent-studio.ts`, `{ priceAusd }`, `null` to stop selling), which carries
 no version, so the card keeps its own outcome rather than `useSetupSave`'s. The card says the money
-goes to the agent's wallet and that a failed analysis is not refunded automatically. Without a
+is split 65% to the agent's wallet and 35% to Pickler (the creator's share is the floor of
+`value * 6500 / 10000` in micro-AUSD, mirrored in `adviceShares`; the web never imports core), shows
+"You receive X AUSD per analysis." (`earnLine`, `#live-advice-earn`) under the price field while the
+form holds a valid price, and says that a failed analysis is not refunded automatically. Without a
 wallet the price cannot be set, only cleared, the card says why and a saved price is tagged PRICED ·
 NO WALLET; a view-only member has every control shut. An equal price written differently ("1.50" for
 1.5) is not an edit, and the studio memory is told so, so leaving does not warn. The rules are
@@ -784,7 +846,8 @@ needs a session with no wallet and the design harness has none;
 
 The studio Limits & funding section includes `sections/trading.tsx`: public account, preparation/explicit confirmation, mode and order history. Use private studio API DTOs and visibility-aware polling. Never import signer or infrastructure code.
 
-`/tokens` is not mounted while the launchpad is soon (marketplace-real-only-v1.md N2); `features/agents` keeps the launch board, the token page and the leaderboard for when it is.
+`/tokens` is not mounted (marketplace-real-only-v1.md N2); public discovery uses `/#tokens` and
+agent profiles. `features/agents` retains the historical unmounted launch board, token page and leaderboard.
 
 ## Design checks
 
@@ -1152,7 +1215,7 @@ only on labelled local stages. Chart geometry is memoized during point inspectio
 `features/tokens` owns presentation and transport for the existing `/studio/agents/:id/token` route
 in both draft and live Studio. It reuses the persistent shell and memory-only form store. Reads keep
 fields mounted with Skeletons; errors require explicit retry, and newer versions cannot silently
-overwrite preserved edits. The Launch token control stays disabled in every composition, including fixtures. A private agent shows
+overwrite preserved edits. Real launch availability comes from the independently gated backend; local fixtures expose only controlled operation phases. A private agent shows
 Go public first. The shared `AgentTokenCard` appears below public persona headers and distinguishes
 absence and pending confirmation without a visitor launch action.
 
@@ -1176,11 +1239,33 @@ and are refused in production. `scripts/design/token-preview.mjs` checks both st
 sizes, keyboard and persistent navigation; Design CI runs it. The controlled loading regression
 covers private token reads and preserved edits. See [the guide](../../docs/agent-token-preview.md).
 
+Token operation actions communicate loading only inside the pressed button; details stay mounted
+and new operation details expand briefly with reduced-motion support. Synchronous duplicate-click
+admission remains mandatory. Failed preparation renders one reviewed message, never provider prose.
+Database-only recovery retains the idempotency key when the response/status is uncertain.
+`token-operation-status.ts` distinguishes missing signing identity, pending signature, signed but
+unsent bytes, broadcast uncertainty, inclusion and finality. Explicit checks produce a timestamped
+result even without progress. An unidentified launch offers explicit Check status for bounded
+backend recovery after expiry; other unidentified actions require review. Neither state may offer
+another signature or describe the operation as confirming. Canonical expiry resolution shows
+Launch attempt expired, preserves the form and permits a separate new preparation.
+`chain-reference.tsx` provides icon-only copy controls and makes each address/hash itself the
+network-specific explorer link, without a separate Explorer button. Copy feedback switches the
+icon and accessible name; clipboard failure reveals the full value. It uses public chain metadata,
+and simulated references remain plain text without fake explorer links.
+The shared token card uses it too. Status reads never sign or send; signed recovery needs an explicit
+Send transaction. Confirmed launches automatically read database-only token details, with
+Refresh token details retained after the finite wait stops.
+The controlled loading harness covers delays, refusals, lost responses, identity recovery, unchanged
+checks, copy/explorer references, indexing lag, keyboard, mobile and reduced motion without providers.
+
 ## Token operation controls
 
 `features/tokens/token-operation-controls.tsx` presents server-resolved testnet actions. It lazily
 loads the existing Studio passkey only after an explicit signature request; it never uses the
-marketplace wallet signer. Status, collection and claims are manual, with no provider polling.
+marketplace wallet signer. Signing, submission, collection and claims remain explicit. After a
+known broadcast, the receipt and finality are read automatically through the existing private API;
+no browser RPC is added.
 Unsigned drafts and operation identities survive persistent Studio navigation in owner-scoped
 memory; signed bytes remain backend-only. AUSD claims are labeled as master-wallet aggregates.
 Frozen token images take priority over the agent's editable avatar. Local token fixtures remain
@@ -1195,3 +1280,327 @@ confirmed fixture shows permanent V4 NFT liquidity custody, pool ID, native 1% L
 form independently of signing availability. No financial formulas, policy construction or provider
 calls belong in presentation. Controlled fixture phase/cancel/failure actions remain non-production,
 manual and provider-free; real signature requests lazily reuse the existing Studio passkey.
+
+## Owner curve trade controls
+
+`features/tokens/token-trade-form.tsx` adds a compact owner-only master-wallet buy/sell form inside
+the persistent Token route. Amount conversion is exact decimal formatting via chain `toBaseUnits`;
+quotes and minimum received amounts come from the backend. Approval and swap each need an explicit
+passkey action. Form state and idempotency identity survive navigation; prepared input cannot be
+edited while an operation is active. Known broadcasts share the bounded automatic receipt
+observer. Signing and uncertain-send recovery remain explicit; it never prepares, signs or submits
+another transaction.
+The preview uses fixed clearly simulated amounts generated by `tokens:fixtures`, not browser
+financial formulas. Graduation closes curve trading; marketplace/DEX swaps remain separate work.
+
+## Public token trading and username recovery
+
+`features/tokens/public-token-trade.tsx` mounts below the public persona's confirmed token card.
+Preparation is explicit, uses portable API DTOs, and never imports core/infrastructure or Turnkey.
+`features/wallet/lib/public-token-transaction.ts` validates exact non-custodial actions; injected
+wallets send once and Mera signs locally via `mera-token-transaction.ts`, with PRF/key cleanup
+before broadcast. `features/wallet/lib/public-trade-flow.ts` continues a user-initiated approval
+through a freshly prepared swap only after canonical approval confirmation. Each action still
+requires its own wallet confirmation. A worse refreshed minimum requires an explicit review;
+changed identities/amounts are rejected. `public-trade-action.tsx` keeps preparation, wallet confirmation, approval, swap, pending,
+success and sanitized errors inside one compact, fixed-height (48px) primary button. Progress uses an indeterminate
+ring and sweep; wallet confirmation pulses the wallet icon; success draws a check for 2.2 seconds
+before restoring the explicit Buy/Sell action. This visual timer never performs a transaction.
+Form edits dismiss success and clear errors. Keep screen-reader announcements, keyboard focus and
+reduced-motion support. No separate progress paragraphs or manual Check transaction action belong
+to this form. Reviewed wallet failures have an expandable explanation with the RPC method/code; never render raw provider payloads. Approval and Buy/Sell references remain separately labelled below the button, with linked hashes
+and icon-only copy actions. The approval hash survives swap preparation, cancellation and reload;
+ending an unsigned review preserves recorded receipts without initiating a transaction. Historical
+single-hash attempts remain readable. `use-public-trade-quote.ts` reads the public quote endpoint
+600 ms after a valid edit with a connected wallet. It aborts superseded reads and uses a ten-second
+deadline; current input identity fences displayed quantities. The receive field shows the server's
+expected output and minimum before any trade click, and refreshes after confirmed swaps. Quotes
+never prepare, sign or broadcast a transaction; preparation remains explicit. Preview quantities
+remain frozen controlled fixtures, and no curve formulas belong in the browser.
+Known hashes are observed automatically with at most thirty serial reads, three seconds apart,
+and a two-minute deadline. Hidden pages pause observation; unmount/account/network changes cancel
+it. Session-scoped unsigned attempts resume receipt reads on reload, never signing or broadcasting
+from an effect. Restored approvals prepare a review for explicit confirmation. Missing-hash
+submissions stay blocked. The storage module receives DTO decoding from the caller; it owns no
+HTTP validation rules. The market refreshes its database-backed read after a confirmed swap.
+The username chooser offers Choose another username, finite lookup/claim timeouts and stale-reply
+protection. Preserve account-linking/Disconnect semantics and the fifteen-character contract.
+Public trading is testnet active-curve only; DEX swaps and indexer changes are separate. Run the
+loopback-only `node --import tsx scripts/design/public-token-trading.mjs` harness for both flows.
+See [Public token trading](../../docs/market/public-token-trading.md).
+
+A definitive token signing refusal reads `Signing request rejected` and the launch action becomes
+`Prepare again`. This is a new explicit preparation, not another signature or automatic retry.
+The original draft and the failed attempt remain visible; unknown attempts stay blocked for
+reconciliation. The controlled loading harness verifies the saved refusal without provider calls.
+
+The public trade side and slippage use the shared lime `Segmented` selection. Their track reads
+`--pk-bg` from the enclosing surface so the selection stays visible. The shared token card
+owns the token identity, ticker and network; the adjacent trading panel uses `Trade token` and
+only adds an unsupported-network warning when necessary. The persona header groups agent identity
+and metadata above an equal-column statistics grid (two columns on small phones). Availability
+and actions follow separately; omit an empty description. The persona section tabs have their
+own spaced pill row, a contrasting selected state, and roving keyboard focus
+(Left/Right/Home/End); keep the panel IDs linked to them.
+
+## Automatic token confirmation
+
+`features/tokens/token-confirmation.ts` bounds observation of known broadcasts to ten receipt reads,
+three seconds apart, and sixty seconds of elapsed time. Finalized launches may then read token
+attribution six times, five seconds apart, through the database-only state endpoint. Existing
+backend RPC admission, canonical-block validation and confirmation depth remain authoritative.
+The observer stops on a failed read, terminal result or ceiling, pauses/aborts in hidden pages, and
+cleans up on navigation or owner change. Its owner-scoped in-memory counters survive section
+navigation. It never polls unknown signing identities, unsigned/signed-only operations, or
+uncertain submissions; those keep explicit recovery. No signature, preparation, broadcast, budget
+increase or attribution is produced by the observer. Timeouts preserve the operation/hash and
+show an explicit fallback. Preview phase controls remain manual and provider-free. Run the
+controlled-clock token-confirmation suite and Studio loading harness for automatic inclusion,
+finality and indexed-card rendering without an extra click.
+
+## Local public token-market mockup
+
+The existing non-production `/agents/halftime?stage=token-launched&market=preview` preview mounts
+`features/tokens/public-token-market-preview.tsx` in place of the compact token card and real
+public trade form. It combines the frozen token identity, illustrative price/FDV/volume, shared
+AreaChart with 1H/24H/7D controls, a local-only ticket, curve progress, distribution and recent
+trades. Demo data is labelled once at the section header, and the ticket uses an explicit Preview action. Its input, side, slippage and review change local state only. Non-example
+amounts remain unquoted; there are no financial formulas, wallet ceremonies, provider calls,
+API requests or broadcasts. Chart samples and table entries are static illustrations, not
+measurements or executable quotes. The standalone illustrative mockup remains non-production. Confirmed public profiles now use the
+production market surface below; PublicShell includes chart attribution for confirmed tokens.
+`AgentTokenIdentity` reuses frozen image/name/ticker rendering across both presentations.
+The rendered Design registry includes `public-agent-token-market-preview`, proving the expanded
+market card separately from the existing compact-token previews.
+
+Recent demo trades use the shared read-only Tag with win/loss state tints and ChainReference for
+icon-only copy and hash-as-explorer-link. Receipt examples are real Monad testnet hashes from the
+recorded V4 acceptance, explicitly labelled as samples; they are not Halftime's trade history.
+Illustrative prices, amounts, timestamps and wallet addresses remain separate from those receipt examples. Sample wallets are inert and do not receive explorer links.
+
+## Compact agent comparison directory
+
+`features/agents/components/agents-directory.tsx` renders `/agents` as a comparison list, styled
+by `agents-directory.module.css`. Desktop rows align identity, score, hit rate, predictions and
+P&L against one header. Mobile rows repeat metric labels and stack actions without page overflow.
+The agent name is the profile link; descriptions use one-line ellipsis without changing API copy.
+Ask remains violet with the service's response time beneath it; closed services show their state
+without an Ask link or a promised reply time. Do not add token data to this directory.
+
+Search retains the existing `?q=` history behavior. Topics come from directory data through the
+shared Select, and Taking questions uses the shared labelled Switch. The result count is derived
+from filtered rows. Preserve API order, null metrics, degraded reads and existing empty states.
+
+## Production public token market
+
+`features/tokens/public-token-market.tsx` renders the approved chart/trade layout for every
+confirmed public persona, without a preview query or production guard. It reads the existing
+`GET /v1/launches/:id` through the same-origin proxy using the chain/address catalogue key.
+The response schema and token identity are checked before rendering. A bounded read, explicit
+refresh/retry, skeletons, pending index state and preserved stale observations keep the trade
+form available during read failures. No RPC, signing or automatic quote is performed by this read.
+`PublicTokenTrade` accepts `embedded` for layout only; its wallet/prepare/send behavior is unchanged.
+The market renders prepared WAD prices/FDV, quote-unit volume, canonical curve state, committed
+allocations and recent transaction references. Unavailable figures stay unknown. The chart uses
+actual timestamped observations, filtered relative to the server's read window; same-second
+observations collapse for the chart library. The pure `market-history.ts` projection selects an
+initial period preferring 24H, then 7D, then ALL
+until the returned history has two drawable timestamps. ALL uses the bounded observations
+already returned by the API. An explicit period selection persists through refreshes; empty
+periods explain the lack of observations and point to wider history. Never invent trades,
+extend old prices into idle time or change the independent 24h volume metric to fill a chart.
+Recent trades retain individual transaction/log identity and display the canonical `trader` wallet next to Buy/Sell, with an address-as-explorer link and icon-only copy. Keep wallet and transaction references separate; local preview wallets remain inert.
+Post-graduation figures remain labelled curve history, never a DEX price. Preview addresses and
+transaction links remain inert. Illustrative fixtures render only in the server-gated development preview; ordinary public tokens use API observations.
+
+Controlled release acceptance targets a running loopback production build against the Design fixture API:
+
+```sh
+node --import tsx scripts/design/public-token-market.mjs http://localhost:3007
+```
+
+It checks the normal profile route, responsive layout, actual-data rendering, transaction links,
+keyboard controls, pending/malformed/failed reads and preservation of the trade form. All market
+responses are controlled and provider requests are rejected; it does not establish remote acceptance.
+
+## Interactive public trade preview and immediate refresh
+
+The development-only `stage=token-launched` persona preview renders the actual market and trade
+components with generated, explicitly illustrative market data. Its outcome controls exercise
+success, wallet cancellation, revert and slow confirmation using abortable controlled delays;
+they never request a wallet, provider or real explorer. Mobile controls wrap without overflow.
+`tokens:fixtures` generates `market-preview.json` from Design’s core-backed fixture calculations.
+
+After a live swap receipt passes wallet confirmation, the form calls the strict public `token/confirm`
+API and waits for canonical publication before success and market refresh. Pending/transient reads
+share the bounded button observer; no manual check, new send or replacement occurs. Restoring a
+saved confirmed swap can reconcile its receipt without reopening the wallet. Approvals do not
+publish market activity.
+
+## Token market board and chart interaction
+
+The landing token section is a responsive comparison table, with canonical token identities and
+prepared price/FDV/volume/progress from the existing launch-detail read. Each of its at most eight
+rows performs one bounded, abortable HTTP read; no RPC, signing or financial formulas belong here.
+`features/tokens/market-data.ts` shares identity validation, exact amount formatting and chart-only
+number conversion with the public market view. Failed, missing and stale metrics retain the token
+link and remain distinct from a zero balance or price. The local-only `/?tokens=preview#tokens`
+example reuses the generated core-backed Halftime snapshot, makes no requests and never mounts in
+production. The landing footer credits TradingView when rendering market sparklines.
+
+The public detail uses shared AreaChart's market variant with a full-width plot, curved visual
+interpolation, observed-point tooltip and keyboard inspection. Range/data transitions retain one
+chart instance and never animate fabricated prices. Page entry, row hover and curve progress use
+short transitions; reduced motion disables them. Existing trading and receipt behavior is preserved.
+
+The landing board uses compact aligned table rows on desktop. At 900px and below, the same row
+becomes a two-line grid with identity, price and profile action above the remaining metrics.
+At 540px and below, identity/action, the full-width price group and the three secondary metrics
+occupy separate rows to preserve readable text. Price, sparkline and movement badge appear in
+that order on one line at every width. Every metric and the action fit without horizontal
+scrolling; preserve the table's accessible headers and mobile metric labels. Keep rows within
+one comparison board rather than separate cards. The heading carries the network/quote unit
+badge once. Keep the same component and data policy in local previews and public reads.
+
+Landing price cells show the server-prepared latest observed movement as an arrow/percentage
+badge and tint the sparkline green/red/neutral. The badge's accessible label and timestamp
+tooltip identify the compared observations, not a 24-hour return. Missing movement renders no
+percentage; sub-basis-point moves show less than 0.01% without a misleading signed zero.
+
+## Perpl testnet execution UI
+
+`features/studio/perpl-execution` is the HTTP-only controller and shared Controls/Positions/Record
+UI for draft and published agents. The action is **Start trading**; the shared navbar identifies the network.
+Account steps use the existing owner passkey ceremony. Keep busy/idempotency guards and agent
+selection generation checks. Separate action errors from polling errors; never automatically
+retry a mutation or signature. No key or provider SDK belongs in this feature.
+
+Real account state has separate metrics/history and replaces the paper header/strip when ready.
+Legacy paper controls remain in an explicitly labelled disclosure. The three `perpl-trading-*`
+preview stages are inert labelled fixtures; they never authenticate, sign or write and never
+invent explorer hashes. See [Perpl trading](../../docs/perpl-trading.md).
+
+## Real Perpl testnet dashboard
+
+`/perpl` is the public read-only dashboard, linked from Explore, the landing hero/footer and
+Portfolio. `features/perpl/use-dashboard.ts` reads markets every ten seconds and the connected
+address's `GET /api/v1/perpl/portfolio/:wallet` every five seconds while visible. This public
+contract source requires no JWT, Perpl key, signature or wallet chain switch. Reload resumes
+when the existing wallet restores. Loops are serial, abort on identity/navigation changes, pause
+when hidden and back off on failure. Preserve stale snapshots; immediately hide prior-address
+data on disconnect/change. An unread account is not an empty one.
+
+Financial projection and precision belong to Trading/infrastructure. `source: "onchain"` keeps
+original leverage and historical stats unknown; omit unavailable all-time P&L and leverage badges.
+Equity/price P&L exclude funding and closing fees. Price buffer is current-collateral exhaustion,
+never Perpl's maintenance-aware liquidation price. No order, approval, deposit, withdrawal or
+agent activation is reachable here. The old scope-1 signing helpers remain for compatibility
+endpoints only; the default dashboard never calls them. Their non-extractable key is memory-only.
+
+The local-only `/perpl?preview=wallet` mounts static labelled examples without live hooks or
+explorer links. Production ignores the parameter. Regenerate its normalized fixture with
+`node --import tsx scripts/design/perpl-preview.mts`; it uses controlled transport, not real keys.
+Market identities reuse fixed local `market-asset.tsx` SVGs with text fallback and provenance in
+`public/brand/markets/README.md`. Preserve surface tokens, unknown values, responsive layout and
+reduced motion. The dark portfolio summary is `#perpl-equity`; the independent market ticker
+is a second dark surface outside `main`.
+
+`node --import tsx scripts/design/perpl-dashboard.mjs http://localhost:3005` exercises browser →
+Hono → bounded RPC adapter → Trading using controlled public chain responses. It proves no
+signing/enrollment, automatic refresh, full reload, wallet changes, wrong wallet network, stale
+state and responsive widths. It blocks browser external requests. This remains separate from
+real public contract acceptance and deployed verification; see [dashboard](../../docs/perpl-dashboard.md).
+
+Perpl Controls offers an explicit existing-key form. Only owner-provided token/Ed25519 input
+passes transiently through the authenticated same-origin route; backend-created keys never
+return. Password fields are cleared on submit and agent change, never stored, and preview submits
+are disabled. The HTTP controller serializes mutations and ignores superseded agent responses.
+`setupEnabled=false` disables owner funding/enrollment while existing-key trading remains separate.
+
+The public dashboard also accepts a validated `/perpl?wallet=<address>` read-only link. Its explicit
+address takes precedence over the connected wallet for portfolio reads and is labelled in the
+view. It never changes wallet identity, authentication, signing or order permissions. Invalid
+addresses use the normal connected-wallet flow. Serial polling and snapshot identity checks
+remain unchanged. Studio session copy distinguishes one new position from unmanaged prior positions.
+
+Controls can explicitly connect the wallet of an owner-provided Perpl key, with a labelled
+shared Switch and no caller-supplied wallet address. It offers a keyboard-accessible shared
+Select over the agent's authorized markets, blocks occupied markets, and links across product
+hosts to the connected wallet dashboard. Positions show a Close action only for server-labelled
+`managedBySession` positions; prior positions remain visible and read-only. Backend rules are
+authoritative; there is no key persistence or financial policy in the browser.
+
+Perpl order history renders each server-provided transaction hash through the existing shared
+ChainReference: visible abbreviated hash, full-value copy and the Monad testnet explorer link.
+Positions reuse the same compact history; setup references use the same control. An absent hash
+remains explicitly unrecorded, independently of request/order identifiers and fill status.
+Inert previews never receive an explorer link. This is presentation only and adds no requests.
+
+## Portfolio-first Perpl presentation
+
+`features/perpl/dashboard.tsx` renders the portfolio before the protocol catalogue. The dark
+summary groups estimated value, available AUSD, open price P&L and position collateral once.
+`positions.tsx` pairs a selectable position list with one detailed position pane. Selection uses
+account/position identity, survives refreshed snapshots and resets when the observed wallet changes.
+If the selected position disappears, the first remaining position becomes visible. On mobile the
+list becomes horizontally scrollable above the detail pane. Buttons retain native keyboard and
+pressed-state semantics; a stable live region announces selection. Price P&L appears once per list item;
+entry/mark prices, size and collateral live in the detail pane, with exhaustion estimates in the
+buffer disclosure. Unknown data and the existing 0–20% buffer scale remain explicit. Account/exposure metadata lives
+in the estimates disclosure. Public `?wallet=` observation, unknown values, stale reads and the
+existing serial polling remain unchanged. The protocol catalogue is an accessible disclosure.
+
+`market-ticker.tsx` reuses the same market snapshot, with no additional reads. Its full-width
+strip lives beneath the public navbar. The visual-only duplicate is inert and hidden from
+assistive technology. Motion pauses on hover, focus, explicit pause and stale data; keyboard
+focus and touch use the original, manually scrollable list. Reduced motion disables the loop
+and price flashes. Prices flash only for changed observations, using surrounding surface
+tokens, without interpolating money. `display.ts` contains presentation formatting only.
+
+## Perpl trading workspace presentation
+
+The execution feature now composes the account strip, trading ticket and session summary in
+Controls, with a recent cycle beneath. Controls, Positions and Record use the same account
+status precedence: failed/unread observations and missing authorization cannot imply readiness
+or a flat account. Account state replaces paper chrome on hosted views; legacy paper-only
+fixtures retain their original proofs. Paper controls remain in the closed Advanced settings
+disclosure. The three trading sections omit the duplicate money tiles and activity strip.
+
+`presentation.ts` formats server values and groups chronological orders by session and market;
+it does not compute fills, risk, P&L or authority. A submitted/unknown order cannot render the
+confirmed check. `receipts.tsx` pairs openings and closings, retains incomplete orders and puts
+request/order IDs, size, price and fee in execution details. Actual hashes use ChainReference;
+missing hashes remain explicitly unrecorded. History is still rendered from received orders
+when trading permission is unavailable. Existing wallet positions are read only, separate
+from positions explicitly marked `managedBySession`.
+
+The shared `ActionButton` in @pickler/ui provides the same visual ring, sweep and check as token
+purchases. Perpl only uses server order/session state for those phases and has no wallet prompt
+on Start trading. The existing-key form uses its connection request's busy state. Mutation
+locking, server controls and idempotency are unchanged. In labelled development trading
+fixtures only, Start trading plays a local button-feedback sequence with no account changes,
+provider calls or fabricated receipts; its timer never reaches an execution API.
+
+Trading Controls reads the same official, network-scoped Perpl catalogue as Sources & rules.
+All catalogue rows are shown; unavailable, ambiguous and unconfigured markets cannot be selected.
+A stale/failed catalogue blocks new entries, preserves the chosen symbol and offers retry.
+Manage markets navigates to Sources & rules; the selector never expands the agent allowlist.
+Development trading fixtures use the captured catalogue only, never a live fallback.
+
+The account strip and controls use workspace container queries so an expanded sidebar cannot
+leave a narrow content area in desktop layout. Network context remains in the global header.
+Long/Short tags use shared semantic direction colors in receipts and open positions. The shared
+leverage slider is explicitly disabled at the existing 1× pilot limit; it does not advertise
+unsupported leverage or change execution settings.
+
+## Bounded product reads
+
+Catalogue consumers use explicit Load more pages and server filters; counts describe loaded rows. The landing page reads at most eight confirmed tokens through /api/v1/marketplace/tokens. Research views discover summaries every 20 seconds and poll active status every three seconds without overlapping or hidden-page requests. Full results load once per selected completed run; incremental event pages drain serially at terminal status. Oversized evidence is fetched only on its explicit button. Studio single-agent refreshes preserve the separately known creation eligibility.
+
+## Paper record history
+
+The Studio record chart consumes bounded hourly Paper projections. Incomplete projections display an updating state instead of definitive figures. Closed positions load an initial bounded page and explicit additional pages; never drain history automatically. Account changes remount the history owner and cancel in-flight requests.
+
+## Perpl execution archive
+
+The execution record exposes explicit pages of orders, sessions and account setup history through the authenticated Studio history endpoint. Archive requests are read-only, serialized and cancelled on account remount. Operational polling retains only recent context; never drain archive pages automatically or retry a financial command to load history.

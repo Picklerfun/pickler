@@ -34,6 +34,8 @@ import type {
   XState,
 } from "../api";
 import type { LiveStage } from "../home/stage";
+import testnetCatalogue from "../shell/perpl-testnet-catalogue.fixture.json";
+import { perplExecutionFixture } from "../perpl-execution/fixture";
 import { previewConfig } from "../preview";
 import type { BriefText } from "../shell/build-model";
 import type { AccountTab, LiveSectionKey } from "./model";
@@ -41,6 +43,7 @@ import type { OwnerAction } from "./use-live";
 
 /** The live studio filled in for the design harness, at one moment. */
 export interface LiveStaged {
+  execution?: import("@pickler/api-schema").PerplLiveStateDto | null;
   /** The fixed clock every time on the screen is read against. */
   now: number;
   tokenState: TokenStateDto;
@@ -94,6 +97,10 @@ const X_HANDLE = "HalftimeBot";
 
 /** Which section each stage opens on. */
 const SECTIONS: Record<LiveStage, LiveSectionKey> = {
+  "perpl-trading-ready": "controls",
+  "perpl-trading-setup": "controls",
+  "perpl-trading-active": "positions",
+  "perpl-trading-closed": "record",
   "perpl-token-empty": "token",
   "perpl-token-launched": "token",
   "perpl-live": "overview",
@@ -982,10 +989,41 @@ const ACCOUNT_TABS: Partial<Record<LiveStage, AccountTab>> = {
 export function liveStudioFixture(stage: LiveStage): LiveStaged {
   const warned = stage === "perpl-warnings";
   const markets = board(stage === "perpl-markets" ? sampleSource : perplSource);
+  const stagedAgent = agent(stage === "perpl-paused", warned ? 18 : 75.8);
+  if (stage.startsWith("perpl-trading-")) {
+    stagedAgent.config = {
+      ...stagedAgent.config,
+      perpl: {
+        version: 2,
+        network: "testnet",
+        markets: [
+          "NEAR",
+          ...testnetCatalogue.markets
+            .map((row) => row.symbol)
+            .filter((symbol) => symbol !== "NEAR"),
+        ],
+      },
+    };
+    stagedAgent.spend = { perCallAusd: 0.06, perDayAusd: 10 };
+  }
+  if (stage === "perpl-trading-setup") {
+    stagedAgent.config.spend = { perCallAusd: 5, perDayAusd: 20 };
+    stagedAgent.spend = { perCallAusd: 5, perDayAusd: 20 };
+  }
   return {
+    execution:
+      stage === "perpl-trading-setup"
+        ? perplExecutionFixture("setup")
+        : stage === "perpl-trading-ready"
+          ? perplExecutionFixture("ready")
+          : stage === "perpl-trading-active"
+            ? perplExecutionFixture("active")
+            : stage === "perpl-trading-closed"
+              ? perplExecutionFixture("closed")
+              : null,
     now: NOW,
     tokenState: tokenPreview(stage === "perpl-token-launched"),
-    agent: agent(stage === "perpl-paused", warned ? 18 : 75.8),
+    agent: stagedAgent,
     section: SECTIONS[stage],
     wallets: warned
       ? wallets("18000000", "120000000000000000")

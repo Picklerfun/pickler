@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import {
   createTokenOperationService,
   type TokenOperationDriver,
+  type TokenLaunchRepository,
   prepareDraft,
   DEFAULT_BRIEF,
   STARTER_CAPS,
@@ -310,4 +311,160 @@ test("operational migrations preserve historical records and revoke permissive p
     `SELECT acl.grantee FROM pg_class c,LATERAL aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl WHERE c.oid IN ('launch.operations'::regclass,'launch.indexer_admission'::regclass,'market.kuru_graduations'::regclass) AND acl.grantee=0`,
   );
   assert.equal(grants.rowCount, 0);
+});
+
+test("trade intents persist exact parameters, isolate owners and survive concurrent confirmation", async (t) => {
+  const f = await tokenFixture(t);
+  // This test controls the confirmed projection; canonical event attribution is covered separately.
+  const repository: TokenLaunchRepository = {
+    transaction: (scope, chain, work) =>
+      f.repository.transaction(scope, chain, (tx) =>
+        work({
+          ...tx,
+          context: {
+            ...tx.context,
+            token: {
+              name: "Controlled",
+              ticker: "CTRL",
+              address: "0x" + "2".repeat(40),
+              chainId: 10143,
+              imageUri: null,
+              avatar: { accent: "lime", pattern: 1 },
+            },
+          },
+        }),
+      ),
+  };
+  const d = driver();
+  const service = () =>
+    createTokenOperationService({
+      repository,
+      tokens: f.service,
+      chainId: 10143,
+      driver: d.result,
+    });
+  for (const action of ["approve_buy", "buy", "approve_sell", "sell"] as const) {
+    const trade = {
+      amount: action.endsWith("sell") ? "1000000000000000000000" : "1000000",
+      slippageBps: 50,
+    };
+    const input = { action, trade, expectedVersion: 0 };
+    const key = "controlled_trade_" + action;
+    const p = await service().prepare(f.scope, input, key);
+    assert.equal((await service().prepare(f.scope, input, key)).operation.id, p.operation.id);
+    await assert.rejects(
+      service().prepare(f.scope, { ...input, trade: { ...trade, amount: "1" } }, key),
+      /TOKEN_IDEMPOTENCY_CONFLICT/,
+    );
+    const payload = (
+      await f.store.pool.query("SELECT payload FROM launch.operations WHERE id=$1", [
+        p.operation.id,
+      ])
+    ).rows[0].payload;
+    assert.deepEqual(payload.trade, trade);
+    await assert.rejects(
+      service().confirm(
+        { ...f.scope, userId: randomUUID() },
+        p.operation.id,
+        p.operation.version,
+        signed,
+      ),
+      /TOKEN_OWNER_REQUIRED/,
+    );
+    const confirmations = await Promise.allSettled([
+      service().confirm(f.scope, p.operation.id, p.operation.version, signed),
+      service().confirm(f.scope, p.operation.id, p.operation.version, signed),
+    ]);
+    assert.equal(confirmations.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal((await service().status(f.scope, p.operation.id)).status, "finalized");
+  }
+  assert.deepEqual(d.counts(), { signs: 4, sends: 4 });
+  assert.equal(
+    (await f.store.pool.query("SELECT count(*) FROM launch.operations")).rows[0].count,
+    "4",
+  );
+  await assert.rejects(
+    f.store.pool.query("UPDATE launch.operations SET action='arbitrary'"),
+    (e: unknown) => (e as { code: string }).code === "23514",
+  );
+  assert.equal(
+    (
+      await f.store.pool.query(
+        "SELECT relrowsecurity FROM pg_class WHERE oid='launch.operations'::regclass",
+      )
+    ).rows[0].relrowsecurity,
+    true,
+  );
+});
+
+test("expired lost signing response releases only its fenced intent and keeps history before a fresh grant", async (t) => {
+  const f = await tokenFixture(t);
+  await f.service.saveDraft(f.scope, { expectedVersion: 0, name: "Controlled", ticker: "CTRL" });
+  const d = driver();
+  let signs = 0;
+  d.result.sign = async () => {
+    signs++;
+    throw new Error("Controlled lost response");
+  };
+  d.result.recoverExpiredLaunch = async () => ({
+    status: "expired",
+    blockNumber: "10",
+    blockHash: "0x" + "b".repeat(64),
+  });
+  const service = () =>
+    createTokenOperationService({
+      repository: f.repository,
+      tokens: f.service,
+      chainId: 10143,
+      driver: d.result,
+    });
+  const prepared = await service().prepare(
+    f.scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_lost_signing_001",
+  );
+  const unknown = await service().confirm(
+    f.scope,
+    prepared.operation.id,
+    prepared.operation.version,
+    signed,
+  );
+  assert.equal(unknown.status, "unknown");
+  await f.store.pool.query(
+    `UPDATE launch.operations SET expires_at=clock_timestamp()-interval '1 second',
+    payload=jsonb_set(jsonb_set(jsonb_set(jsonb_set(payload,'{deadline}',to_jsonb('1'::text)),
+      '{prepared,deadline}',to_jsonb('1'::text)), '{authorization,grantDeadline}',to_jsonb('1'::text)),
+      '{authorization,params,deadline}',to_jsonb('1'::text)) WHERE id=$1`,
+    [unknown.id],
+  );
+  await f.store.pool.query(
+    "UPDATE launch.grants SET created_at=to_timestamp(900),expires_at=to_timestamp(1000) WHERE agent_id=$1",
+    [f.scope.agentId],
+  );
+  const results = await Promise.all([
+    service().status(f.scope, unknown.id),
+    service().status(f.scope, unknown.id),
+  ]);
+  assert.ok(
+    results.every((r) => r.status === "failed" && r.error === "EXPIRED_LAUNCH_NOT_CREATED"),
+  );
+  const state = await f.service.state(f.scope);
+  assert.equal(state.confirmation, "absent");
+  assert.equal(state.draft?.name, "Controlled");
+  assert.ok(!JSON.stringify(state).includes("expired_launch"));
+  const history = await f.store.pool.query(
+    "SELECT payload->'resolution' AS resolution FROM launch.operations WHERE id=$1",
+    [unknown.id],
+  );
+  assert.equal(history.rows[0].resolution.kind, "expired_launch");
+  const next = await service().prepare(
+    f.scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_lost_signing_002",
+  );
+  assert.equal(next.operation.status, "awaiting_signature");
+  assert.notEqual(next.operation.id, unknown.id);
+  await service().confirm(f.scope, unknown.id, results[0]!.version, signed);
+  assert.equal(signs, 1);
+  assert.equal(d.counts().sends, 0);
 });

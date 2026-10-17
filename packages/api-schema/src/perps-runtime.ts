@@ -253,8 +253,20 @@ export const perpsPositionsResponseSchema = z
     open: z.array(perpsOpenPositionSchema),
     /** Newest first, at most 50. */
     closed: z.array(perpsClosedPositionSchema),
+    closedNextCursor: z.string().nullable().optional(),
+    closedHistoryReady: z.boolean().optional(),
   })
   .strict();
+
+/** Stable closed-position history, independent of the current operational snapshot. */
+export const perpsClosedPositionsPageSchema = z
+  .object({
+    items: z.array(perpsClosedPositionSchema).max(100),
+    nextCursor: z.string().nullable(),
+    complete: z.boolean().optional(),
+  })
+  .strict();
+export type PerpsClosedPositionsPageDto = z.infer<typeof perpsClosedPositionsPageSchema>;
 
 /** A pending approve-mode proposal (R8). */
 export const perpsProposalSchema = z
@@ -302,7 +314,11 @@ export const perpsRecordSchema = z
     checks: z.number().int().nonnegative(),
     /** Checks that entered, all time. */
     entries: z.number().int().nonnegative(),
-    series: z.array(z.object({ at: iso, equity: z.number() }).strict()),
+    projection: z
+      .object({ revision: z.string(), asOf: iso, complete: z.boolean() })
+      .strict()
+      .optional(),
+    series: z.array(z.object({ at: iso, equity: z.number() }).strict()).max(722),
     today: z
       .object({
         newMarginAusd: z.number().nonnegative(),

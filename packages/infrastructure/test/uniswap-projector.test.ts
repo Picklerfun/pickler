@@ -86,7 +86,7 @@ test("canonical Uniswap snapshots survive replay, orphaning and branch restorati
       blockHash: hash("e"),
       blockNumber: 11n,
       txHash: hash("2"),
-      logIndex: 0,
+      logIndex: 101,
       emitter: policy.adapter.address,
       eventName: "LaunchGraduatedV4V2",
       abiHash: hash("a").slice(2),
@@ -112,7 +112,15 @@ test("canonical Uniswap snapshots survive replay, orphaning and branch restorati
       stream: "token-launch-v1",
       confirmed: true,
       blocks: [block(10n, "d", "0"), block(11n, "e", "d")],
-      events: [launch, graduation],
+      events: [
+        launch,
+        ...Array.from({ length: 100 }, (_, logIndex) => ({
+          ...graduation,
+          logIndex,
+          decoded: { ...graduation.decoded, token: address("8") },
+        })),
+        graduation,
+      ],
     };
     await index.applyBatch(batch);
     const metadata = async () => ({
@@ -144,6 +152,7 @@ test("canonical Uniswap snapshots survive replay, orphaning and branch restorati
     await projector.project(chain, metadata);
     assert.equal((await service.state(f.scope)).token?.imageUri, grant.imageUri);
     await uniswap.project(read);
+    assert.equal(reads, 1, "unattributed history must not fill the bounded page or trigger RPC");
     assert.equal(
       (await f.store.pool.query("SELECT status FROM market.tokens")).rows[0].status,
       "graduated",

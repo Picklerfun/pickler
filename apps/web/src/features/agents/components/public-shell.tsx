@@ -15,10 +15,8 @@ export function PublicShell({
 }: {
   children: ReactNode;
   /**
-   * Whether anything on this page draws with Lightweight Charts. Two routes do — `/tokens/[ticker]`
-   * through `CandleChart` and `/leaderboard` through `BarChart` — and they are the two that owe the
-   * credit below. A page that adds a chart has to set this; nothing enforces it, which is the cost
-   * of the footer being the shell's to lay out rather than the chart's.
+   * Pages mounting Lightweight Charts opt in to the required attribution. The local public
+   * token-market preview uses AreaChart; routes without a chart keep the plain product footer.
    */
   charts?: boolean;
 }) {
@@ -27,10 +25,7 @@ export function PublicShell({
       <SiteNav connect />
       {children}
       <footer className={styles.credit}>
-        {/* Our charts are drawn with TradingView's Lightweight Charts™. We hide the logo the library
-            paints inside the panel, so its licence asks for the credit and the link to live on the
-            page instead — on the pages where a logo was hidden, which is what makes it a credit
-            rather than a decoration. Eleven of these thirteen routes draw nothing. */}
+        {/* Keep library attribution on pages that actually mount a chart. */}
         {charts && (
           <span>
             Charts by{" "}

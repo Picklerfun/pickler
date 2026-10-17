@@ -20,6 +20,32 @@ import {
 } from "@pickler/trading/perps";
 const COLUMNS = `id, public_agent_id AS "publicAgentId", tenant_id AS "tenantId", agent_id AS "agentId", user_id AS "userId", symbol, status,
  created_at::double precision AS "createdAt", started_at::double precision AS "startedAt", finished_at::double precision AS "finishedAt", config_version AS "configVersion", config, policy, result, error`;
+// The lateral subquery establishes agent-before-job locking. Outer SKIP LOCKED can keep
+// searching when a job is locked; selecting a single id and locking it later would block FIFO.
+const CLAIM_JOINS = `JOIN LATERAL (
+  SELECT a.tenant_id,a.id,a.version,a.config,a.paused FROM pickler.agents a
+  WHERE a.tenant_id=j.tenant_id AND a.id=j.agent_id
+  FOR UPDATE OF a SKIP LOCKED
+) r ON true
+LEFT JOIN pickler.product_agents p ON p.product_agent_id=j.public_agent_id
+LEFT JOIN agents.agents a ON a.id=p.product_agent_id
+LEFT JOIN identity.workspaces w ON w.id=p.workspace_id
+LEFT JOIN pickler.research_access access ON access.user_id=w.owner_user_id`;
+const ADMITTED_JOINS = `JOIN pickler.agents r ON r.tenant_id=j.tenant_id AND r.id=j.agent_id
+LEFT JOIN pickler.product_agents p ON p.product_agent_id=j.public_agent_id
+LEFT JOIN agents.agents a ON a.id=p.product_agent_id
+LEFT JOIN identity.workspaces w ON w.id=p.workspace_id
+LEFT JOIN pickler.research_access access ON access.user_id=w.owner_user_id`;
+// Mirrors assertAdviceAgent and admitted(). Workspace activity is deliberately not a new rule.
+const ADMITTED_SQL = `coalesce(
+  p.tenant_id=j.tenant_id AND p.runtime_agent_id=j.agent_id
+  AND a.visibility='public' AND a.status='active' AND NOT r.paused
+  AND access.enabled AND r.version=j.config_version AND r.config=j.config
+  AND jsonb_typeof(r.config->'perpl')='object'
+  AND (r.config#>'{perpl,markets}') @> jsonb_build_array(j.symbol)
+  AND (r.config#>'{plugins,enabled}') @> '["perpl"]'::jsonb
+  AND (r.config->'tools') @> '["getPerpSnapshot","getPerpOrderBook","getPerpCandles"]'::jsonb,
+false)`;
 export class PostgresAdviceStore implements AdviceExecutionRepository {
   private readonly owners = new Map<string, string>();
   constructor(
@@ -94,6 +120,20 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
         )
       ).rows[0] ?? null
     );
+  }
+  async getStatus(id: string): Promise<import("@pickler/core").AdviceReadStatus> {
+    const result = await this.pool.query(
+      `SELECT j.id,j.public_agent_id AS "publicAgentId",j.user_id AS "userId",j.symbol,j.status,
+      j.created_at::double precision AS "createdAt",j.started_at::double precision AS "startedAt",j.finished_at::double precision AS "finishedAt",j.error,
+      j.result IS NOT NULL AS "resultAvailable",a.visibility='public' AS published,
+      (SELECT max(sequence)::text FROM pickler.advice_events WHERE job_id=j.id) AS "lastEventId"
+      FROM pickler.advice_jobs j JOIN agents.agents a ON a.id=j.public_agent_id WHERE j.id=$1`,
+      [id],
+    );
+    if (!result.rows[0]) {
+      throw new PilotError("NOT_FOUND", "Analysis not found");
+    }
+    return result.rows[0];
   }
   get(id: string) {
     return this.read(this.pool, id);
@@ -282,55 +322,71 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
     });
   }
   async claim() {
-    return this.transaction(async (db) => {
-      const at = await this.now(db);
-      await this.recoverIn(db, at);
+    const token = randomUUID();
+    const claimed = await this.transaction(async (db) => {
       const policy = (
         await db.query(
           "SELECT global_limit,tenant_limit FROM pickler.execution_policy WHERE id=1 FOR UPDATE",
         )
       ).rows[0];
-      const jobs = (
-        await db.query(
-          `SELECT ${COLUMNS} FROM pickler.advice_jobs WHERE status='queued' ORDER BY created_at LIMIT 50 FOR UPDATE SKIP LOCKED`,
+      const at = await this.now(db);
+      await this.recoverIn(db, at);
+      await db.query(
+        `WITH invalid AS (
+          SELECT j.id FROM pickler.advice_jobs j
+          ${CLAIM_JOINS}
+          WHERE j.status='queued' AND j.created_at+600000 > $1 AND NOT (${ADMITTED_SQL})
+          ORDER BY j.created_at,j.id LIMIT 50 FOR UPDATE OF j SKIP LOCKED
+        ), failed AS (
+          UPDATE pickler.advice_jobs j
+          SET status='failed',error='ANALYSIS_FAILED',finished_at=$1,
+            lease_owner=NULL,lease_expires_at=NULL
+          FROM invalid WHERE j.id=invalid.id AND j.status='queued'
+          RETURNING j.id
         )
-      ).rows as AdviceJob[];
-      for (const job of jobs) {
-        try {
-          await this.admitted(db, job);
-        } catch {
-          await this.fail(db, job.id, "ANALYSIS_FAILED", at);
-          continue;
-        }
-        const counts = (
-          await db.query(
-            `SELECT count(*)::int AS all_count, count(*) FILTER (WHERE tenant_id=$1)::int AS tenant_count
-      FROM (SELECT tenant_id
-      FROM pickler.runs
-      WHERE status='running'
-      UNION ALL SELECT tenant_id
-      FROM pickler.preview_runs
-      WHERE status='running'
-      UNION ALL SELECT tenant_id
-      FROM pickler.advice_jobs
-      WHERE status='running') active`,
-            [job.tenantId],
-          )
-        ).rows[0];
-        if (counts.all_count >= policy.global_limit || counts.tenant_count >= policy.tenant_limit) {
-          continue;
-        }
-        const token = randomUUID();
-        await db.query(
-          "UPDATE pickler.advice_jobs SET status='running',started_at=$2,lease_owner=$3,lease_expires_at=$4 WHERE id=$1",
-          [job.id, at, token, at + 60000],
-        );
-        this.owners.set(job.id, token);
-        return this.read(db, job.id);
+        UPDATE pickler.advice_calls c SET status='released'
+        FROM failed WHERE c.job_id=failed.id AND c.status='reserved'`,
+        [at],
+      );
+      const selected = await db.query<{ id: string }>(
+        `WITH active AS MATERIALIZED (
+          SELECT tenant_id FROM pickler.runs WHERE status='running'
+          UNION ALL SELECT tenant_id FROM pickler.preview_runs WHERE status='running'
+          UNION ALL SELECT tenant_id FROM pickler.advice_jobs WHERE status='running'
+        ), tenant_counts AS (
+          SELECT tenant_id,count(*) AS running FROM active GROUP BY tenant_id
+        )
+        SELECT j.id FROM pickler.advice_jobs j
+        ${CLAIM_JOINS}
+        LEFT JOIN tenant_counts capacity ON capacity.tenant_id=j.tenant_id
+        WHERE j.status='queued' AND j.created_at+600000 > $1 AND (${ADMITTED_SQL})
+          AND (SELECT count(*) FROM active) < $2
+          AND coalesce(capacity.running,0) < $3
+        ORDER BY j.created_at,j.id LIMIT 1 FOR UPDATE OF j SKIP LOCKED`,
+        [at, policy.global_limit, policy.tenant_limit],
+      );
+      const next = selected.rows[0];
+      if (!next) {
+        return null;
       }
-      return null;
+      const startedAt = await this.now(db);
+      const started = await db.query<AdviceJob>(
+        `UPDATE pickler.advice_jobs
+        SET status='running',started_at=$2,lease_owner=$3,lease_expires_at=$2::bigint+60000
+        WHERE id=$1 AND status='queued' AND created_at+600000 > $2
+          AND EXISTS (SELECT 1 FROM pickler.advice_jobs j ${ADMITTED_JOINS}
+                      WHERE j.id=$1 AND (${ADMITTED_SQL}))
+        RETURNING ${COLUMNS}`,
+        [next.id, startedAt, token],
+      );
+      return started.rows[0] ?? null;
     });
+    if (claimed) {
+      this.owners.set(claimed.id, token);
+    }
+    return claimed;
   }
+
   event(job: AdviceJob, kind: string, data: unknown) {
     return this.transaction(async (db) => {
       const at = await this.owned(db, job);
@@ -472,20 +528,29 @@ export class PostgresAdviceStore implements AdviceExecutionRepository {
     });
   }
   private async recoverIn(db: PoolClient, at: number) {
-    const expired = (
-      await db.query(
-        "SELECT id,status FROM pickler.advice_jobs WHERE (status='queued' AND created_at+600000 <= $1) OR (status='running' AND (lease_expires_at <= $1 OR started_at+180000 <= $1)) FOR UPDATE",
-        [at],
+    // Fail at most 50 jobs and release only their unstarted calls in the same statement.
+    await db.query(
+      `WITH expired AS (
+        SELECT id, status FROM pickler.advice_jobs
+        WHERE (status='queued' AND created_at+600000 <= $1)
+          OR (status='running' AND (lease_expires_at <= $1 OR started_at+180000 <= $1))
+        ORDER BY created_at, id
+        LIMIT 50 FOR UPDATE SKIP LOCKED
+      ), failed AS (
+        UPDATE pickler.advice_jobs j
+        SET status='failed',
+          error=CASE WHEN expired.status='queued' THEN 'ANALYSIS_EXPIRED' ELSE 'ANALYSIS_INTERRUPTED' END,
+          finished_at=$1, lease_owner=NULL, lease_expires_at=NULL
+        FROM expired
+        WHERE j.id=expired.id AND j.status=expired.status
+          AND ((j.status='queued' AND j.created_at+600000 <= $1)
+            OR (j.status='running' AND (j.lease_expires_at <= $1 OR j.started_at+180000 <= $1)))
+        RETURNING j.id
       )
-    ).rows;
-    for (const row of expired) {
-      await this.fail(
-        db,
-        row.id,
-        row.status === "queued" ? "ANALYSIS_EXPIRED" : "ANALYSIS_INTERRUPTED",
-        at,
-      );
-    }
+      UPDATE pickler.advice_calls c SET status='released'
+      FROM failed WHERE c.job_id=failed.id AND c.status='reserved'`,
+      [at],
+    );
     return Boolean(
       (await db.query("SELECT 1 FROM pickler.advice_jobs WHERE status='queued' LIMIT 1")).rowCount,
     );

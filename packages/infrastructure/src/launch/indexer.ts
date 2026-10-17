@@ -19,6 +19,7 @@ import { encodeAbiParameters } from "viem";
 import { PostgresUniswapProjector } from "./uniswap-projector.js";
 import { PostgresKuruProjector } from "./kuru-projector.js";
 import { parseTokenLaunchPolicy } from "./policy.js";
+import { createIndexerRpcAdmission } from "./indexer-rpc-admission.js";
 const legacyTokenIndexerPolicySchema = z
   .object({
     version: z.literal(1),
@@ -154,40 +155,28 @@ export async function runTokenIndexer(input: {
     return { kind: "busy" };
   }
   input.store.admissionFence = { chain, owner };
-  let calls = 0;
-  let stopped = false;
-  let nextLane = 0;
-  const lanes = Array.from({ length: 4 }, () => Promise.resolve());
-  const rpc: Rpc = {
-    call(method, params) {
-      const lane = nextLane++ % lanes.length;
-      const request = lanes[lane]!.then(async () => {
-        if (stopped) {
-          throw new Error("INDEX_PASS_STOPPED");
-        }
-        if (++calls > limits.rpcRequestsPerPass) {
-          throw new Error("INDEX_PASS_BUDGET_EXHAUSTED");
-        }
-        const reserved = await pool.query(
-          `UPDATE launch.indexer_admission SET requests=CASE WHEN day=to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD') THEN requests+1 ELSE 1 END,
-      day=to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD'),expires_at=clock_timestamp()+make_interval(secs=>$3)
-      WHERE chain=$1 AND owner=$2 AND expires_at>clock_timestamp() AND (day<>to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD') OR requests<$4) RETURNING chain`,
-          [chain, owner, limits.leaseSeconds, limits.rpcRequestsPerDay],
-        );
-        if (!reserved.rowCount) {
-          throw new Error("INDEX_LEASE_OR_DAILY_BUDGET_UNAVAILABLE");
-        }
-        return input.rpc.call(method, params);
-      });
-      lanes[lane] = request.then(
-        () => undefined,
-        () => {
-          stopped = true;
-        },
+  const admission = createIndexerRpcAdmission({
+    rpc: input.rpc,
+    maxRequests: limits.rpcRequestsPerPass,
+    async reserve(count) {
+      const reserved = await pool.query(
+        `UPDATE launch.indexer_admission
+         SET requests=CASE
+               WHEN day=to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD')
+                 THEN requests+$5::integer ELSE $5::integer END,
+             day=to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD'),
+             expires_at=clock_timestamp()+make_interval(secs=>$3)
+         WHERE chain=$1 AND owner=$2 AND expires_at>clock_timestamp()
+           AND $5::integer<=$4::integer
+           AND (day<>to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD')
+                OR requests<=$4::integer-$5::integer)
+         RETURNING chain`,
+        [chain, owner, limits.leaseSeconds, limits.rpcRequestsPerDay, count],
       );
-      return request;
+      return Boolean(reserved.rowCount);
     },
-  };
+  });
+  const rpc = admission.rpc;
   const uncachedReader = tokenChainReader(rpc);
   const blockReads = new Map<bigint, Promise<BlockRef>>();
   let tip: Promise<BlockRef> | undefined;
@@ -324,44 +313,49 @@ export async function runTokenIndexer(input: {
         outputs: [{ type: name === "decimals" ? "uint8" : "uint256" }],
       })),
     ];
-    await projector.project(chain, async (address, at) => {
-      const existing = await pool.query<{
-        name: string;
-        ticker: string;
-        decimals: number;
-        totalSupply: string;
-      }>(
-        `SELECT name,ticker,decimals,total_supply::text AS "totalSupply" FROM market.tokens WHERE chain=$1 AND address=$2`,
-        [chain, address],
-      );
-      if (existing.rows[0]) {
-        const t = existing.rows[0];
-        return {
-          name: t.name,
-          symbol: t.ticker.replace(/^\$/, ""),
-          decimals: t.decimals,
-          totalSupply: BigInt(t.totalSupply),
-        };
-      }
-      const [name, symbol, decimals, totalSupply] = await Promise.all([
-        read(address, erc20, "name", [], BigInt(at)),
-        read(address, erc20, "symbol", [], BigInt(at)),
-        read(address, erc20, "decimals", [], BigInt(at)),
-        read(address, erc20, "totalSupply", [], BigInt(at)),
-      ]);
-      if (
-        decimals !== 18 ||
-        totalSupply !== 21000000000000000000000000n ||
-        typeof name !== "string" ||
-        typeof symbol !== "string"
-      ) {
-        throw new Error("INVALID_LAUNCH_METADATA");
-      }
-      return { name, symbol, decimals, totalSupply };
-    });
+    const projection = await projector.project(
+      chain,
+      async (address, at) => {
+        const existing = await pool.query<{
+          name: string;
+          ticker: string;
+          decimals: number;
+          totalSupply: string;
+        }>(
+          `SELECT name,ticker,decimals,total_supply::text AS "totalSupply" FROM market.tokens WHERE chain=$1 AND address=$2`,
+          [chain, address],
+        );
+        if (existing.rows[0]) {
+          const t = existing.rows[0];
+          return {
+            name: t.name,
+            symbol: t.ticker.replace(/^\$/, ""),
+            decimals: t.decimals,
+            totalSupply: BigInt(t.totalSupply),
+          };
+        }
+        const [name, symbol, decimals, totalSupply] = await Promise.all([
+          read(address, erc20, "name", [], BigInt(at)),
+          read(address, erc20, "symbol", [], BigInt(at)),
+          read(address, erc20, "decimals", [], BigInt(at)),
+          read(address, erc20, "totalSupply", [], BigInt(at)),
+        ]);
+        if (
+          decimals !== 18 ||
+          totalSupply !== 21000000000000000000000000n ||
+          typeof name !== "string" ||
+          typeof symbol !== "string"
+        ) {
+          throw new Error("INVALID_LAUNCH_METADATA");
+        }
+        return { name, symbol, decimals, totalSupply };
+      },
+      { pendingOnly: true },
+    );
+    let positionsProjected = 0;
     if (policy.venue === "uniswap_v4") {
       const uniswap = new PostgresUniswapProjector(pool, policy, { chain, owner });
-      await uniswap.project(async (token, at, hash) => {
+      positionsProjected = await uniswap.project(async (token, at, hash) => {
         if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
           throw new Error("POSITION_REORG");
         }
@@ -433,7 +427,7 @@ export async function runTokenIndexer(input: {
       });
     } else {
       const kuru = new PostgresKuruProjector(pool, policy, { chain, owner });
-      await kuru.project(async (vault, market, at, hash) => {
+      positionsProjected = await kuru.project(async (vault, market, at, hash) => {
         if ((await uncachedReader.getBlock(BigInt(at))).hash !== hash) {
           throw new Error("POSITION_REORG");
         }
@@ -501,14 +495,24 @@ export async function runTokenIndexer(input: {
       });
     }
     const confirmedTip = (await reader.getLatestBlock()).number - BigInt(policy.confirmations);
-    const caughtUp = outcomes.every(
-      (outcome) =>
-        outcome.kind === "idle" || (outcome.kind === "applied" && outcome.toBlock >= confirmedTip),
-    );
-    return { kind: "completed", calls, outcomes, caughtUp };
+    const caughtUp =
+      !projection.hasMore &&
+      positionsProjected < 100 &&
+      outcomes.every(
+        (outcome) =>
+          outcome.kind === "idle" ||
+          (outcome.kind === "applied" && outcome.toBlock >= confirmedTip),
+      );
+    return {
+      kind: "completed",
+      calls: admission.calls,
+      outcomes,
+      projection,
+      positionsProjected,
+      caughtUp,
+    };
   } finally {
-    stopped = true;
-    await Promise.allSettled(lanes);
+    await admission.stop();
     delete input.store.admissionFence;
     await pool.query(
       "UPDATE launch.indexer_admission SET owner=NULL,expires_at=NULL WHERE chain=$1 AND owner=$2",

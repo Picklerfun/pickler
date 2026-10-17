@@ -116,6 +116,7 @@ export const agentSummarySchema = z.object({
     .nullable(),
 }) satisfies z.ZodType<AgentSummaryDto>;
 export const directoryAgentSchema = z.object({
+  launchedToken: agentTokenSchema.nullable().optional(),
   agent: activityAgentSchema.extend({ id: z.string().uuid(), advicePrice: advicePriceSchema }),
   beat: text,
   venue,
@@ -369,10 +370,6 @@ const curve = z.object({
   openedAt: text,
   closedAt: nullableText,
 });
-export const launchDetailSchema = launchSummary.extend({
-  curve: curve.nullable(),
-  pool: curve.nullable(),
-}) satisfies z.ZodType<LaunchDetailDto>;
 export const launchTradeSchema = z.object({
   side: z.enum(["buy", "sell"]),
   trader: text,
@@ -384,6 +381,87 @@ export const launchTradeSchema = z.object({
   logIndex: number,
   blockTime: text,
 }) satisfies z.ZodType<TradeDto>;
+export const tokenMarketSchema = z.object({
+  version: z.literal(1),
+  tokenDecimals: z.number().int().min(0).max(18),
+  priceKind: z.enum(["curve", "last_trade", "unavailable"]),
+  priceWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  priceMovement: z
+    .object({
+      direction: z.enum(["up", "down", "flat"]),
+      changeBps: z.string().regex(/^-?[0-9]+$/),
+      fromAt: z.iso.datetime({ offset: true }),
+      toAt: z.iso.datetime({ offset: true }),
+    })
+    .refine((move) => {
+      if (!/^-?[0-9]+$/.test(move.changeBps)) {
+        return false;
+      }
+      const bps = BigInt(move.changeBps);
+      if (move.direction === "flat") {
+        return bps === 0n;
+      }
+      return move.direction === "down" ? bps <= 0n : bps >= 0n;
+    }, "Price movement direction mismatch")
+    .nullable()
+    .optional(),
+  fdvWad: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  volume24h: z.string().regex(/^[0-9]+$/),
+  windowEnd: z.iso.datetime({ offset: true }),
+  observedAt: z.iso.datetime({ offset: true }),
+  observedBlock: z.string().regex(/^[0-9]+$/),
+  netSold: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  realQuoteReserve: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  remainingTokens: z
+    .string()
+    .regex(/^[0-9]+$/)
+    .nullable(),
+  progressBps: z.number().int().min(0).max(10000).nullable(),
+  terms: z
+    .object({
+      totalSupply: z.string().regex(/^[0-9]+$/),
+      saleAllocation: z.string().regex(/^[0-9]+$/),
+      lpAllocation: z.string().regex(/^[0-9]+$/),
+      buyFeeBps: z.number().int().min(0).max(10000),
+      sellFeeBps: z.number().int().min(0).max(10000),
+    })
+    .nullable(),
+  history: z
+    .array(
+      z.object({ at: z.iso.datetime({ offset: true }), priceWad: z.string().regex(/^[0-9]+$/) }),
+    )
+    .max(721),
+  historyTruncated: z.boolean(),
+  recentTrades: z
+    .array(
+      launchTradeSchema.extend({
+        priceWad: z.string().regex(/^[0-9]+$/),
+        tokenAmount: z.string().regex(/^[0-9]+$/),
+        quoteAmount: z.string().regex(/^[0-9]+$/),
+        feeAmount: z.string().regex(/^[0-9]+$/),
+        blockTime: z.iso.datetime({ offset: true }),
+        txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+      }),
+    )
+    .max(20),
+});
+export const launchDetailSchema = launchSummary.extend({
+  curve: curve.nullable(),
+  pool: curve.nullable(),
+  market: tokenMarketSchema.nullable().optional(),
+}) satisfies z.ZodType<LaunchDetailDto>;
 export function freshnessReadSchema<T extends z.ZodType>(data: T) {
   return z.object({
     data,
@@ -408,3 +486,26 @@ export const agentActionSchema = z.object({
   probability: nullableNumber,
   horizonHours: nullableNumber,
 }) satisfies z.ZodType<AgentActionDto>;
+
+export const catalogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().max(2048).optional(),
+  q: z.string().max(80).optional(),
+  theme: z.string().max(40).optional(),
+  available: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+  adviceForSale: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true")
+    .optional(),
+});
+export const agentCatalogPageSchema = z.object({
+  items: z.array(agentSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export const directoryCatalogPageSchema = z.object({
+  items: z.array(directoryAgentSchema),
+  nextCursor: z.string().nullable(),
+});

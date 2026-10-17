@@ -47,3 +47,27 @@ test("pendingMovement is a Confirming row with the right sign", () => {
   expect(w.sign).toBe("-");
   expect(pendingMovement("Faucet", 3n, "0xcd").sign).toBe("+");
 });
+
+describe("toMovements with the advice splitter", () => {
+  const SPLITTER = "0x570A000000000000000000000000000000004d2a" as Address;
+  const pay = (to: Address): Transfer[] => [{ hash: "0x9", block: 9n, timestamp: 90, from: ME, to, value: 150n }];
+
+  test("a transfer from the wallet to the splitter is an Agent analysis, case-insensitively", () => {
+    expect(toMovements(pay(SPLITTER), ME, SPLITTER).map((x) => [x.kind, x.sign])).toEqual([["Agent analysis", "-"]]);
+    expect(toMovements(pay(SPLITTER.toUpperCase().replace("0X", "0x") as Address), ME, SPLITTER)[0]?.kind).toBe("Agent analysis");
+    expect(toMovements(pay(SPLITTER), ME, SPLITTER.toLowerCase() as Address)[0]?.kind).toBe("Agent analysis");
+  });
+
+  test("another outgoing address stays a Withdrawal", () => {
+    expect(toMovements(pay(OTHER), ME, SPLITTER)[0]?.kind).toBe("Withdrawal");
+  });
+
+  test("with no splitter configured nothing changes", () => {
+    expect(toMovements(pay(SPLITTER), ME, null)[0]?.kind).toBe("Withdrawal");
+    expect(toMovements(pay(SPLITTER), ME)[0]?.kind).toBe("Withdrawal");
+  });
+
+  test("a pending Agent analysis is an outgoing row", () => {
+    expect(pendingMovement("Agent analysis", 3n, "0xef").sign).toBe("-");
+  });
+});

@@ -10,8 +10,12 @@ Read [the root instructions](../../AGENTS.md) and [infrastructure instructions](
 configuration this path deliberately refuses rather than guessing an address.
 
 `wrangler.jsonc` now binds the existing trusted staging Hyperdrive and the single free testnet RPC.
-The normal deploy keeps `TOKEN_INDEXER_ENABLED=false`; the reviewed public launch/indexer policies
-are provisioned separately as runtime bindings. Explicit operator activation and its capacity record
+The staging source retains the already-enabled testnet `TOKEN_INDEXER_ENABLED=true` gate; the reviewed public launch/indexer policies
+are provisioned separately as runtime bindings. `keep_vars=true` preserves those reviewed public
+policy bindings on normal Wrangler/Cloudflare Builds publication; declared source variables still
+take precedence. Never put the grant signer or database credentials in this Worker. The main-only
+automatic publisher is documented in [the build guide](../../scripts/cloudflare/README.md); its
+repository connection and active version require separate hosted evidence. Explicit operator activation and its capacity record
 are documented in [the hosted readiness guide](../../docs/market/token-indexer-hosted-20261011.md).
 Never infer launch activation from the indexer or isolated deployment receipts.
 
@@ -60,3 +64,14 @@ its infrastructure lease and per-pass/daily RPC budget; no SQL lock spans provid
 `test/token-schedule.test.ts` covers bounded/historical behavior and failure stops. Ranges stay
 at 100 blocks. The [readiness record](../../docs/market/token-launch-readiness-20261010.md) distinguishes
 controlled PostgreSQL catch-up from the still-pending sustained hosted capacity acceptance.
+
+## CPU and memory recovery bounds
+
+The scheduler checks a 45-second elapsed budget between completed passes (`time_limit`); this is
+cooperative, not a hard cancellation deadline. One in-flight pass can exceed it. Existing policy
+pass/RPC limits and the minute Cron are unchanged. Scheduled launch projection selects at most
+101 pending events and applies 100; V4/Kuru snapshot selection is limited to 100. Projection
+counters and backlog are included in the pass result, and pending projection prevents `caughtUp`.
+Never fetch the entire canonical header history into the Worker for reconciliation locks. The
+infrastructure helper locks only stored graduation evidence and returns one scalar. See
+[the diagnosis and local validation](../../docs/market/indexer-cpu-memory-20261015.md).

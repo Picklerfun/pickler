@@ -87,7 +87,7 @@ const historicalKuruPolicySchema = z
   })
   .strict();
 /** V4 is a separate reviewed policy; historical Kuru records retain their original meaning. */
-const uniswapPolicySchema = historicalKuruPolicySchema
+const uniswapPolicyFields = historicalKuruPolicySchema
   .omit({
     version: true,
     venue: true,
@@ -124,31 +124,53 @@ const uniswapPolicySchema = historicalKuruPolicySchema
       })
       .strict(),
   })
+  .strict();
+function validateUniswapQuote(
+  policy: Pick<z.infer<typeof uniswapPolicyFields>, "quote" | "preset">,
+  ctx: z.RefinementCtx,
+) {
+  if (
+    !policy.quote.implementation ||
+    policy.quote.implementation.slot !==
+      "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["quote", "implementation"],
+      message: "AUSD proxy implementation and code hash must be reviewed",
+    });
+  }
+  if (policy.quote.address !== policy.preset.quoteAddress) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["quote", "address"],
+      message: "Quote deployment must match the preset",
+    });
+  }
+}
+const uniswapPolicySchema = uniswapPolicyFields.superRefine(validateUniswapQuote);
+/** Admission expansion is explicit; historical policies keep their UUID allowlists. */
+const eligibleCreatorPolicySchema = uniswapPolicyFields
+  .omit({ version: true, allowedAgents: true })
+  .extend({ version: z.literal(3), admission: z.literal("eligible_creators") })
   .strict()
-  .superRefine((policy, ctx) => {
-    if (
-      !policy.quote.implementation ||
-      policy.quote.implementation.slot !==
-        "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["quote", "implementation"],
-        message: "AUSD proxy implementation and code hash must be reviewed",
-      });
-    }
-    if (policy.quote.address !== policy.preset.quoteAddress) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["quote", "address"],
-        message: "Quote deployment must match the preset",
-      });
-    }
-  });
-export const tokenLaunchPolicySchema = z.union([historicalKuruPolicySchema, uniswapPolicySchema]);
+  .superRefine(validateUniswapQuote);
+export const tokenLaunchPolicySchema = z.union([
+  historicalKuruPolicySchema,
+  uniswapPolicySchema,
+  eligibleCreatorPolicySchema,
+]);
 export type TokenLaunchPolicy = z.infer<typeof tokenLaunchPolicySchema>;
 export type KuruTokenLaunchPolicy = Extract<TokenLaunchPolicy, { venue: "kuru_passive" }>;
 export type UniswapTokenLaunchPolicy = Extract<TokenLaunchPolicy, { venue: "uniswap_v4" }>;
 export function parseTokenLaunchPolicy(json: string): TokenLaunchPolicy {
   return tokenLaunchPolicySchema.parse(JSON.parse(json));
+}
+
+/** This host restriction supplements core's creator, owner, publication and master admission. */
+export function tokenLaunchAllowsAgent(policy: TokenLaunchPolicy, agentId: string): boolean {
+  if (policy.version === 3) {
+    return true;
+  }
+  return policy.allowedAgents.includes(agentId);
 }

@@ -195,14 +195,18 @@ export function Picks({
   events,
   onSelect,
   onTrace,
+  more = false,
+  onMore,
 }: {
   runs: Run[];
   runId: string | null;
   events: RunEvent[];
   onSelect(id: string): void;
   onTrace(id: string): void;
+  more?: boolean;
+  onMore?(): void;
 }) {
-  const picks = runs.filter((run) => run.decision);
+  const picks = runs.filter((run) => run.decision || run.resultAvailable);
   const selected = picks.find((run) => run.id === runId) ?? picks[0];
   /* The paper order is fetched per run and stored with that run's id, so a slow answer for the
      previous pick can never appear under the one now on screen. */
@@ -243,9 +247,20 @@ export function Picks({
           <h1>Picks</h1>
           <p>every decision, with the range, the counter-evidence and who said no</p>
         </div>
+        {picks.map((run) => (
+          <Button key={run.id} variant="secondary" onClick={() => onSelect(run.id)}>
+            Open result · {clock(run.finishedAt ?? run.createdAt)}
+          </Button>
+        ))}
+        {more && (
+          <Button variant="secondary" onClick={onMore}>
+            Load older runs
+          </Button>
+        )}
         <p className={styles.empty}>
-          No decision yet. A run has to finish and return an assessment before there is anything to
-          read here — a failed run leaves a trace under Activity instead.
+          {picks.length ? "Choose a result to load its complete assessment." : "No decision yet."} A
+          run has to finish and return an assessment before there is anything to read here — a
+          failed run leaves a trace under Activity instead.
         </p>
       </div>
     );
@@ -260,12 +275,29 @@ export function Picks({
     <div className={styles.section} id="studio-section-picks">
       <div className={styles.sectionHead}>
         <h1>Picks</h1>
-        <span className={styles.count}>{picks.length} DECISIONS</span>
+        <span className={styles.count}>{picks.length} DECISIONS SHOWN</span>
         <p>every decision, with the range, the counter-evidence and who said no</p>
       </div>
       <div className={styles.picks}>
         <div className={styles.pickList}>
+          {more && (
+            <Button variant="secondary" onClick={onMore}>
+              Load older runs
+            </Button>
+          )}
           {picks.map((run) => {
+            if (!run.decision) {
+              return (
+                <button
+                  key={run.id}
+                  type="button"
+                  className={styles.pick}
+                  onClick={() => onSelect(run.id)}
+                >
+                  Open result · {clock(run.finishedAt ?? run.createdAt)}
+                </button>
+              );
+            }
             const item = decisionView(run, run.decision!);
             const band = item.probability;
             return (

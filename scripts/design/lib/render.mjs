@@ -40,7 +40,7 @@ const baseFor = (route) => BASE_FOR[route.product] ?? BASE;
 
 /* The studio's session guard, and why a design check passes it with a cookie that is not a session.
  *
- * With Supabase configured, apps/web/src/middleware.ts answers every /studio, /account and /passkey
+ * With Supabase configured, apps/web/src/proxy.ts answers every /studio, /account and /passkey
  * request that carries no `sb-<project-ref>-auth-token` cookie with a 307 to /signin. It checks the
  * cookie's *name* only (apps/web/src/server/guard.ts): authentication itself happens in the browser
  * and in the API, on a JWT the API verifies. So a cookie with that name and a dummy value passes the

@@ -9,6 +9,7 @@ import {
 } from "@pickler/core";
 import {
   dayLossReached,
+  paperFundingRange,
   hourlyRequestKey,
   realizedSince,
   utcDayStart,
@@ -57,6 +58,7 @@ export interface PerpsBackground {
     signal: AbortSignal,
     market?: import("@pickler/core").PerpMarketInfo,
   ): Promise<PerpFundingHistory>;
+  auditFunding?(signal: AbortSignal): Promise<void>;
   check(check: PerpsCheck, holder: PerpsLeaseHolder, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
   clock?: () => number;
@@ -204,21 +206,23 @@ export async function reconcilePerpsPositions(runtime: PerpsBackground, signal: 
       holder = { lease: claim.lease };
       const agent = await runtime.agents.agent(item.scope);
       const paper = runtime.bindPaper(item.scope, agent.version, holder, signal);
-      const view = await paper.view(item.scope);
+      const view = await paper.executionSnapshot(item.scope);
       const frames: PerpsPaperFrame[] = [];
       const funding: PerpFundingHistory[] = [];
       for (const symbol of new Set(view.account.positions.map((p) => p.symbol))) {
         signal.throwIfAborted();
         holder.lease = await runtime.store.renewAgent(holder.lease);
-        const from = Math.min(
-          ...view.account.positions.filter((p) => p.symbol === symbol).map((p) => p.openedAt),
+        const { from, to } = paperFundingRange(
+          view.account.positions,
+          symbol,
+          (runtime.clock ?? Date.now)(),
         );
         funding.push(
           await runtime.funding(
             item.scope.network,
             symbol,
             from,
-            (runtime.clock ?? Date.now)(),
+            to,
             signal,
             view.account.positions.find((position) => position.symbol === symbol)?.market,
           ),
@@ -270,8 +274,10 @@ async function dayLossPause(
   if (agent.paused) {
     return false;
   }
-  const view = await runtime.paper.view(due.scope);
-  const realized = realizedSince(view.movements, utcDayStart((runtime.clock ?? Date.now)()));
+  const view = await runtime.paper.executionSnapshot(due.scope);
+  const realized = view.accounting
+    ? Number(view.accounting.realizedToday)
+    : realizedSince(view.movements, utcDayStart((runtime.clock ?? Date.now)()));
   if (!dayLossReached(realized, effectiveRisk(agent.config))) {
     return false;
   }
@@ -329,9 +335,12 @@ export async function runExits(runtime: PerpsBackground, signal: AbortSignal): P
         continue;
       }
       closed++;
-      const pnl = result.view.movements
-        .filter((m) => m.key.startsWith(`close:${position.id}:`))
-        .reduce((sum, m) => sum + Number(m.delta), 0);
+      const pnl =
+        result.view.accounting?.closePnl !== undefined
+          ? Number(result.view.accounting.closePnl)
+          : result.view.movements
+              .filter((m) => m.key.startsWith(`close:${position.id}:`))
+              .reduce((sum, m) => sum + Number(m.delta), 0);
       const name = `${position.side.toUpperCase()} ${position.symbol}`;
       await runtime.store.appendStep(holder.lease, {
         text: `Closed ${name} at ${result.position.exitPrice} · ${pnl >= 0 ? "+" : "−"}${Math.abs(pnl).toFixed(2)} AUSD`,
@@ -392,6 +401,9 @@ export async function superviseChecks(
       () => runtime.store.recoverChecks(),
       () => dispatchDueChecks(runtime, admission, send),
       () => runExits(runtime, signal),
+      async () => {
+        await runtime.auditFunding?.(signal);
+      },
       () => expirePerpsProposals(runtime),
       async () => {
         for (const actionId of owner ? await owner.pendingActions() : []) {

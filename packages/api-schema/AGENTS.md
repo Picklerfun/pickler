@@ -33,6 +33,10 @@ NFL coverage `sourceIds` may identify retrieved sources or section-scoped execut
 
 ## Public agents
 
+`DirectoryAgentDto.launchedToken` is an optional nullable confirmed token summary, using
+`agentTokenSchema`, for the configured network. Older consumers and controlled fixtures may omit
+it; absence never grants public trading.
+
 `src/agents.ts` carries the public agent board, persona, directory, reads, analytics and
 leaderboard. On every one of these DTOs `null` means absent: a figure that has no source yet — no
 token launched, so no `ticker`, `slug`, `marketCap` or `stage`; nothing settled, so no
@@ -42,6 +46,10 @@ from the persona and profile DTOs because nothing stores followers and the brief
 configuration.
 
 ## Studio contracts
+
+Perpl live state optionally carries nullable `requirements`: minimum account/deposit AUSD and
+the reviewed maximum per deposit. These are public exact decimal strings; omission remains
+compatible with older fixtures/consumers and does not authorize funding.
 
 `walletsResponseSchema` carries optional nullable `chainId` for the deployment-selected custody
 balance/transfer network (10143: Monad Testnet; 143: Monad mainnet). Current producers always
@@ -150,7 +158,14 @@ configuration, prices/rates, prompts or provider traces may cross these DTOs. Wa
 `kind` is `eoa | mera`. See [Agent advice](../../docs/agent-advice.md).
 `paymentRequirementsSchema`, `paymentErrorSchema` and `paymentRequiredSchema` are the x402 v1 402
 body of the paid advice request: x402's own shape, not the response envelope, with one `accepts`
-entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain.
+entry pinned to `exact`, `monad-testnet`, 300 s and the AUSD EIP-712 domain. `payTo` is the advice
+splitter and `extra` also pins `primaryType: "ReceiveWithAuthorization"`, `creatorBps: 6500`,
+`protocolBps: 3500` and `nonceDerivation`, with the agent wallet as `payee`
+(docs/specs/agent-advice-fee-split-v1.md §4). `paymentPayloadSchema` and
+`paymentAuthorizationSchema` describe the decoded `X-PAYMENT` header: the six signed
+`ReceiveWithAuthorization` fields plus `salt` (32 bytes, `nonce = keccak256(abi.encode(payee,
+salt))`). The API Worker publishes it as the header's OpenAPI `contentSchema`; core decodes the
+header itself and stays authoritative.
 
 ## Perpl paper runtime
 
@@ -259,3 +274,86 @@ supports `uniswap_v4` with optional pool ID and LP fee alongside historical `kur
 Fields are additive for historical producers. Network, contracts, account and NFT are never
 browser-selected inputs. Regenerate OpenAPI through the API host; do not publish private
 configuration hashes, signer material or raw transactions in DTOs.
+
+## Owner curve trade DTOs
+
+Token operation inputs add `buy`, `sell`, `approve_buy` and `approve_sell` with required strict
+`trade` (positive uint256 atomic amount and explicit 1–100 bps slippage). Other actions reject
+trade fields. Clients cannot select contracts, wallets, recipients or calldata. Additive operation
+`quote` exposes only prepared amounts, balance, allowance, fee and approval purpose; historical
+operations without it remain readable. Ordinary state reads remain database-only. The API can repair a finalized app launch with missing canonical attribution through its existing operation service; the wire schema is unchanged.
+
+## Public curve trading contracts
+
+`public-token-trading.ts` exports strict visitor wallet/side/atomic amount/tolerance input and
+version-1 unsigned preparation DTOs through the package root. Targets, curve, asset, gas, nonce
+and minimum output are server-resolved outputs, never client input. Chain is explicitly testnet 10143. Owner Studio DTOs and authentication remain separate. See
+[Public token trading](../../docs/market/public-token-trading.md).
+
+## Public token market observations
+
+`LaunchDetailDto.market` is optional/nullable for historical producers. Version 1 carries prepared
+WAD prices/FDV, quote-atomic 24-hour curve volume, server window end, observed block/time,
+canonical net sold/reserve, optional committed allocations and bounded history/recent trades.
+`tokenMarketSchema` validates this extension in the existing launch read contract. A missing
+market or terms is unknown, never a zero price or implicit reference preset.
+
+Public trade confirmation uses strict `publicTokenTradeConfirmationInputSchema` (visitor wallet
+and transaction hash only) and `publicTokenTradeConfirmationSchema` (`pending`, `confirmed` or
+`reverted`). Clients cannot supply token/curve addresses, calldata, prices or reserve values.
+
+`TokenMarketDto.priceMovement` is an optional nullable prepared latest-observation change:
+`direction`, signed decimal-string `changeBps`, and the compared `fromAt`/`toAt` timestamps.
+Older producers without the field remain valid. Direction survives rounded zero basis points;
+inconsistent signs are invalid. It must not be labelled as a 24-hour return.
+
+`publicTokenTradeQuotedSchema`/DTO omits the transaction from the prepared response. The public
+quote route shares the strict trade input and exposes only canonical identities, expiration and
+exact server-calculated quantities; it does not supply an executable transaction.
+
+## Perpl real execution DTOs
+
+`src/perpl-live.ts` exports strict portable owner setup, bounded session, control, position,
+order and state schemas. Amounts are decimal strings; missing economics/precision are nullable.
+No credential, private preparation, lease, organization/tenant selector or internal signal source
+belongs in these DTOs. Caller input cannot choose calldata, signing wallet or exchange address.
+See [Perpl trading](../../docs/perpl-trading.md).
+
+## Perpl dashboard wire contract
+
+`perpl-dashboard.ts` exports concrete read-only market/portfolio DTOs and the narrow scope-1
+enrollment and signed-read envelopes. `PERPL_READ_KEY_TYPES`, fixed testnet domain/origin, no
+builder/delegation terms, matching wallet/public key/expiry and `checkPerplReadPayload` protect
+every signing boundary. Enrollment intentionally returns the opaque read-access token privately
+to its signing browser; no private key is accepted or returned. Monetary projections are decimal
+strings. Collateral-exhaustion/price-buffer values are estimates, not venue liquidation prices.
+See [Perpl dashboard](../../docs/perpl-dashboard.md).
+
+The dashboard's public `GET /v1/perpl/portfolio/:wallet` validates the path with
+`perplPublicWalletSchema`. Portfolio responses may carry `source: "onchain"`; older signed REST
+responses omit it. Original position leverage is nullable because the public account getter does
+not supply that setting. Historical statistics remain nullable, never zero-filled. Other monetary
+and risk fields preserve their existing units and meaning. Legacy key enrollment and signed-read
+DTOs retain their strict scope-1 contract.
+
+`perplLiveExistingKeySchema` is the strict write-only owner import input (Perpl API token plus
+32-byte Ed25519 seed). These credentials are never response fields. Owner state adds optional
+`setupEnabled`, independently of session admissions. See [Perpl trading](../../docs/perpl-trading.md).
+
+Existing-key input adds optional `useKeyWallet` for explicitly connecting the wallet verified
+by its key. It accepts no address. State adds optional `connection` (`agent_wallet`/`key_wallet`)
+and positions add optional `managedBySession`; these are public status only. Older DTOs stay valid
+and the two credential fields remain write-only.
+
+## Bounded product reads
+
+Catalogue endpoints return items/nextCursor pages. Execution read schemas separate lightweight status and run summaries from full results. Event identifiers and cursors are decimal strings; event pages carry hasMore and nextCursor, with explicit oversized body detail references. Studio canCreateAnother is nullable on single-agent reads and has a separate creation-eligibility operation.
+
+## Bounded Paper record
+
+Paper positions include the next closed-history cursor. `perpsClosedPositionsPageSchema` carries at most 100 closed positions and a stable opaque next cursor. Record projection metadata exposes revision, observation time and completeness; consumers must not present rebuilding figures as final. The chart is bounded to thirty days of hourly samples plus the observed point.
+
+Perpl live history uses `perplLiveHistoryQuerySchema` (`kind`, optional `before`) and the strict
+`perplLiveHistorySchema` discriminated response. Each page contains at most 100 public orders,
+sessions or setup entries and a nullable next cursor. Existing state retains its last-100 shape;
+private credentials, lease tokens, preparation and attribution are never history DTO fields.

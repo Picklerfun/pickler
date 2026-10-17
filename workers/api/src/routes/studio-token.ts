@@ -25,14 +25,25 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Owner-only stored token intent, confirmed identity and optional reference economics. Reference terms are not a published preset or executable quote. No chain or signer call. Launch remains unavailable without the independently verified testnet configuration.",
+        "Owner-only stored token intent, confirmed identity and optional reference economics. Reference terms are not a published preset or executable quote. A finalized app launch missing its public identity triggers bounded canonical receipt publication; ordinary reads are database-only. Never signs or sends. Launch remains unavailable without the independently verified testnet configuration.",
     }),
     async (c) => {
       const target = await scope(c);
       if (!services.tokens) {
         return c.json({ error: "TOKEN_UNAVAILABLE", message: "Token state is unavailable" }, 503);
       }
-      return c.json(dto.tokenStateSchema.parse(await services.tokens.state(target)));
+      let state = await services.tokens.state(target);
+      if (
+        state.confirmation === "pending" &&
+        state.operation?.action === "launch" &&
+        state.operation.status === "finalized" &&
+        state.operation.txHash &&
+        services.tokenOperations
+      ) {
+        await services.tokenOperations.status(target, state.operation.id);
+        state = await services.tokens.state(target);
+      }
+      return c.json(dto.tokenStateSchema.parse(state));
     },
   );
   api.put(
@@ -98,7 +109,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errorStatuses: errors,
       idempotent: true,
       description:
-        "Owner-only testnet preparation of an enumerated launch or fee action. The backend resolves all wallets/contracts/calldata and freezes a durable intent before external work. Requires verified Kuru policy; no transaction is sent.",
+        "Owner-only testnet preparation of an enumerated launch or fee action. The backend resolves all wallets/contracts/calldata and freezes a durable intent before external work. Requires the reviewed venue policy. Buy/sell and exact approvals accept only atomic amounts and bounded slippage; no transaction is sent. An unsent preparation failure returns one stored failed operation, a sanitized reason and null activity; permission and version errors still reject.",
     }),
     async (c) => {
       const target = await scope(c);
@@ -118,6 +129,7 @@ export function studioTokenRoutes(services: StudioServices) {
               action: body.action,
               expectedVersion: body.expectedVersion,
               ...(body.asset ? { asset: body.asset } : {}),
+              ...(body.trade ? { trade: body.trade } : {}),
             },
             key,
           ),
@@ -158,7 +170,7 @@ export function studioTokenRoutes(services: StudioServices) {
       errors: dto.studioErrorSchema,
       errorStatuses: errors,
       description:
-        "Explicit bounded reconciliation of the same activity/hash. No signing, replacement or automatic broadcast. Inclusion alone never confirms token identity; canonical indexer attribution is required.",
+        "Explicit bounded reconciliation of the same activity/hash. An expired launch without saved signing identity, bytes or hash may resolve only through the verified factory's complete public event window and stable confirmed block. No signing, replacement or automatic broadcast. Inclusion alone never confirms token identity. A confirmed launch validates and publishes its canonical factory event against the recorded grant before returning finalized, without waiting for historical indexing.",
     }),
     async (c) => {
       const target = await scope(c);

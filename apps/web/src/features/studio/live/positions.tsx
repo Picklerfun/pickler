@@ -14,6 +14,7 @@ import {
   type PriceRange,
 } from "./run-model";
 import { PositionCards } from "./runtime-parts";
+import { PerplTradingPositions } from "../perpl-execution/execution";
 import { paperShown } from "./runtime-model";
 import { PriceTrail } from "./sparkline";
 import styles from "./run.module.css";
@@ -193,14 +194,22 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
   now,
   canManage,
   onWhy,
+  onSection,
 }) => (
   <LiveSection section="positions">
     <div className={styles.run}>
+      {(!live.preview || !!live.execution.state?.available) && (
+        <PerplTradingPositions
+          execution={live.execution}
+          canManage={canManage}
+          onControls={() => onSection("controls")}
+        />
+      )}
       {paperShown(live.record) ? (
         <>
           <PositionCards
             id="live-positions-open"
-            title="Open"
+            title={live.execution.state?.setupRequired === false ? "Open · paper" : "Open"}
             live={live}
             now={now}
             canManage={canManage}
@@ -211,11 +220,14 @@ export const Positions: (props: LiveSectionProps) => ReactElement = ({
           />
           <WhatItWatches agent={agent} live={live} />
         </>
-      ) : (
-        <FlatPositions id="live-positions-open" title="Open">
+      ) : live.preview && !live.execution.state?.available ? (
+        <FlatPositions
+          id="live-positions-open"
+          title={live.execution.state?.setupRequired === false ? "Paper positions" : "Open"}
+        >
           <WhatItWatches agent={agent} live={live} />
         </FlatPositions>
-      )}
+      ) : null}
     </div>
   </LiveSection>
 );

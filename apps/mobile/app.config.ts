@@ -12,6 +12,9 @@ const readsUrl = process.env.PICKLER_READS_URL ?? "";
 // API del producto (workers/api tras el host web), p. ej. https://pickler.fun/api/v1. Vacío = sin cuenta: la app no
 // inicia sesión ni pide username (src/config/api.ts). Requiere que la API tenga SIWE_DOMAIN configurado.
 const apiUrl = process.env.PICKLER_API_URL ?? "";
+// The deployed PicklerAdviceSplitter: the only address an advice payment may be signed to. Empty = Studio agents off
+// (src/config/advice.ts). It must be the address the API names as payTo (ADVICE_SPLITTER_ADDRESS on the Worker).
+const adviceSplitter = process.env.ADVICE_SPLITTER_ADDRESS ?? "";
 const bundleIdentifier = "fun.pickler.app";
 
 const config: ExpoConfig = {
@@ -25,7 +28,7 @@ const config: ExpoConfig = {
   backgroundColor: "#FFFFFF",
   ios: {
     bundleIdentifier,
-    buildNumber: "12",
+    buildNumber: "13",
     supportsTablet: false,
     backgroundColor: "#FFFFFF",
     associatedDomains: [`webcredentials:${rpId}`],
@@ -46,7 +49,7 @@ const config: ExpoConfig = {
     ["expo-notifications", { enableBackgroundRemoteNotifications: false }],
     ["expo-splash-screen", { image: "./assets/splash-mark.png", imageWidth: 140, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
   ],
-  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl, apiUrl },
+  extra: { rpId, monadscanKey, perplRest, perplWs, perplMarketDataWs, readsUrl, apiUrl, adviceSplitter },
 };
 
 export default config;

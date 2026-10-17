@@ -1,28 +1,35 @@
 "use client";
-import { useState } from "react";
-import { Button, Skeleton, Tag } from "@pickler/ui";
+import { useEffect, useRef, useState } from "react";
+import { Button, Icon, Tag } from "@pickler/ui";
 import {
   tokenOperationSchema,
   tokenOperationPreparedSchema,
   type TokenStateDto,
   type TokenOperationDto,
 } from "@pickler/api-schema";
-import { studioApi } from "../studio/api";
+import { TokenTradeForm } from "./token-trade-form";
+import simulatedQuotes from "./trade-quotes.json";
+import { errorCode, studioApi } from "../studio/api";
+import { tokenOperationErrorMessage, tokenRequestErrorMessage } from "./token-operation-feedback";
 import { useStudioMemory } from "../studio/routing/memory";
+import { ChainReference } from "./chain-reference";
+import { tokenOperationStatus, tokenStatusCheckFeedback } from "./token-operation-status";
+import {
+  startTokenConfirmation,
+  tokenConfirmationPhase,
+  type TokenConfirmationBudget,
+  type TokenConfirmationPhase,
+} from "./token-confirmation";
 import styles from "./token.module.css";
-const labels: Record<TokenOperationDto["status"], string> = {
-  preparing: "Preparing",
-  awaiting_signature: "Awaiting signature",
-  signing: "Awaiting signature",
-  signed: "Ready to submit",
-  submitting: "Confirming",
-  confirming: "Confirming",
-  included: "Confirming",
-  finalized: "Transaction confirmed",
-  failed: "Could not complete",
-  cancelled: "Cancelled",
-  unknown: "Check transaction status",
-};
+const progress = {
+  launch: "Preparing launch…",
+  prepare: "Preparing transaction…",
+  sign: "Waiting for passkey…",
+  submit: "Submitting transaction…",
+  check: "Checking transaction status…",
+  cancel: "Cancelling preparation…",
+  refresh: "Refreshing saved status…",
+} as const;
 function newest(local: TokenOperationDto | null, server: TokenOperationDto): TokenOperationDto {
   return local?.id === server.id && local.version > server.version ? local : server;
 }
@@ -48,6 +55,8 @@ export function TokenOperationControls({
 }) {
   const memory = useStudioMemory(),
     scope = `${agentId}:token:operation`;
+  const generation = memory.generation();
+  const owned = () => memory.generation() === generation;
   const [operation, setOperation] = useState(() => {
     const remembered = memory.outcome<TokenOperationDto | null>(scope, null);
     const server = state.operation;
@@ -56,53 +65,106 @@ export function TokenOperationControls({
   const [activity, setActivity] = useState<
     ReturnType<typeof tokenOperationPreparedSchema.parse>["activity"]
   >(() => null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<keyof typeof progress | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [preparingAction, setPreparingAction] = useState<TokenOperationDto["action"] | null>(null);
+  const [preparingAsset, setPreparingAsset] = useState<"ausd" | "agent">("ausd");
+  const [checked, setChecked] = useState<{ id: string; message: string; at: number } | null>(null);
+  const actionLock = useRef(false);
+  const [waitResult, setWaitResult] = useState<{
+    id: string;
+    phase: TokenConfirmationPhase;
+    reason: "complete" | "limit" | "error";
+  } | null>(null);
   const current =
     state.operation && state.operation !== operation.server
       ? newest(operation.value, state.operation)
       : (operation.value ?? state.operation);
-  function retain(value: TokenOperationDto) {
+  function retain(value: TokenOperationDto, clearRequest = true) {
+    if (!owned()) {
+      return;
+    }
+    value = newest(memory.outcome<TokenOperationDto | null>(scope, null), value);
     setOperation({ value, server: state.operation });
     memory.setOutcome(scope, value);
-    if (["failed", "cancelled", "finalized"].includes(value.status)) {
+    if (clearRequest && ["failed", "cancelled", "finalized"].includes(value.status)) {
       memory.setOutcome(scope + ":request", null);
     }
   }
   const active = current && !["failed", "cancelled", "finalized"].includes(current.status);
   const url = `/agents/${agentId}/token/operations`;
-  async function action(work: () => Promise<void>) {
-    if (busy) {
+  function checkedStatus(value: TokenOperationDto) {
+    if (owned()) {
+      setChecked({ id: value.id, message: tokenStatusCheckFeedback(value), at: Date.now() });
+    }
+  }
+  async function refresh() {
+    const { tokenStateSchema } = await import("@pickler/api-schema");
+    const latest = tokenStateSchema.parse(
+      await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+    );
+    if (latest.operation) {
+      retain(latest.operation, latest.operation.id !== current?.id);
+      checkedStatus(latest.operation);
+    }
+    if (owned()) {
+      onChange(latest);
+    }
+  }
+  async function action(phase: keyof typeof progress, work: () => Promise<void>) {
+    if (actionLock.current || memory.busy(scope) || !owned()) {
       return;
     }
-    setBusy(true);
+    actionLock.current = true;
+    setBusy(phase);
     setError(null);
+    setChecked(null);
+    setWaitResult(null);
     memory.begin(scope);
     try {
       await work();
-    } catch {
+    } catch (caught) {
+      let recovered: TokenOperationDto | null = null;
       if (!preview) {
-        // This is a database-only read after an explicit action, not provider polling.
+        // Database-only recovery; no signing, provider polling or automatic resubmission.
         try {
           const { tokenStateSchema } = await import("@pickler/api-schema");
-          const latest = tokenStateSchema.parse(await studioApi(`/agents/${agentId}/token`));
-          if (latest.operation) {
-            retain(latest.operation);
+          const latest = tokenStateSchema.parse(
+            await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+          );
+          recovered = latest.operation ?? null;
+          if (recovered) {
+            retain(recovered, recovered.id !== current?.id);
           }
-          onChange(latest);
+          if (owned()) {
+            onChange(latest);
+          }
         } catch {
-          /* Keep uncertain request identity when even stored state is unavailable. */
+          // Retain the same idempotency key even when the saved status cannot be read.
         }
       }
-      setError(
-        "The request could not be confirmed. Your draft is kept. Check its status before trying again.",
-      );
+      const recoveredFailure =
+        recovered?.status === "failed" &&
+        (recovered.id !== current?.id || (phase !== "launch" && phase !== "prepare"));
+      if (owned()) {
+        setError(recoveredFailure ? null : tokenRequestErrorMessage(errorCode(caught), phase));
+      }
     } finally {
-      memory.end(scope);
-      setBusy(false);
+      if (owned()) {
+        memory.end(scope);
+      }
+      actionLock.current = false;
+      setBusy(null);
+      setPreparingAction(null);
     }
   }
-  async function prepare(kind: TokenOperationDto["action"], asset: "ausd" | "agent" = "ausd") {
+  async function prepare(
+    kind: TokenOperationDto["action"],
+    asset: "ausd" | "agent" = "ausd",
+    trade?: { amount: string; slippageBps: number },
+  ) {
+    setPreparingAction(kind);
+    setPreparingAsset(asset);
     if (preview) {
       retain({
         id: "10000000-0000-4000-8000-000000000001",
@@ -114,6 +176,16 @@ export function TokenOperationControls({
         blockHash: null,
         error: null,
         deadline: "9999999999",
+        ...(trade
+          ? {
+              quote: {
+                ...simulatedQuotes[kind === "sell" || kind === "approve_sell" ? "sell" : "buy"],
+                side:
+                  kind === "sell" || kind === "approve_sell" ? ("sell" as const) : ("buy" as const),
+                approval: kind.startsWith("approve_"),
+              },
+            }
+          : {}),
         transaction: {
           chainId: 10143,
           sender: state.masterAddress!,
@@ -124,29 +196,38 @@ export function TokenOperationControls({
       return;
     }
     const keyScope = scope + ":request";
-    const existing = memory.outcome<{ key: string; kind: string; asset: string } | null>(
-      keyScope,
-      null,
-    );
-    const key =
-      existing?.kind === kind && existing.asset === asset ? existing.key : crypto.randomUUID();
-    memory.setOutcome(keyScope, { key, kind, asset });
+    const existing = memory.outcome<{ key: string; signature: string } | null>(keyScope, null);
+    const signature = JSON.stringify({ kind, asset, trade, version: state.draft?.version ?? 0 });
+    const key = existing?.signature === signature ? existing.key : crypto.randomUUID();
+    memory.setOutcome(keyScope, { key, signature });
     const result = tokenOperationPreparedSchema.parse(
       await studioApi(url, {
         method: "POST",
+        signal: AbortSignal.timeout(90_000),
         headers: { "Idempotency-Key": key },
-        body: JSON.stringify({ action: kind, asset, expectedVersion: state.draft?.version ?? 0 }),
+        body: JSON.stringify({
+          action: kind,
+          ...(trade ? { trade } : { asset }),
+          expectedVersion: state.draft?.version ?? 0,
+        }),
       }),
     );
     retain(result.operation);
-    setActivity(result.activity);
+    if (owned()) {
+      setActivity(result.activity);
+    }
   }
   async function sign() {
     if (!current) {
       return;
     }
     if (preview) {
-      retain({ ...current, version: current.version + 1, status: "confirming" });
+      retain({
+        ...current,
+        version: current.version + 1,
+        status: "confirming",
+        txHash: "0x" + "a".repeat(64),
+      });
       return;
     }
     let signed;
@@ -161,16 +242,23 @@ export function TokenOperationControls({
         signed = await stampActivity(await relyingParty(), unsigned);
       } catch (e) {
         if (e instanceof DOMException && e.name === "NotAllowedError") {
-          setError("Signature cancelled. The draft is kept.");
+          if (owned()) {
+            setError("Signature cancelled. The draft is kept.");
+          }
           return;
         }
         throw e;
       }
     }
+    if (!owned()) {
+      return;
+    }
+    setBusy("submit");
     retain(
       tokenOperationSchema.parse(
         await studioApi(`${url}/${current.id}/confirm`, {
           method: "POST",
+          signal: AbortSignal.timeout(90_000),
           body: JSON.stringify({ expectedVersion: current.version, ...(signed ? { signed } : {}) }),
         }),
       ),
@@ -181,7 +269,14 @@ export function TokenOperationControls({
       return;
     }
     if (preview) {
-      retain({ ...current, version: current.version + 1, status: "finalized" });
+      const updated = {
+        ...current,
+        version: current.version + 1,
+        status: "finalized" as const,
+        blockHash: "0x" + "b".repeat(64),
+      };
+      retain(updated);
+      checkedStatus(updated);
       if (current.action === "launch") {
         const { PREVIEW_TOKEN } = await import("./fixture");
         onChange({
@@ -221,14 +316,120 @@ export function TokenOperationControls({
       }
       return;
     }
-    const updated = tokenOperationSchema.parse(await studioApi(`${url}/${current.id}`));
+    const updated = tokenOperationSchema.parse(
+      await studioApi(`${url}/${current.id}`, { signal: AbortSignal.timeout(90_000) }),
+    );
     retain(updated);
-    if (updated.status === "finalized") {
+    checkedStatus(updated);
+    if (owned() && updated.status === "finalized") {
       memory.setOutcome(scope + ":request", null);
       const { tokenStateSchema } = await import("@pickler/api-schema");
-      onChange(tokenStateSchema.parse(await studioApi(`/agents/${agentId}/token`)));
+      const state = tokenStateSchema.parse(
+        await studioApi(`/agents/${agentId}/token`, { signal: AbortSignal.timeout(15_000) }),
+      );
+      if (owned()) {
+        onChange(state);
+      }
     }
   }
+  const confirmationPhase = tokenConfirmationPhase(current, !!state.token);
+  const confirmationId = current?.id;
+  const observer = useRef({ retain, onChange, owned, checkedStatus });
+  observer.current = { retain, onChange, owned, checkedStatus };
+  useEffect(() => {
+    if (preview || busy || !confirmationPhase || !confirmationId) {
+      return;
+    }
+    const budgetScope = `${scope}:wait:${confirmationId}:${confirmationPhase}`;
+    const remembered = memory.outcome<TokenConfirmationBudget | null>(budgetScope, null);
+    const budget = remembered ?? { startedAt: Date.now(), reads: 0, stopped: false };
+    if (!remembered) {
+      memory.setOutcome(budgetScope, budget);
+    }
+    if (budget.stopped) {
+      return;
+    }
+    let mounted = true;
+    const stop = startTokenConfirmation({
+      phase: confirmationPhase,
+      budget,
+      async read(signal) {
+        const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
+        if (confirmationPhase === "receipt") {
+          const value = tokenOperationSchema.parse(
+            await studioApi(`${url}/${confirmationId}`, { signal: requestSignal }),
+          );
+          if (signal.aborted || !mounted || !observer.current.owned()) {
+            return false;
+          }
+          if (value.id !== confirmationId) {
+            throw new Error("Unexpected token operation");
+          }
+          observer.current.retain(value);
+          observer.current.checkedStatus(value);
+          if (value.status === "finalized" && value.action !== "launch") {
+            const { tokenStateSchema } = await import("@pickler/api-schema");
+            const latest = tokenStateSchema.parse(
+              await studioApi(`/agents/${agentId}/token`, { signal: requestSignal }),
+            );
+            if (!signal.aborted && mounted && observer.current.owned()) {
+              observer.current.onChange(latest);
+            }
+          }
+          return tokenConfirmationPhase(value, false) === "receipt";
+        }
+        const { tokenStateSchema } = await import("@pickler/api-schema");
+        const latest = tokenStateSchema.parse(
+          await studioApi(`/agents/${agentId}/token`, { signal: requestSignal }),
+        );
+        if (signal.aborted || !mounted || !observer.current.owned()) {
+          return false;
+        }
+        if (latest.operation) {
+          observer.current.retain(latest.operation);
+          observer.current.checkedStatus(latest.operation);
+        }
+        observer.current.onChange(latest);
+        return !latest.token && latest.operation?.id === confirmationId;
+      },
+      onStop(reason) {
+        if (!mounted || !observer.current.owned()) {
+          return;
+        }
+        setWaitResult({ id: confirmationId, phase: confirmationPhase, reason });
+        if (reason === "error") {
+          setError(
+            tokenRequestErrorMessage(
+              "UNAVAILABLE",
+              confirmationPhase === "receipt" ? "check" : "refresh",
+            ),
+          );
+        }
+      },
+    });
+    return () => {
+      mounted = false;
+      stop();
+    };
+  }, [agentId, busy, confirmationId, confirmationPhase, memory, preview, scope, url]);
+  const storedBudget = confirmationPhase
+    ? memory.outcome<TokenConfirmationBudget | null>(
+        `${scope}:wait:${confirmationId}:${confirmationPhase}`,
+        null,
+      )
+    : null;
+  const automaticPhase =
+    !preview && !busy && confirmationPhase && !storedBudget?.stopped ? confirmationPhase : null;
+  const waitNotice =
+    waitResult !== null &&
+    waitResult.id === confirmationId &&
+    waitResult.phase === confirmationPhase &&
+    waitResult.reason === "limit"
+      ? confirmationPhase === "receipt"
+        ? "Confirmation is taking longer. Your transaction is saved; check its status when you are ready."
+        : "Your transaction is confirmed. Token details are still being indexed; refresh them later."
+      : null;
+
   async function cancel() {
     if (!current) {
       return;
@@ -241,59 +442,226 @@ export function TokenOperationControls({
       tokenOperationSchema.parse(
         await studioApi(`${url}/${current.id}/cancel`, {
           method: "POST",
+          signal: AbortSignal.timeout(15_000),
           body: JSON.stringify({ expectedVersion: current.version }),
         }),
       ),
     );
-    memory.setOutcome(scope + ":request", null);
+    if (owned()) {
+      memory.setOutcome(scope + ":request", null);
+    }
   }
   const graduated = state.venue?.status === "kuru" || state.venue?.status === "uniswap_v4";
   const targetVenue = state.launchVenue
     ? { kuru_passive: "Kuru", uniswap_v4: "Uniswap" }[state.launchVenue.name]
     : "DEX";
   const usable = enabled && (preview || state.available);
+  const awaitingToken =
+    current?.status === "finalized" && current.action === "launch" && !state.token;
+  const status = current ? tokenOperationStatus(current) : null;
+  function buttonContent(
+    phases: (keyof typeof progress)[],
+    label: string,
+    kind?: TokenOperationDto["action"],
+    asset: "ausd" | "agent" = "ausd",
+  ) {
+    const working =
+      busy &&
+      phases.includes(busy) &&
+      (!kind || (preparingAction === kind && preparingAsset === asset));
+    return (
+      <>
+        {working && <Icon name="refresh" size={16} className={styles.spinner} />}
+        {working ? progress[busy] : label}
+      </>
+    );
+  }
   return (
-    <section className={styles.card} aria-label="Token operations" aria-busy={busy}>
+    <section
+      className={`${styles.card} ${styles.operationCard}`}
+      aria-label="Token operations"
+      aria-busy={busy !== null}
+    >
       <div className={styles.head}>
         <h3>{state.token ? "Launch & liquidity" : "Launch"}</h3>
         {preview && <Tag>PREVIEW</Tag>}
       </div>
-      {busy && <Skeleton shape="line" />}
-      {current && (
-        <div role="status">
-          <strong>{labels[current.status]}</strong>
-          {current.txHash && (
-            <p className={styles.quiet}>
-              Transaction {current.txHash.slice(0, 10)}…{current.txHash.slice(-6)}
-            </p>
+      <div className={styles.operationStage} data-open={!!current}>
+        <div className={styles.stageContent}>
+          {current && status && (
+            <div
+              className={styles.statusMessage}
+              key={`${current.id}:${current.status}`}
+              role="status"
+            >
+              <strong>{status.title}</strong>
+              {status.description && !awaitingToken && (
+                <p className={styles.quiet}>{status.description}</p>
+              )}
+              {current.status === "finalized" && current.action === "launch" && !state.token && (
+                <p className={styles.quiet}>Token details are waiting for indexing.</p>
+              )}
+              {current.status === "finalized" && current.quote && (
+                <p className={styles.quiet}>
+                  {current.quote.approval
+                    ? "Amount approved. Review the trade to continue."
+                    : current.quote.side === "buy"
+                      ? "Purchase confirmed."
+                      : "Sale confirmed."}
+                </p>
+              )}
+              {current.status === "unknown" && !current.activityId && !current.txHash && (
+                <p className={styles.attempt}>Attempt {current.id}</p>
+              )}
+            </div>
+          )}
+          {current?.quote && active && (
+            <dl className={styles.details} aria-label="Trade review">
+              <div className={styles.detail}>
+                <dt>Action</dt>
+                <dd>
+                  {current.quote.approval
+                    ? "Exact amount approval · no trade"
+                    : current.quote.side === "buy"
+                      ? "Buy token"
+                      : "Sell token"}
+                </dd>
+              </div>
+              <div className={styles.detail}>
+                <dt>{current.quote.approval ? "Allowance" : "You pay"}</dt>
+                <dd>
+                  {units(current.quote.amount, current.quote.side === "buy" ? 6 : 18)}{" "}
+                  {current.quote.side === "buy" ? "AUSD" : state.token?.ticker}
+                </dd>
+              </div>
+              {!current.quote.approval && (
+                <>
+                  <div className={styles.detail}>
+                    <dt>Expected output · after fee</dt>
+                    <dd>
+                      {units(current.quote.expectedOutput, current.quote.side === "buy" ? 18 : 6)}{" "}
+                      {current.quote.side === "buy" ? state.token?.ticker : "AUSD"}
+                    </dd>
+                  </div>
+                  <div className={styles.detail}>
+                    <dt>Minimum you receive</dt>
+                    <dd>
+                      {units(current.quote.minimumOutput, current.quote.side === "buy" ? 18 : 6)}{" "}
+                      {current.quote.side === "buy" ? state.token?.ticker : "AUSD"}
+                    </dd>
+                  </div>
+                  <div className={styles.detail}>
+                    <dt>Slippage / curve fee</dt>
+                    <dd>
+                      {current.quote.slippageBps / 100}% / {current.quote.feeBps / 100}%
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          )}
+          {current?.transaction && (
+            <dl className={styles.details} aria-label="Transaction details">
+              <div className={styles.detail}>
+                <dt>Chain ID</dt>
+                <dd>{current.transaction.chainId}</dd>
+              </div>
+              <div className={styles.detail}>
+                <dt>Master wallet</dt>
+                <dd>
+                  <ChainReference
+                    value={current.transaction.sender}
+                    chainId={current.transaction.chainId}
+                    label="master wallet address"
+                    preview={preview}
+                  />
+                </dd>
+              </div>
+              <div className={styles.detail}>
+                <dt>{current.action === "launch" ? "Factory contract" : "Contract"}</dt>
+                <dd>
+                  <ChainReference
+                    value={current.transaction.destination}
+                    chainId={current.transaction.chainId}
+                    label="contract address"
+                    preview={preview}
+                  />
+                </dd>
+              </div>
+              {active && (
+                <div className={styles.detail}>
+                  <dt>Maximum gas cost</dt>
+                  <dd>{units(current.transaction.maximumGasCost, 18)} MON</dd>
+                </div>
+              )}
+              {current.txHash && (
+                <div className={styles.detail}>
+                  <dt>Transaction hash</dt>
+                  <dd>
+                    <ChainReference
+                      value={current.txHash}
+                      chainId={current.transaction.chainId}
+                      kind="tx"
+                      label="transaction hash"
+                      preview={preview}
+                    />
+                  </dd>
+                </div>
+              )}
+              {current.blockHash && (
+                <div className={styles.detail}>
+                  <dt>Block</dt>
+                  <dd>
+                    <ChainReference
+                      value={current.blockHash}
+                      chainId={current.transaction.chainId}
+                      kind="block"
+                      label="block hash"
+                      preview={preview}
+                    />
+                  </dd>
+                </div>
+              )}
+            </dl>
           )}
         </div>
+      </div>
+      {waitNotice && (
+        <p className={styles.quiet} role="status">
+          {waitNotice}
+        </p>
       )}
-      {current?.transaction && active && (
-        <dl className={styles.details}>
-          <div className={styles.detail}>
-            <dt>Network</dt>
-            <dd>Monad testnet</dd>
-          </div>
-          <div className={styles.detail}>
-            <dt>Sender · master wallet</dt>
-            <dd>
-              <abbr title={current.transaction.sender}>
-                {current.transaction.sender.slice(0, 8)}…{current.transaction.sender.slice(-6)}
-              </abbr>
-            </dd>
-          </div>
-          <div className={styles.detail}>
-            <dt>Maximum gas cost</dt>
-            <dd>{units(current.transaction.maximumGasCost, 18)} MON</dd>
-          </div>
-        </dl>
+      {checked && checked.id === current?.id && (
+        <p className={styles.quiet} role="status">
+          Checked{" "}
+          {new Date(checked.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}{" "}
+          · {checked.message}
+        </p>
+      )}
+      {state.token && (
+        <TokenTradeForm
+          agentId={agentId}
+          state={state}
+          preview={preview}
+          disabled={!usable || !!busy || !!active || !!state.venue?.readyToGraduate}
+          pendingAction={busy === "prepare" ? preparingAction : null}
+          prepare={(kind, trade) => void action("prepare", () => prepare(kind, "ausd", trade))}
+        />
+      )}
+      {!busy && (error || current?.status === "failed") && (
+        <p className={styles.feedback} role="alert">
+          {error ??
+            tokenOperationErrorMessage(
+              current?.error ?? null,
+              !!(current?.activityId || current?.txHash),
+            )}
+        </p>
       )}
       {state.token && (
         <dl className={styles.details}>
           <div className={styles.detail}>
             <dt>Token</dt>
-            <dd>Launched · Monad {state.token.chainId === 10143 ? "testnet" : "mainnet"}</dd>
+            <dd>Launched</dd>
           </div>
           <div className={styles.detail}>
             <dt>Graduation</dt>
@@ -309,9 +677,12 @@ export function TokenOperationControls({
             <div className={styles.detail}>
               <dt>{state.venue?.status === "uniswap_v4" ? "Pool manager" : "Kuru market"}</dt>
               <dd>
-                <abbr title={state.venue.market}>
-                  {state.venue.market.slice(0, 8)}…{state.venue.market.slice(-6)}
-                </abbr>
+                <ChainReference
+                  value={state.venue.market}
+                  chainId={state.token.chainId}
+                  label="market address"
+                  preview={preview}
+                />
               </dd>
             </div>
           )}
@@ -319,9 +690,12 @@ export function TokenOperationControls({
             <div className={styles.detail}>
               <dt>Liquidity locker</dt>
               <dd>
-                <abbr title={state.venue.vault}>
-                  {state.venue.vault.slice(0, 8)}…{state.venue.vault.slice(-6)}
-                </abbr>
+                <ChainReference
+                  value={state.venue.vault}
+                  chainId={state.token.chainId}
+                  label="liquidity locker address"
+                  preview={preview}
+                />
               </dd>
             </div>
           )}
@@ -365,38 +739,53 @@ export function TokenOperationControls({
         </dl>
       )}
       <div className={styles.actions}>
-        {!state.token && !active && (
+        {!state.token && !active && !awaitingToken && (
           <Button
-            disabled={!usable || !draftSaved || busy || state.confirmation === "pending"}
-            onClick={() => void action(() => prepare("launch"))}
+            disabled={!usable || !draftSaved || !!busy || state.confirmation === "pending"}
+            onClick={() => void action("launch", () => prepare("launch"))}
           >
-            Launch token
+            {buttonContent(
+              ["launch"],
+              current?.status === "failed" && current.error === "SIGNATURE_REJECTED"
+                ? "Prepare again"
+                : "Launch token",
+            )}
           </Button>
         )}
         {current?.status === "awaiting_signature" && (
-          <Button disabled={busy} onClick={() => void action(sign)}>
-            {preview ? "Continue preview" : "Sign with passkey"}
+          <Button disabled={!!busy} onClick={() => void action("sign", sign)}>
+            {buttonContent(["sign", "submit"], preview ? "Continue preview" : "Sign with passkey")}
           </Button>
         )}
         {current?.status === "signed" && (
-          <Button disabled={busy} onClick={() => void action(sign)}>
-            Submit signed transaction
+          <Button disabled={!!busy} onClick={() => void action("submit", sign)}>
+            {buttonContent(["submit"], "Send transaction")}
           </Button>
         )}
-        {active && (
-          <Button variant="secondary" disabled={busy} onClick={() => void action(check)}>
-            Check status
+        {automaticPhase === "receipt" && (
+          <Button variant="secondary" disabled>
+            <Icon name="refresh" size={16} className={styles.spinner} />
+            Waiting for confirmation…
+          </Button>
+        )}
+        {active && status?.canCheck && !automaticPhase && (
+          <Button variant="secondary" disabled={!!busy} onClick={() => void action("check", check)}>
+            {buttonContent(["check"], "Check status")}
           </Button>
         )}
         {current && ["awaiting_signature", "preparing"].includes(current.status) && (
-          <Button variant="secondary" disabled={busy} onClick={() => void action(cancel)}>
-            Cancel
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => void action("cancel", cancel)}
+          >
+            {buttonContent(["cancel"], "Cancel")}
           </Button>
         )}
         {preview && active && (
           <Button
             variant="secondary"
-            disabled={busy}
+            disabled={!!busy}
             onClick={() =>
               retain({
                 ...current,
@@ -415,43 +804,43 @@ export function TokenOperationControls({
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={!usable || busy || !state.venue?.readyToGraduate}
-                onClick={() => void action(() => prepare("graduate"))}
+                disabled={!usable || !!busy || !state.venue?.readyToGraduate}
+                onClick={() => void action("prepare", () => prepare("graduate"))}
               >
-                Graduate to {targetVenue}
+                {buttonContent(["prepare"], `Graduate to ${targetVenue}`, "graduate")}
               </Button>
             )}
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("collect_curve_fees"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("collect_curve_fees"))}
             >
-              Collect curve fees
+              {buttonContent(["prepare"], "Collect curve fees", "collect_curve_fees")}
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy || !graduated}
-              onClick={() => void action(() => prepare("collect_lp_fees"))}
+              disabled={!usable || !!busy || !graduated}
+              onClick={() => void action("prepare", () => prepare("collect_lp_fees"))}
             >
-              Collect LP fees
+              {buttonContent(["prepare"], "Collect LP fees", "collect_lp_fees")}
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("claim_fees"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("claim_fees"))}
             >
-              Claim master AUSD fees
+              {buttonContent(["prepare"], "Claim master AUSD fees", "claim_fees")}
             </Button>
             <Button
               size="sm"
               variant="secondary"
-              disabled={!usable || busy}
-              onClick={() => void action(() => prepare("claim_fees", "agent"))}
+              disabled={!usable || !!busy}
+              onClick={() => void action("prepare", () => prepare("claim_fees", "agent"))}
             >
-              Claim token fees
+              {buttonContent(["prepare"], "Claim token fees", "claim_fees", "agent")}
             </Button>
           </>
         )}
@@ -461,7 +850,7 @@ export function TokenOperationControls({
       )}
       {!usable && (
         <p className={styles.quiet}>
-          Testnet operations are unavailable until the deployment and launch policy are verified.
+          Token operations are unavailable until the deployment and launch policy are verified.
         </p>
       )}
       {state.token && (
@@ -470,7 +859,28 @@ export function TokenOperationControls({
           withdrawn. Gas is paid in MON.
         </p>
       )}
-      {error && <p role="alert">{error}</p>}
+      {automaticPhase === "indexing" && (
+        <Button variant="secondary" disabled>
+          <Icon name="refresh" size={16} className={styles.spinner} />
+          Updating token details…
+        </Button>
+      )}
+      {((error && !active) ||
+        (current?.status === "unknown" && !status?.canCheck) ||
+        (current?.status === "finalized" && current.action === "launch" && !state.token)) &&
+        !preview &&
+        !automaticPhase && (
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => void action("refresh", refresh)}
+          >
+            {buttonContent(
+              ["refresh"],
+              current?.status === "finalized" ? "Refresh token details" : "Refresh saved status",
+            )}
+          </Button>
+        )}
     </section>
   );
 }

@@ -16,7 +16,7 @@ export function Download({ appStoreUrl }: { appStoreUrl: string | null }) {
           READY?
         </h2>
         <p className={styles.downloadLead}>
-          Test it on the Monad testnet through TestFlight, iPhone first. Early testers get rewards.
+          Try Pickler through TestFlight, iPhone first. Early testers get rewards.
         </p>
         <div className={styles.downloadActions}>
           {/* White on the dark ground: the inverted pill, as the headline's dark pill is on white. */}

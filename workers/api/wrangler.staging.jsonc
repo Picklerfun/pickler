@@ -19,22 +19,23 @@
   "observability": { "enabled": true },
   "vars": {
     "ADVICE_ENABLED": "false",
-    // Sells each fresh advice analysis with x402; "true" without the X402_RELAYER_PRIVATE_KEY
-    // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
     "ADVICE_X402_ENABLED": "false",
+    // The advice splitter and its treasury: recorded in packages/chain (PICKLER_MONAD_TESTNET); paid advice
+    // also needs the X402_RELAYER_PRIVATE_KEY secret (docs/agent-advice.md, "Payment (x402)").
+    "ADVICE_SPLITTER_ADDRESS": "0x570A291Ac86d2F002Bc62E7d12ba43B7F4554d2a",
+    "ADVICE_SPLITTER_TREASURY": "0xE84B9045c4735241A71e5c6976695e59A5A7758c",
     "APP_ENV": "staging",
     "CHAIN_ID": "10143",
     "MONAD_RPC_URL": "https://rpc.ankr.com/monad_testnet",
-    // The dedicated authority and reviewed policy are backend-only runtime bindings.
-    // Keep user launch closed until hosted indexing and the owner walkthrough pass.
-    "TOKEN_LAUNCH_ENABLED": "false",
+    "TOKEN_LAUNCH_ENABLED": "true",
+    "TOKEN_PUBLIC_TRADING_ENABLED": "true",
+    "TOKEN_PUBLIC_RPC_DAILY_LIMIT": "10000",
     "TRADING_ADMISSIONS_ENABLED": "false",
     "ADMISSIONS_ENABLED": "true",
     "JWT_AUDIENCE": "authenticated",
-    // The public market board reads Perpl on this network (docs/specs/perps-board-live-v1.md).
     "PERPL_BOARD_NETWORK": "testnet",
-    // The Perpl paper runtime's manual checks and approvals (docs/specs/perpl-paper-runtime-v1.md
-    // R3). Keep it equal to the research worker's: npm run check:staging asserts it.
+    // Must match workers/research/wrangler.jsonc.
     "PERPL_RUNTIME_ENABLED": "false",
+    "PERPL_STUDIO_ENABLED": "true",
   },
 }

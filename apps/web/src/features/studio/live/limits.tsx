@@ -221,6 +221,11 @@ function AdvicePriceCard({
           />
         </Field>
       )}
+      {view.earnLine && (
+        <p className={styles.hint} id="live-advice-earn">
+          {view.earnLine}
+        </p>
+      )}
       {view.inputError && (
         <p className={styles.alert} role="alert" id="live-advice-price-error">
           <Icon name="alert" size={12} />

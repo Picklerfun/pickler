@@ -7,15 +7,15 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
+  "keep_vars": true,
   "triggers": { "crons": ["* * * * *"] },
   "limits": { "cpu_ms": 300000 },
   "observability": { "enabled": true },
   "hyperdrive": [{ "binding": "DATABASE", "id": "05150d06f7164d26a991288a88044710" }],
   // Public reviewed policies are provisioned as runtime bindings before operator activation.
-  // A normal deploy stays closed; the readiness guide records the explicit indexer override.
   "vars": {
     "APP_ENV": "staging",
-    "TOKEN_INDEXER_ENABLED": "false",
+    "TOKEN_INDEXER_ENABLED": "true",
     "CHAIN_ID": "10143",
     "RPC_URLS": "https://rpc.ankr.com/monad_testnet",
     "CONFIRMATIONS": "5",

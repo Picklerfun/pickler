@@ -20,15 +20,18 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
 function SelectTrigger({
   className,
   size = "default",
+  shape = "box",
   children,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: "sm" | "default";
+  shape?: "box" | "pill";
 }) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
+      data-shape={shape}
       className={cn(
         "tw:flex tw:w-fit tw:items-center tw:justify-between tw:gap-2 tw:rounded-sm tw:border tw:border-input tw:bg-secondary tw:px-3 tw:py-2 tw:text-sm tw:whitespace-nowrap tw:outline-none tw:disabled:cursor-not-allowed tw:aria-invalid:border-destructive tw:data-[placeholder]:text-muted-foreground tw:data-[size=default]:h-11 tw:data-[size=sm]:h-9 tw:*:data-[slot=select-value]:min-w-0 tw:*:data-[slot=select-value]:truncate tw:[&_svg]:pointer-events-none tw:[&_svg]:shrink-0 tw:[&_svg:not([class*=size-])]:size-4 tw:[&_svg:not([class*=text-])]:text-muted-foreground",
         className,

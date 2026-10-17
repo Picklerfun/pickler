@@ -106,7 +106,8 @@ interface ConnectModalProps {
   kind: SignerKind | null;
   /** The wallet the chooser is waiting on: the one just picked, not the one connected. */
   picking: SignerKind | null;
-  onPick: (kind: SignerKind, mode: ConnectMode | null) => void;
+  pickingKey: string | null;
+  onPick: (kind: SignerKind, mode: ConnectMode | null, providerId?: string) => void;
   onSignIn: () => void;
   /** From the username step: "I already have an account". */
   onJoin: () => void;
@@ -249,6 +250,7 @@ function Options({
   copy,
   busy,
   picking,
+  pickingKey,
   onPick,
 }: {
   choices: WalletChoice[];
@@ -256,15 +258,21 @@ function Options({
   busy: boolean;
   /** The wallet being waited on, when one is. */
   picking: SignerKind | null;
+  pickingKey?: string | null | undefined;
   onPick: (choice: WalletChoice) => void;
 }) {
   // Two rows of one wallet both wait when it is picked; only the first shows it.
-  const waitingKey = busy ? choices.find((choice) => choice.kind === picking)?.key : undefined;
+  const waitingKey = busy
+    ? (pickingKey ?? choices.find((choice) => choice.kind === picking)?.key)
+    : undefined;
 
   return (
     <ul className={styles.options}>
       {choices.map((choice) => {
-        const words = copy[choice.key] ?? COPY[choice.key]!;
+        const base = copy[choice.key] ?? copy[choice.kind] ?? COPY[choice.kind]!;
+        const words = choice.name
+          ? { ...base, title: choice.name, sub: "Use this browser extension." }
+          : base;
         const off = choice.unavailable !== null;
         const waiting = choice.key === waitingKey;
         return (
@@ -316,7 +324,7 @@ function Options({
   );
 }
 
-function Choose({ flow, choices, picking, onPick }: ConnectModalProps) {
+function Choose({ flow, choices, picking, pickingKey, onPick }: ConnectModalProps) {
   return (
     <>
       <div className={styles.intro}>
@@ -332,7 +340,8 @@ function Choose({ flow, choices, picking, onPick }: ConnectModalProps) {
         copy={COPY}
         busy={flow.busy}
         picking={picking}
-        onPick={(choice) => onPick(choice.kind, choice.mode)}
+        pickingKey={pickingKey}
+        onPick={(choice) => onPick(choice.kind, choice.mode, choice.providerId)}
       />
       <Failure flow={flow} />
 
@@ -405,7 +414,7 @@ function handleNote(state: HandleState, handle: string, min: number, max: number
     case "reserved":
       return "THAT ONE IS SPOKEN FOR";
     case "taken":
-      return `@${handle.trim().toUpperCase()} IS TAKEN`;
+      return `@${handle.trim().toUpperCase()} IS TAKEN · CHOOSE ANOTHER`;
     case "checking":
       return "CHECKING…";
     case "unknown":
@@ -456,6 +465,7 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
             maxLength={form.maxLength}
             invalid={refused && form.state !== "too_short"}
             placeholder="username"
+            disabled={form.busy}
             onChange={(event) => form.setHandle(event.target.value.replace(/^@/, ""))}
           />
           {form.state === "ok" && <span className={styles.handleOk} aria-hidden="true" />}
@@ -472,6 +482,17 @@ function Username({ flow, address, kind, onJoin }: ConnectModalProps) {
         </p>
       </div>
 
+      {form.state === "taken" && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            form.setHandle("");
+            document.getElementById("connect-username")?.focus();
+          }}
+        >
+          Choose another username
+        </Button>
+      )}
       <Button
         variant="primary"
         block

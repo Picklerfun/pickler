@@ -44,7 +44,8 @@ these routes change, update their wire schemas and descriptions together.
    actual meaning. Existing interface DTOs have corresponding checked schemas.
 2. Add `operation("featureVerb", { response, body, security, ... })` next to the handler. Import
    the helper from `workers/api/src/openapi/operation.ts`. Specify success statuses, errors, query
-   parameters and idempotency headers where relevant; `headers` adds other request headers and
+   parameters and idempotency headers where relevant; `headers` adds other request headers (with an
+   optional `schema`, such as the advice `X-PAYMENT` base64 `contentSchema`) and
    `responses` a status with its own JSON body (the advice 402). Path parameters come from the mounted route.
    Use `user` only for verified user JWTs; `workspace` also accepts authorized API keys; `agent`
    additionally describes the three required HMAC headers; `apply` uses the HttpOnly seat cookie.
@@ -72,3 +73,8 @@ remains separate; importing the app does not connect its screens to this harness
 Merge does not establish remote availability. Deploy the API Worker through the existing release
 process, then check the JSON through the web proxy and an authenticated read. This implementation
 performs local controlled checks only and makes no provider calls or deployments.
+
+The read-only `/v1/perpl` dashboard group documents public market snapshots and public on-chain
+`GET /portfolio/:wallet` snapshots. Legacy explicit scope-1 key enrollment and signed portfolio
+POST reads remain JWT-protected. See [Perpl dashboard](perpl-dashboard.md)
+for credential handling, periodic refresh, estimation limits and outstanding live acceptance.

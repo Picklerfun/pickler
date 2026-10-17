@@ -9,7 +9,11 @@ import {
   type TokenLaunchService,
   type TokenScope,
 } from "./token-launch.js";
-import type { SignedActivityRequest } from "../signing/domain/turnkey-activity.js";
+import {
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  type SignedActivityRequest,
+} from "../signing/domain/turnkey-activity.js";
 import type { UnsignedActivity } from "../wallets/ports/custody.js";
 
 export const TOKEN_ACTIONS = [
@@ -18,8 +22,63 @@ export const TOKEN_ACTIONS = [
   "collect_curve_fees",
   "collect_lp_fees",
   "claim_fees",
+  "approve_buy",
+  "approve_sell",
+  "buy",
+  "sell",
 ] as const;
 export type TokenAction = (typeof TOKEN_ACTIONS)[number];
+export interface TokenTradeInput {
+  /** Positive exact-input amount in the input asset's atomic units. */
+  amount: string;
+  /** Explicit tolerance, bounded to one percent. */
+  slippageBps: number;
+}
+export interface TokenTradeQuote extends TokenTradeInput {
+  side: "buy" | "sell";
+  approval: boolean;
+  expectedOutput: string;
+  minimumOutput: string;
+  balance: string;
+  allowance: string;
+  feeBps: number;
+}
+export class TokenTradeError extends Error {
+  constructor(
+    public readonly code:
+      | "APPROVAL_REQUIRED"
+      | "INSUFFICIENT_TOKEN_BALANCE"
+      | "CURVE_CLOSED"
+      | "TRADE_TOO_SMALL"
+      | "EXCEEDS_CURVE_INVENTORY"
+      | "APPROVAL_NOT_REQUIRED",
+  ) {
+    super(code);
+  }
+}
+/** Safe preparation reasons; adapters must never expose provider messages or payloads. */
+export class TokenPreparationError extends Error {
+  constructor(
+    public readonly code:
+      | "RPC_UNAVAILABLE"
+      | "RPC_BUDGET_EXHAUSTED"
+      | "GAS_LIMIT_EXCEEDED"
+      | "INSUFFICIENT_GAS_BALANCE"
+      | "SIMULATION_REJECTED"
+      | "METADATA_UNAVAILABLE",
+  ) {
+    super(code);
+  }
+}
+export function isTokenTradeAction(action: TokenAction) {
+  return ["approve_buy", "approve_sell", "buy", "sell"].includes(action);
+}
+export function tokenTradeMinimumOutput(output: bigint, slippageBps: number): bigint {
+  if (output <= 0n || !Number.isInteger(slippageBps) || slippageBps < 1 || slippageBps > 100) {
+    throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+  }
+  return (output * BigInt(10000 - slippageBps) + 9999n) / 10000n;
+}
 export type TokenOperationStatus =
   | "preparing"
   | "awaiting_signature"
@@ -36,6 +95,7 @@ export interface TokenPreparedTransaction {
   operationId: string;
   /** Private commitment to the reviewed venue, deployment, economics and gas policy. */
   configurationHash?: string;
+  quote?: TokenTradeQuote;
   activity: UnsignedActivity;
   chainId: number;
   sender: string;
@@ -53,6 +113,7 @@ export interface TokenIntent {
   key: string;
   action: TokenAction;
   asset: "ausd" | "agent";
+  trade?: TokenTradeInput;
   version: number;
   draftVersion: number;
   nonce: string;
@@ -67,7 +128,12 @@ export interface TokenIntent {
   txHash: string | null;
   blockHash: string | null;
   error: string | null;
+  /** Private canonical evidence; never a transaction receipt or public token attribution. */
+  resolution?: { kind: "expired_launch"; blockNumber: string; blockHash: string };
 }
+export type TokenLaunchRecovery =
+  | { status: "expired"; blockNumber: string; blockHash: string }
+  | { status: "found"; txHash: string };
 export interface TokenIntentTransaction {
   read(keyOrId: string): Promise<TokenIntent | null>;
   active(): Promise<boolean>;
@@ -81,6 +147,7 @@ export interface TokenIntentTransaction {
         | "key"
         | "action"
         | "asset"
+        | "trade"
         | "nonce"
         | "context"
         | "draft"
@@ -103,6 +170,11 @@ export interface TokenOperationDriver {
     status: "pending" | "completed" | "rejected";
     rawTransaction?: string;
   }>;
+  /** Explicit read-only proof for an expired launch with no saved signing identity or bytes. */
+  recoverExpiredLaunch?(
+    scope: TokenScope,
+    intent: TokenIntent,
+  ): Promise<TokenLaunchRecovery | null>;
   activity(
     prepared: TokenPreparedTransaction,
     activityId: string,
@@ -110,6 +182,8 @@ export interface TokenOperationDriver {
   verify(prepared: TokenPreparedTransaction, raw: string): Promise<string>;
   preflight(prepared: TokenPreparedTransaction): Promise<void>;
   broadcast(raw: string, prepared: TokenPreparedTransaction): Promise<string>;
+  /** Publish only verified canonical factory evidence; never submit or sign during recovery. */
+  publishLaunch?(scope: TokenScope, intent: TokenIntent): Promise<void>;
   receipt(
     hash: string,
     prepared: TokenPreparedTransaction,
@@ -127,7 +201,9 @@ export function sameTokenContext(a: TokenContext, b: TokenContext): boolean {
     a.accent === b.accent &&
     a.avatarPattern === b.avatarPattern &&
     a.name === b.name &&
-    a.handle === b.handle
+    a.handle === b.handle &&
+    a.token?.address === b.token?.address &&
+    a.token?.chainId === b.token?.chainId
   );
 }
 export function tokenOperationView(intent: TokenIntent) {
@@ -141,6 +217,7 @@ export function tokenOperationView(intent: TokenIntent) {
     blockHash: intent.blockHash,
     error: intent.error,
     deadline: intent.deadline,
+    quote: intent.prepared?.quote ?? null,
     activity: intent.status === "awaiting_signature" ? (intent.prepared?.activity ?? null) : null,
     transaction: intent.prepared
       ? {
@@ -198,9 +275,15 @@ export function createTokenOperationService(deps: {
         !intent.txHash &&
         BigInt(intent.deadline) <= BigInt(Math.floor(now.getTime() / 1000))
       ) {
-        return intents.update(intent, { status: "failed", error: "AUTHORIZATION_EXPIRED" });
+        return {
+          intent: await intents.update(intent, {
+            status: "failed",
+            error: "AUTHORIZATION_EXPIRED",
+          }),
+          now,
+        };
       }
-      return intent;
+      return { intent, now };
     });
   }
   async function patch(
@@ -269,17 +352,51 @@ export function createTokenOperationService(deps: {
   return {
     async prepare(
       scope: TokenScope,
-      input: { action: TokenAction; expectedVersion: number; asset?: "ausd" | "agent" },
+      input: {
+        action: TokenAction;
+        expectedVersion: number;
+        asset?: "ausd" | "agent";
+        trade?: TokenTradeInput;
+      },
       key: string,
     ) {
       if (!TOKEN_ACTIONS.includes(input.action) || !/^[A-Za-z0-9_-]{16,120}$/.test(key)) {
+        throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+      }
+      if (isTokenTradeAction(input.action)) {
+        if (
+          !input.trade ||
+          !/^[1-9][0-9]{0,77}$/.test(input.trade.amount) ||
+          BigInt(input.trade.amount) >= 2n ** 256n ||
+          !Number.isInteger(input.trade.slippageBps) ||
+          input.trade.slippageBps < 1 ||
+          input.trade.slippageBps > 100 ||
+          input.asset !== undefined
+        ) {
+          throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
+        }
+      } else if (input.trade) {
         throw new TokenLaunchError("TOKEN_DRAFT_INVALID");
       }
       if (input.action === "launch") {
         if (!ready()) {
           throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
         }
-        await deps.tokens.authorize(scope, input.expectedVersion, key);
+        try {
+          await deps.tokens.authorize(scope, input.expectedVersion, key);
+        } catch (error) {
+          if (!(error instanceof TokenPreparationError)) {
+            throw error;
+          }
+          return transaction(scope, async (intents) => {
+            const intent = await intents.read(key);
+            if (!intent || intent.status !== "preparing" || intent.prepared || intent.activityId) {
+              throw error;
+            }
+            const failed = await intents.update(intent, { status: "failed", error: error.code });
+            return { operation: tokenOperationView(failed), activity: null };
+          });
+        }
       }
       const intent = await transaction(scope, async (intents, context, now) => {
         admission(context, input.action);
@@ -288,7 +405,9 @@ export function createTokenOperationService(deps: {
           if (
             previous.action !== input.action ||
             previous.asset !== (input.asset ?? "ausd") ||
-            previous.draftVersion !== input.expectedVersion
+            previous.draftVersion !== input.expectedVersion ||
+            previous.trade?.amount !== input.trade?.amount ||
+            previous.trade?.slippageBps !== input.trade?.slippageBps
           ) {
             throw new TokenLaunchError("TOKEN_IDEMPOTENCY_CONFLICT");
           }
@@ -301,6 +420,7 @@ export function createTokenOperationService(deps: {
           key,
           action: input.action,
           asset: input.asset ?? "ausd",
+          ...(input.trade ? { trade: { ...input.trade } } : {}),
           draftVersion: input.expectedVersion,
           deadline: String(Math.floor(now.getTime() / 1000) + 300),
           context,
@@ -346,9 +466,18 @@ export function createTokenOperationService(deps: {
           return intents.update(claimed, { prepared, status: "awaiting_signature", error: null });
         });
         return { operation: tokenOperationView(final), activity: prepared.activity };
-      } catch {
-        await patch(scope, claimed, { status: "failed", error: "PREPARATION_FAILED" });
-        throw new TokenLaunchError("TOKEN_LAUNCH_BLOCKED", ["LAUNCH_UNAVAILABLE"]);
+      } catch (error) {
+        const failed = await patch(scope, claimed, {
+          status: "failed",
+          error:
+            error instanceof TokenTradeError || error instanceof TokenPreparationError
+              ? error.code
+              : "PREPARATION_FAILED",
+        });
+        if (error instanceof TokenLaunchError) {
+          throw error;
+        }
+        return { operation: tokenOperationView(failed), activity: null };
       }
     },
     async confirm(
@@ -432,7 +561,10 @@ export function createTokenOperationService(deps: {
         }
         const retained = await retainSigned(scope, recorded, result.rawTransaction);
         return submit(scope, retained);
-      } catch {
+      } catch (error) {
+        const refused =
+          error instanceof InvalidSignedActivityError ||
+          error instanceof SignedActivityRejectedError;
         return transaction(scope, async (intents) => {
           const latest = await intents.read(id);
           if (!latest) {
@@ -442,22 +574,73 @@ export function createTokenOperationService(deps: {
             return tokenOperationView(latest);
           }
           return tokenOperationView(
-            await intents.update(latest, { status: "unknown", error: "RECONCILIATION_REQUIRED" }),
+            await intents.update(latest, {
+              status: refused ? "failed" : "unknown",
+              error: refused ? "SIGNATURE_REJECTED" : "RECONCILIATION_REQUIRED",
+            }),
           );
         });
       }
     },
     async status(scope: TokenScope, id: string) {
-      let intent = await read(scope, id);
-      if (
-        !ready() ||
-        !intent.prepared ||
-        ["finalized", "failed", "cancelled"].includes(intent.status)
-      ) {
+      const readResult = await read(scope, id);
+      let intent = readResult.intent;
+      if (!ready() || !intent.prepared || ["failed", "cancelled"].includes(intent.status)) {
         return tokenOperationView(intent);
       }
+      if (intent.status === "finalized") {
+        // Repair earlier app launches whose receipt finalized before catalogue publication existed.
+        if (intent.action === "launch") {
+          await deps.driver!.publishLaunch?.(scope, intent);
+        }
+        return tokenOperationView(intent);
+      }
+      if (
+        intent.status === "unknown" &&
+        intent.action === "launch" &&
+        !intent.activityId &&
+        !intent.rawTransaction &&
+        !intent.txHash &&
+        BigInt(intent.deadline) < BigInt(Math.floor(readResult.now.getTime() / 1000)) &&
+        intent.authorization?.grantDeadline === intent.deadline &&
+        intent.authorization.params.deadline === intent.deadline &&
+        intent.prepared.deadline === intent.deadline &&
+        deps.driver!.recoverExpiredLaunch
+      ) {
+        const evidence = await deps.driver!.recoverExpiredLaunch(scope, intent);
+        if (evidence) {
+          intent = await transaction(scope, async (intents) => {
+            const latest = await intents.read(id);
+            if (!latest) {
+              throw new TokenLaunchError("TOKEN_NOT_FOUND");
+            }
+            // A delayed signing response or another reconciliation owns any newer version.
+            if (
+              latest.version !== intent.version ||
+              latest.status !== "unknown" ||
+              latest.activityId ||
+              latest.rawTransaction ||
+              latest.txHash
+            ) {
+              return latest;
+            }
+            if (evidence.status === "found") {
+              return intents.update(latest, { txHash: evidence.txHash, error: null });
+            }
+            return intents.update(latest, {
+              status: "failed",
+              error: "EXPIRED_LAUNCH_NOT_CREATED",
+              resolution: {
+                kind: "expired_launch",
+                blockNumber: evidence.blockNumber,
+                blockHash: evidence.blockHash,
+              },
+            });
+          });
+        }
+      }
       if (intent.status === "unknown" && intent.activityId && !intent.rawTransaction) {
-        const result = await deps.driver!.activity(intent.prepared, intent.activityId);
+        const result = await deps.driver!.activity(intent.prepared!, intent.activityId);
         if (result.status === "rejected") {
           intent = await patch(scope, intent, { status: "failed", error: "SIGNATURE_REJECTED" });
         } else if (result.status === "completed" && result.rawTransaction) {
@@ -468,6 +651,9 @@ export function createTokenOperationService(deps: {
       if (intent.txHash) {
         const receipt = await deps.driver!.receipt(intent.txHash, intent.prepared!);
         if (receipt) {
+          if (receipt.status === "finalized" && intent.action === "launch") {
+            await deps.driver!.publishLaunch?.(scope, intent);
+          }
           intent = await patch(scope, intent, {
             status: receipt.status === "reverted" ? "failed" : receipt.status,
             blockHash: receipt.blockHash,

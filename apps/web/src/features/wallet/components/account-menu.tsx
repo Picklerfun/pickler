@@ -26,6 +26,11 @@ export function AccountMenu({ surface = "light" }: { surface?: "light" | "dark" 
   const wallet = useWallet();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const connectionLabel = wallet.restoring
+    ? "Reconnecting…"
+    : wallet.status === "connecting"
+      ? "Waiting for your wallet…"
+      : "Connect wallet";
 
   if (wallet.status !== "connected" || !wallet.address) {
     return (
@@ -33,14 +38,12 @@ export function AccountMenu({ surface = "light" }: { surface?: "light" | "dark" 
         <Button
           variant="chip"
           className={styles.trigger}
-          aria-label={wallet.status === "connecting" ? "Waiting for your wallet" : "Connect wallet"}
+          aria-label={connectionLabel}
           onClick={() => wallet.connect()}
           disabled={wallet.status === "connecting"}
         >
           <Icon name="wallet" size={16} />
-          <span className={styles.triggerLabel}>
-            {wallet.status === "connecting" ? "Waiting for your wallet…" : "Connect wallet"}
-          </span>
+          <span className={styles.triggerLabel}>{connectionLabel}</span>
         </Button>
         {wallet.error && (
           <span className={styles.error} role="alert">
@@ -109,7 +112,7 @@ export function AccountMenu({ surface = "light" }: { surface?: "light" | "dark" 
                 }}
                 className={styles.link}
               >
-                Switch to {TARGET_CHAIN.name}
+                Switch to Monad
               </DropdownMenuItem>
             )}
             <DropdownMenuItem

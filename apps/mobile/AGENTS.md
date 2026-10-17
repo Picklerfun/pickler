@@ -34,6 +34,38 @@ code. Do not rely on what earlier SDKs did.
 - Three skills in `.agents/skills/` (linked from `.claude/skills/`) carry the app's routines:
   `pickler-retomar` to pick up context, `pickler-overview-new` for a new sub-project and
   `pickler-dev-new` for a fix, a feature or a build.
+- **Studio agents: paid analyses with x402**
+  ([spec](../../docs/specs/agent-advice-x402-v1.md), [fee split](../../docs/specs/agent-advice-fee-split-v1.md)).
+  `src/advice/` holds the pure parts, each with tests: `parse.ts` (DTOs, `parseAusdAmount`), `x402.ts`
+  (402 parser, `checkTerms`, `ReceiveWithAuthorization` typed data, nonce, `X-PAYMENT` encoder,
+  `X-PAYMENT-RESPONSE` decoder), `poll.ts` (job polling), `api.ts` (client over `authedFetch`;
+  `PAID_TIMEOUT_MS` 60 s for the paid POST, 15 s for the rest) and `copy.ts` (copy, `holdsFlow`,
+  `keepsGateOff`). `src/config/advice.ts` exports `ADVICE_SPLITTER` (from `ADVICE_SPLITTER_ADDRESS`
+  at prebuild, `null` when unset or invalid) and `studioAgentsEnabled()`: the section is **off unless
+  `PICKLER_API_URL` and the splitter are both set**. The wallet signs only to that splitter:
+  `checkTerms` refuses a 402 whose `payTo`, asset, chain, split or domain is not the app's own, and
+  the typed-data domain is the app's constants, never the 402's. The payee (the 65% share) is trusted
+  from the 402; the confirmation shows it. `useAdviceAsk` (`src/hooks/`) is the flow:
+  a new Idempotency-Key per Ask, reused only between the 402 and its paid retry; after a payment went
+  out it never signs again for that Ask and never says "nothing charged" (`settlement_pending`,
+  `offline{paid:true}`); `abandon()` leaves a `settlement_pending`, `timeout` or paid `offline` flow
+  on purpose. Where Face ID happens: the quote is an authenticated POST, so with a locked wallet the
+  unlock (Face ID) happens when the person taps Ask. The payment consent is the explicit
+  "Pay {price} AUSD" tap on the confirmation, which shows the total, the 65/35 split, the recipient
+  and the not-refunded line, and **Face ID confirms every Pay**, even with the wallet open (owner
+  decision 2026-10-13, audit Ruling A8; spec §3.2 step 4): `confirm` signs with a fresh
+  `unlockStoredWallet()` read that must open the account's address, or nothing is signed. With the
+  account open, that fresh wallet only signs and its session is ended (`useAccount.replace` would end
+  the wallet other hooks hold); with the account locked it becomes the account's through `onUnlock`.
+  A locked wallet (an ended Mera session) is `WalletLockedError` in `api.ts`, so a retry reopens it;
+  polling never prompts. In Wallet → Activity, an AUSD transfer from the wallet to `ADVICE_SPLITTER`
+  is labelled "Agent analysis" instead of "Withdrawal" (`toMovements` takes the splitter as a
+  parameter, keeping `explorer.ts` free of config).
+  `useStudio` holds the one flow and the marketplace list at app level, above the per-tab stacks
+  (`ctx.studio`, called in `App.tsx` above the early return), so remounts keep the key, the signed
+  header and the job id. The advice screen (`src/screens/advice.tsx`) only reads it. The free history
+  reads the first page only. Idempotency keys use `getRandomValues` because `crypto.randomUUID` does
+  not exist on Hermes.
 - The backend of Ask is [`services/reads/`](../../services/reads/AGENTS.md).
 - **The account is the web's, and its username is not optional**
   ([spec](../../docs/mobile/superpowers/specs/2026-10-02-mobile-account-design.md)). With the wallet
@@ -52,12 +84,13 @@ code. Do not rely on what earlier SDKs did.
   reason that is not the username itself the gate lets go for the session. The app moves funds; do
   not add a path where the account keeps somebody out of them. Before saying a claim failed the
   hook signs in again and reads the account, because the answer may only have been lost. The gate
-  does not open over a treasury operation, a read in flight or Perpl's onboarding while it runs
+  does not open over a treasury operation, a read in flight, Perpl's onboarding or a paid Studio agent analysis (from its confirmation until resolved or left, `keepsGateOff` in `src/advice/copy.ts`) while it runs
   (`appQuiet` and `perplOnboardingActive` in `src/identity/state.ts`, read by `App.tsx`): each of
   those unlocks the wallet, and unlocking is what triggers the check. An onboarding stopped on an
   error runs nothing and does not count. The identity client's deadline (`src/identity/api.ts`) covers the body
   as well as the headers. The access token stays in
-  memory and is never stored; what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
+  memory and is never stored (`authedFetch(path, init?, opened?)` on the hook adds it to calls to the product API, signs in again once on a 401,
+  and throws `WalletLockedError` instead of unlocking; `path` must start with "/", and a caller that has just unlocked passes the `opened` wallet because the hook's ref updates only on render; the advice client `src/advice/api.ts` puts a 15 s deadline over headers and body, 60 s on the paid POST); what is stored is `{ address, handle, api }` (`pickler.identity.v1`). Linking to an account under a browser wallet happens
   on the web, where that wallet can sign; the gate says so and checks again. The feature is **off
   unless `PICKLER_API_URL` is set** (`src/config/api.ts`), e.g. `https://pickler.fun/api/v1`, and
   the API needs `SIWE_DOMAIN` and `WALLET_EMAIL_DOMAIN` for the routes to exist. The handle rules in
@@ -73,7 +106,7 @@ versions the app shipped with; adding or bumping one goes through `npm install` 
 
 ```sh
 npm run typecheck --workspace=@pickler/mobile
-npm test --workspace=@pickler/mobile   # Jest, 51 suites
+npm test --workspace=@pickler/mobile   # Jest, 60 suites
 ```
 
 `dependency-tree.txt` records every dependency the app resolves from the shared lockfile, one line per edge (`who@version -> what@version`), and
@@ -90,3 +123,7 @@ early `return` passes the typecheck and Jest and crashes the app on its second r
 once, in `App.tsx`. `__tests__/app-hooks.test.ts` reads every component and fails on it; keep hooks
 above any early return, and launch the app in a simulator before saying a change to `App.tsx` works.
 `CLAUDE.md` beside this file is the one-line adapter `@AGENTS.md`.
+
+## Bounded product reads
+
+Studio public agents consume items/nextCursor pages with the adviceForSale server filter and explicit Load more. Advice polling reads lightweight status and obtains a completed recommendation once on terminal completion. Reads list refreshes have one active request, abort on background/account changes, and retain their timeout through response body consumption. No POST or payment retries were introduced.

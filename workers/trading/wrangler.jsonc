@@ -22,5 +22,12 @@
   },
   "triggers": { "crons": ["* * * * *"] },
   "observability": { "enabled": true },
-  "vars": { "APP_ENV": "staging", "TRADING_ADMISSIONS_ENABLED": "false" },
+  "vars": {
+    "APP_ENV": "staging",
+    "TRADING_ADMISSIONS_ENABLED": "false",
+    "PERPL_ADMISSIONS_ENABLED": "true",
+    "PERPL_ACCOUNT_SETUP_ENABLED": "false",
+    // JWT_ISSUER is a Worker secret matching the API's verified Supabase issuer.
+    "JWT_AUDIENCE": "authenticated",
+  },
 }

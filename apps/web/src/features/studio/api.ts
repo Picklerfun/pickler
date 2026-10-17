@@ -37,8 +37,14 @@ export type Config = ReturnType<typeof agentConfigSchema.parse>;
 export type Agent = ReturnType<typeof studioAgentSchema.parse>;
 /** The bare runtime record the writes answer (`PUT /config|limits|interval`). */
 type AgentRecord = ReturnType<typeof agentResponseSchema.parse>;
-export type Run = ReturnType<typeof runResponseSchema.parse>;
-export type RunEvent = ReturnType<typeof eventResponseSchema.parse>;
+export type Run = Omit<ReturnType<typeof runResponseSchema.parse>, "config"> & {
+  config?: Config;
+  resultAvailable?: boolean;
+  lastEventId?: string | null;
+};
+export type RunEvent = Omit<ReturnType<typeof eventResponseSchema.parse>, "id"> & {
+  id: string | number;
+};
 export type Catalog = ReturnType<typeof marketCatalogSchema.parse>;
 export type Options = ReturnType<typeof studioOptionsSchema.parse>;
 export type PaperOrder = ReturnType<typeof paperOrderSchema.parse>;
@@ -70,6 +76,97 @@ export class StudioError extends Error {
 }
 export const errorCode = (caught: unknown): string =>
   caught instanceof StudioError ? caught.code : "";
+
+export const perplTradingState = async (agentId: string, signal?: AbortSignal) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl`, signal ? { signal } : {}),
+  );
+};
+export async function perplTradingHistory(
+  agentId: string,
+  kind: "orders" | "setup" | "sessions",
+  before?: string,
+  signal?: AbortSignal,
+) {
+  const { perplLiveHistorySchema } = await import("@pickler/api-schema");
+  const query = new URLSearchParams({ kind });
+  if (before !== undefined) {
+    query.set("before", before);
+  }
+  const result = perplLiveHistorySchema.parse(
+    await studioApi(
+      `/agents/${encodeURIComponent(agentId)}/perpl/history?${query}`,
+      signal ? { signal } : {},
+    ),
+  );
+  if (result.kind !== kind) {
+    throw new StudioError("INVALID_RESPONSE", "Unexpected history category");
+  }
+  return result;
+}
+
+export const connectExistingPerplKey = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveExistingKeyDto,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/credentials/connect`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+};
+export const preparePerplTrading = async (agentId: string, collateralAusd: string, key: string) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/prepare`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ collateralAusd }),
+    }),
+  );
+};
+export const confirmPerplTrading = async (
+  agentId: string,
+  setupId: string,
+  signed: SignedActivityDto,
+) => {
+  const { perplLiveSetupSchema } = await import("@pickler/api-schema");
+  return perplLiveSetupSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/setup/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ setupId, signed }),
+    }),
+  );
+};
+export const startPerplTrading = async (
+  agentId: string,
+  input: import("@pickler/api-schema").PerplLiveStartDto,
+  key: string,
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/start`, {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    }),
+  );
+};
+export const controlPerplTrading = async (
+  agentId: string,
+  action: "pause" | "resume" | "stop" | "close",
+) => {
+  const { perplLiveStateSchema } = await import("@pickler/api-schema");
+  return perplLiveStateSchema.parse(
+    await studioApi(`/agents/${encodeURIComponent(agentId)}/perpl/control`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    }),
+  );
+};
 
 export async function studioApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const supabase = getSupabase();
@@ -120,10 +217,25 @@ export const studioAgent = (agentId: string) => studioApi<Agent>(`/agents/${agen
 
 /** `GET /agents/:id/runs`: newest first. */
 export const agentRuns = (agentId: string, signal?: AbortSignal) =>
-  studioApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, signal ? { signal } : {});
+  studioApi<{ items: import("@pickler/api-schema").RunSummaryDto[]; nextCursor: string | null }>(
+    `/agents/${agentId}/runs`,
+    signal ? { signal } : {},
+  ).then((page) => ({
+    runs: page.items.map((item) => ({ ...item, agentId: item.agentId!, decision: null })),
+  }));
 
 export const runEvents = (runId: string, signal?: AbortSignal) =>
-  studioApi<{ events: RunEvent[] }>(`/runs/${runId}/events`, signal ? { signal } : {});
+  studioApi<import("@pickler/api-schema").EventPageDto>(
+    `/runs/${runId}/events`,
+    signal ? { signal } : {},
+  ).then((page) => ({
+    events: page.items.map((event) => ({
+      id: event.id,
+      type: event.type,
+      createdAt: event.createdAt,
+      data: "data" in event ? event.data : { oversized: true, detailUrl: event.detailUrl },
+    })),
+  }));
 
 export const run = (runId: string) => studioApi<Run>(`/runs/${runId}`);
 
@@ -416,8 +528,11 @@ export const marketplaceMarket = (symbol: string, signal?: AbortSignal) =>
   marketplaceApi<MarketDetailDto | null>(`/markets/${encodeURIComponent(symbol)}`, signal);
 
 /** `GET /marketplace/directory`: every public agent, in the directory's order. */
-export const marketplaceDirectory = (signal?: AbortSignal) =>
-  marketplaceApi<DirectoryAgentDto[]>("/directory", signal);
+export const marketplaceDirectory = (signal?: AbortSignal, cursor?: string) =>
+  marketplaceApi<{ items: DirectoryAgentDto[]; nextCursor: string | null }>(
+    `/directory${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+    signal,
+  );
 
 /** `GET /marketplace/leaderboard`: ranked by score, with the weights that make it. */
 export const marketplaceLeaderboard = (signal?: AbortSignal) =>
@@ -458,6 +573,13 @@ export const perpsCheck = (checkId: string, signal?: AbortSignal) =>
 export const perpsPositions = (agentId: string, signal?: AbortSignal) =>
   studioApi<PerpsPositionsResponseDto>(
     `/agents/${agentId}/perps/positions`,
+    signal ? { signal } : {},
+  );
+
+/** One explicit older page of closed positions; never drains the history automatically. */
+export const perpsClosedPositions = (agentId: string, cursor: string, signal?: AbortSignal) =>
+  studioApi<import("@pickler/api-schema").PerpsClosedPositionsPageDto>(
+    `/agents/${agentId}/perps/closed-positions?cursor=${encodeURIComponent(cursor)}`,
     signal ? { signal } : {},
   );
 

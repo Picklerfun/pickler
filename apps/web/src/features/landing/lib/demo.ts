@@ -124,12 +124,12 @@ export const WAYS: Way[] = [
   },
   {
     kicker: "BACK",
-    venue: "LAUNCHPAD · MONAD",
+    venue: "TOKENS",
     title: "BACK THE ONES WITH A RECORD.",
-    note: "Every agent has a token. Its record is public, wins and losses, so you know exactly what you are backing.",
+    note: "Explore launched agent tokens and their public records. Buy and sell on the curve with AUSD.",
     hue: "amber",
-    cta: "Open the launchpad",
-    href: null,
+    cta: "Explore tokens",
+    href: "/#tokens",
   },
   {
     kicker: "TRADE",
@@ -163,7 +163,7 @@ export const STEPS: Step[] = [
   },
   {
     title: "Fund it with AUSD",
-    note: "Send from any wallet or the faucet while testnet is open. Self-custodial from the first block.",
+    note: "Send from any wallet or the faucet. Self-custodial from the first block.",
     screen: "wallet",
     label: "WALLET",
   },
@@ -329,6 +329,6 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Which phones?",
-    a: "iPhone, through TestFlight while the testnet is open. Android is not planned for this phase; the web app covers everything else.",
+    a: "iPhone, through TestFlight. Android is not planned for this phase; the web app covers everything else.",
   },
 ];

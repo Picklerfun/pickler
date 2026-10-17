@@ -364,7 +364,7 @@ export function liveWarnings(read: LiveWalletRead | null, perTradeAusd: number):
       fix: "limits",
     });
   }
-  if (read?.ausdMicro != null && read.ausdMicro < BigInt(perTradeAusd) * 1_000_000n) {
+  if (read?.ausdMicro != null && read.ausdMicro < BigInt(Math.round(perTradeAusd * 1_000_000))) {
     warnings.push({
       key: "ausd",
       text: "FREE AUSD BELOW ONE TRADE · IT CAN EXIT BUT NOT ENTER",

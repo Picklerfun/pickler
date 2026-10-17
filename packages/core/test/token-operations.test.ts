@@ -3,8 +3,16 @@ import assert from "node:assert/strict";
 import { fixture } from "./token-launch.test.js";
 import {
   createTokenOperationService,
+  TokenTradeError,
+  TokenPreparationError,
+  tokenTradeMinimumOutput,
   type TokenOperationDriver,
 } from "../src/features/launch/token-operations.js";
+import {
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+} from "../src/features/signing/domain/turnkey-activity.js";
 const scope = { userId: "owner", workspaceId: "workspace", agentId: "agent" };
 const signed = {
   url: "https://api.turnkey.com/public/v1/submit/sign_transaction",
@@ -218,4 +226,397 @@ test("status expires only preparations that were never forwarded", async () => {
   assert.equal(expired.status, "failed");
   assert.equal(expired.error, "AUTHORIZATION_EXPIRED");
   assert.equal(f.counts().signs, 0);
+});
+
+function tradingFixture() {
+  const f = controlled();
+  f.context.token = {
+    name: "Agent",
+    ticker: "AGENT",
+    address: "0x" + "9".repeat(40),
+    chainId: 10143,
+    imageUri: null,
+    avatar: { accent: "lime", pattern: 1 },
+  };
+  return f;
+}
+test("trade inputs, tolerance and idempotency bind the exact intent before provider work", async () => {
+  const f = tradingFixture();
+  const trade = { amount: "1000000", slippageBps: 50 };
+  const p = await f.ops.prepare(
+    scope,
+    { action: "buy", trade, expectedVersion: 1 },
+    "controlled_trade_001",
+  );
+  const again = await f.ops.prepare(
+    scope,
+    { action: "buy", trade, expectedVersion: 1 },
+    "controlled_trade_001",
+  );
+  assert.equal(again.operation.id, p.operation.id);
+  for (const input of [
+    { action: "buy" as const, expectedVersion: 1 },
+    { action: "launch" as const, trade, expectedVersion: 1 },
+    { action: "buy" as const, asset: "agent" as const, trade, expectedVersion: 1 },
+    ...["0", "01", "-1", "1.2", (2n ** 256n).toString()].map((amount) => ({
+      action: "buy" as const,
+      trade: { ...trade, amount },
+      expectedVersion: 1,
+    })),
+    ...[0, 101, 1.5].map((slippageBps) => ({
+      action: "sell" as const,
+      trade: { ...trade, slippageBps },
+      expectedVersion: 1,
+    })),
+  ]) {
+    await assert.rejects(
+      f.ops.prepare(scope, input, "controlled_invalid_001"),
+      /TOKEN_DRAFT_INVALID/,
+    );
+  }
+  for (const altered of [
+    { ...trade, amount: "2000000" },
+    { ...trade, slippageBps: 100 },
+  ]) {
+    await assert.rejects(
+      f.ops.prepare(
+        scope,
+        { action: "buy", trade: altered, expectedVersion: 1 },
+        "controlled_trade_001",
+      ),
+      /TOKEN_IDEMPOTENCY_CONFLICT/,
+    );
+  }
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+  assert.equal(
+    tokenTradeMinimumOutput(101n, 50),
+    101n,
+    "round up the minimum; never widen tolerance",
+  );
+  assert.equal(tokenTradeMinimumOutput(10000n, 100), 9900n);
+});
+test("missing approval is explicit, releases the unsent intent and never signs", async () => {
+  const f = tradingFixture();
+  f.driver.prepare = async () => {
+    throw new TokenTradeError("APPROVAL_REQUIRED");
+  };
+  const p = await f.ops.prepare(
+    scope,
+    { action: "buy", expectedVersion: 1, trade: { amount: "1000000", slippageBps: 50 } },
+    "controlled_trade_001",
+  );
+  assert.equal(p.operation.status, "failed");
+  assert.equal(p.operation.error, "APPROVAL_REQUIRED");
+  assert.equal(p.activity, null);
+  assert.equal(await f.tx.intents!.active(), false);
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+});
+test("a changed confirmed token during preparation or signing cannot receive a trade", async () => {
+  for (const stage of ["prepare", "sign"]) {
+    const f = tradingFixture();
+    const original = f.driver.prepare;
+    if (stage === "prepare") {
+      f.driver.prepare = async (...args) => {
+        const p = await original(...args);
+        f.context.token = { ...f.context.token!, address: "0x" + "8".repeat(40) };
+        return p;
+      };
+      await assert.rejects(
+        f.ops.prepare(
+          scope,
+          { action: "buy", expectedVersion: 1, trade: { amount: "1000000", slippageBps: 50 } },
+          "controlled_trade_001",
+        ),
+      );
+    } else {
+      const p = await f.ops.prepare(
+        scope,
+        { action: "sell", expectedVersion: 1, trade: { amount: "1000", slippageBps: 50 } },
+        "controlled_trade_001",
+      );
+      f.context.token = { ...f.context.token!, chainId: 143 };
+      await assert.rejects(f.ops.confirm(scope, p.operation.id, p.operation.version, signed));
+    }
+    assert.equal(f.counts().signs, 0);
+    assert.equal(f.counts().sends, 0);
+  }
+});
+
+test("preparation failures return one safe unsent outcome and never repeat provider work", async () => {
+  for (const reason of [
+    "RPC_UNAVAILABLE",
+    "GAS_LIMIT_EXCEEDED",
+    "METADATA_UNAVAILABLE",
+    "unreviewed provider payload",
+  ]) {
+    const f = controlled();
+    let prepares = 0;
+    f.driver.prepare = async () => {
+      prepares++;
+      if (reason === "unreviewed provider payload") {
+        throw new Error(reason);
+      }
+      throw new TokenPreparationError(
+        reason as "RPC_UNAVAILABLE" | "GAS_LIMIT_EXCEEDED" | "METADATA_UNAVAILABLE",
+      );
+    };
+    const result = await f.ops.prepare(
+      scope,
+      { action: "launch", expectedVersion: 1 },
+      "failed_preparation_001",
+    );
+    assert.equal(result.operation.status, "failed");
+    assert.equal(
+      result.operation.error,
+      reason === "unreviewed provider payload" ? "PREPARATION_FAILED" : reason,
+    );
+    assert.equal(result.operation.activityId, null);
+    assert.equal(result.operation.txHash, null);
+    assert.equal(result.activity, null);
+    await assert.rejects(
+      f.ops.prepare(scope, { action: "launch", expectedVersion: 1 }, "failed_preparation_001"),
+    );
+    assert.equal(prepares, 1);
+    assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+  }
+});
+
+test("typed metadata failure is retained before transaction preparation", async () => {
+  const f = controlled();
+  f.issuer.issue = async () => {
+    throw new TokenPreparationError("METADATA_UNAVAILABLE");
+  };
+  let prepares = 0;
+  f.driver.prepare = async () => {
+    prepares++;
+    throw new Error("must not prepare");
+  };
+  const result = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "failed_metadata_001",
+  );
+  assert.equal(result.operation.status, "failed");
+  assert.equal(result.operation.error, "METADATA_UNAVAILABLE");
+  assert.equal(prepares, 0);
+  assert.equal(f.grants.size, 0);
+  await assert.rejects(
+    f.ops.prepare(scope, { action: "launch", expectedVersion: 1 }, "failed_metadata_001"),
+  );
+  assert.deepEqual(f.counts(), { signs: 0, sends: 0, preflights: 0 });
+});
+
+test("definitive signing refusals fail safely while a lost initial response remains uncertain", async () => {
+  for (const error of [
+    new InvalidSignedActivityError("Controlled refusal"),
+    new SignedActivityRejectedError("Private provider prose"),
+    new SigningServiceUnavailableError("Controlled uncertainty"),
+  ]) {
+    const f = controlled();
+    let requests = 0;
+    f.driver.sign = async () => {
+      requests++;
+      throw error;
+    };
+    const p = await f.ops.prepare(
+      scope,
+      { action: "launch", expectedVersion: 1 },
+      "controlled_operation_001",
+    );
+
+    const result = await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+    const uncertain = error instanceof SigningServiceUnavailableError;
+
+    assert.equal(result.status, uncertain ? "unknown" : "failed");
+    assert.equal(result.error, uncertain ? "RECONCILIATION_REQUIRED" : "SIGNATURE_REJECTED");
+    assert.equal(result.activityId, null);
+    assert.equal(result.txHash, null);
+    assert.equal(f.counts().sends, 0);
+    await f.ops.status(scope, result.id);
+    await f.ops.confirm(scope, result.id, result.version, signed);
+    assert.equal(requests, 1);
+    assert.equal(await f.tx.intents!.active(), uncertain);
+  }
+});
+
+async function unidentifiedLaunch() {
+  const f = controlled();
+  f.driver.sign = async () => {
+    throw new SigningServiceUnavailableError();
+  };
+  const prepared = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_operation_001",
+  );
+  const unknown = await f.ops.confirm(
+    scope,
+    prepared.operation.id,
+    prepared.operation.version,
+    signed,
+  );
+  return {
+    ...f,
+    unknown,
+    expire() {
+      f.tx.now = new Date((Number(unknown.deadline) + 1) * 1000);
+    },
+  };
+}
+test("expired unidentified launch resolves canonically, preserves evidence and cannot repeat the old signature", async () => {
+  const f = await unidentifiedLaunch();
+  let reads = 0;
+  f.driver.recoverExpiredLaunch = async () => {
+    reads++;
+    return { status: "expired", blockNumber: "10", blockHash: "0x" + "b".repeat(64) };
+  };
+  await f.ops.status(scope, f.unknown.id);
+  assert.equal(reads, 0);
+  f.expire();
+  const resolved = await f.ops.status(scope, f.unknown.id);
+  assert.equal(resolved.status, "failed");
+  assert.equal(resolved.error, "EXPIRED_LAUNCH_NOT_CREATED");
+  assert.equal(resolved.txHash, null);
+  assert.equal(resolved.blockHash, null);
+  assert.equal(await f.tx.intents!.active(), false);
+  assert.equal(f.intents.get(resolved.id)!.resolution?.kind, "expired_launch");
+  await f.ops.confirm(scope, resolved.id, resolved.version, signed);
+  await f.ops.status(scope, resolved.id);
+  assert.equal(reads, 1);
+  assert.equal(f.counts().sends, 0);
+});
+test("missing, failed or non-final expiry evidence never releases an unknown signing attempt", async () => {
+  for (const fail of [false, true]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    f.driver.recoverExpiredLaunch = async () => {
+      if (fail) {
+        throw new Error("RPC_UNAVAILABLE");
+      }
+      return null;
+    };
+    if (fail) {
+      await assert.rejects(f.ops.status(scope, f.unknown.id));
+    } else {
+      assert.equal((await f.ops.status(scope, f.unknown.id)).status, "unknown");
+    }
+    assert.equal(await f.tx.intents!.active(), true);
+    assert.equal(f.counts().sends, 0);
+  }
+});
+test("canonical launch discovery recovers the hash and receipt without signing, sending or attributing a token", async () => {
+  const f = await unidentifiedLaunch();
+  f.expire();
+  f.driver.recoverExpiredLaunch = async () => ({ status: "found", txHash: "0x" + "a".repeat(64) });
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  const result = await f.ops.status(scope, f.unknown.id);
+  assert.equal(result.status, "finalized");
+  assert.equal(result.txHash, "0x" + "a".repeat(64));
+  assert.equal(f.context.token, null);
+  assert.equal(f.counts().sends, 0);
+});
+test("expiry recovery fences concurrent signature results and checks ownership before external reads", async () => {
+  const f = await unidentifiedLaunch();
+  f.expire();
+  let reads = 0;
+  f.driver.recoverExpiredLaunch = async () => {
+    reads++;
+    const current = f.intents.get(f.unknown.id)!;
+    await f.tx.intents!.update(current, { activityId: "late-signature" });
+    return { status: "expired", blockNumber: "10", blockHash: "0x" + "b".repeat(64) };
+  };
+  f.context.ownerUserId = "other";
+  await assert.rejects(f.ops.status(scope, f.unknown.id));
+  assert.equal(reads, 0);
+  f.context.ownerUserId = scope.userId;
+  f.driver.activity = async () => ({ activityId: "late-signature", status: "pending" });
+  const latest = await f.ops.status(scope, f.unknown.id);
+  assert.equal(latest.status, "unknown");
+  assert.equal(latest.activityId, "late-signature");
+  assert.equal(await f.tx.intents!.active(), true);
+});
+test("known hashes, signed bytes, other actions and mismatched grant deadlines cannot use expiry release", async () => {
+  for (const patch of [
+    { activityId: "existing" },
+    { rawTransaction: "0x02aa" },
+    { txHash: "0x" + "a".repeat(64) },
+    { action: "buy" as const },
+    { authorization: null },
+  ]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    Object.assign(f.intents.get(f.unknown.id)!, patch);
+    f.driver.activity = async () => ({ activityId: "existing", status: "pending" });
+    f.driver.recoverExpiredLaunch = async () => {
+      throw new Error("Must not be called");
+    };
+    await f.ops.status(scope, f.unknown.id);
+    assert.equal(await f.tx.intents!.active(), true);
+  }
+});
+
+test("different stored grant, parameter or preparation deadlines cannot release an expired attempt", async () => {
+  for (const kind of ["grant", "params", "prepared"]) {
+    const f = await unidentifiedLaunch();
+    f.expire();
+    const intent = f.intents.get(f.unknown.id)!;
+    const wrong = (BigInt(intent.deadline) - 1n).toString();
+    if (kind === "grant") {
+      intent.authorization!.grantDeadline = wrong;
+    } else if (kind === "params") {
+      intent.authorization!.params.deadline = wrong;
+    } else {
+      intent.prepared!.deadline = wrong;
+    }
+    f.driver.recoverExpiredLaunch = async () => {
+      throw new Error("Must not be called");
+    };
+    assert.equal((await f.ops.status(scope, intent.id)).status, "unknown");
+    assert.equal(await f.tx.intents!.active(), true);
+    assert.equal(f.counts().sends, 0);
+  }
+});
+
+test("final launch status waits for canonical publication; earlier finalized launches can repair it", async () => {
+  const f = controlled();
+  const p = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_publication_01",
+  );
+  await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+  let publications = 0;
+  f.driver.publishLaunch = async (target, intent) => {
+    assert.deepEqual(target, scope);
+    assert.equal(intent.txHash, "0x" + "a".repeat(64));
+    publications++;
+  };
+  f.receipt({ status: "included", blockHash: "0x" + "b".repeat(64) });
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "included");
+  assert.equal(publications, 0);
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "finalized");
+  assert.equal(publications, 1);
+  await f.ops.status(scope, p.operation.id);
+  assert.equal(publications, 2);
+  assert.deepEqual(f.counts(), { signs: 1, sends: 1, preflights: 2 });
+});
+
+test("publication failure leaves confirmation recoverable without repeating signing or sending", async () => {
+  const f = controlled();
+  const p = await f.ops.prepare(
+    scope,
+    { action: "launch", expectedVersion: 1 },
+    "controlled_publication_02",
+  );
+  await f.ops.confirm(scope, p.operation.id, p.operation.version, signed);
+  f.receipt({ status: "finalized", blockHash: "0x" + "b".repeat(64) });
+  f.driver.publishLaunch = async () => {
+    throw new Error("Controlled publication failure");
+  };
+  await assert.rejects(f.ops.status(scope, p.operation.id), /publication failure/);
+  assert.equal((await f.tx.intents!.read(p.operation.id))?.status, "confirming");
+  f.driver.publishLaunch = async () => {};
+  assert.equal((await f.ops.status(scope, p.operation.id)).status, "finalized");
+  assert.deepEqual(f.counts(), { signs: 1, sends: 1, preflights: 2 });
 });

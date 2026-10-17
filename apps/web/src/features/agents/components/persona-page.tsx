@@ -1,10 +1,12 @@
 "use client";
+
 import { AgentTokenCard } from "@/features/tokens/agent-token-card";
 
 import type { AgentPersonaDto } from "@pickler/api-schema";
 import Link from "next/link";
-import { Button, ButtonLink, ChipLink, ChipText, Icon, Tag } from "@pickler/ui";
-import { useState } from "react";
+import dynamic from "next/dynamic";
+import { Button, ButtonLink, ChipLink, ChipText, Icon, Skeleton } from "@pickler/ui";
+import { useRef, useState } from "react";
 import { accentVars } from "@/lib/accent";
 import styles from "../agents.module.css";
 import { calibrationTone, scoreTone } from "../lib/reputation";
@@ -14,6 +16,25 @@ import { useWallet } from "@/features/wallet/lib/wallet-context";
 import { ActivityRow } from "./activity-row";
 import { AgentAvatar } from "./agent-parts";
 import { ReadRow } from "./read-parts";
+
+const PublicTokenMarket = dynamic(
+  () => import("@/features/tokens/public-token-market").then((module) => module.PublicTokenMarket),
+  { loading: () => <Skeleton shape="panel" /> },
+);
+
+const PublicTokenMarketPreview = dynamic(
+  () =>
+    import("@/features/tokens/public-token-market-preview").then(
+      (module) => module.PublicTokenMarketPreview,
+    ),
+  {
+    loading: () => (
+      <div role="status" aria-label="Loading token market preview">
+        <Skeleton shape="panel" />
+      </div>
+    ),
+  },
+);
 
 const TABS = ["activity", "answers", "record"] as const;
 type Tab = (typeof TABS)[number];
@@ -52,12 +73,15 @@ export function PersonaPage({
   persona,
   nowMs,
   preview = false,
+  marketPreview = false,
 }: {
   persona: AgentPersonaDto;
   nowMs: number;
   preview?: boolean;
+  marketPreview?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("activity");
+  const tabButtons = useRef<Partial<Record<Tab, HTMLButtonElement>>>({});
   const wallet = useWallet();
   const follows = useFollowing(wallet.address);
   const following = follows.following(persona.handle);
@@ -73,98 +97,115 @@ export function PersonaPage({
   };
 
   return (
-    <main className={`${styles.main} ${styles.mainNarrow}`} style={accentVars(persona.accent)}>
+    <main
+      className={`${styles.main} ${styles.mainNarrow} ${styles.personaPage}`}
+      style={accentVars(persona.accent)}
+      data-token-market={persona.launchedToken ? "true" : undefined}
+    >
       <Link href="/agents" className={styles.backLink}>
         <Icon name="arrowLeft" size={14} /> AGENTS
       </Link>
 
       <header className={styles.personaHead}>
-        <AgentAvatar name={persona.name} accent={persona.accent} large />
-        <div className={styles.heroBody}>
-          <div className={styles.heroTitleRow}>
-            <h1 className={styles.heroTitle}>{persona.name}</h1>
-            <ChipText className={`${styles.chip} ${styles.beatChip}`}>
-              {persona.beat.toUpperCase()}
-            </ChipText>
-            <span className={styles.quiet}>{venueLabel(persona.venue)}</span>
-            {persona.xHandle && (
-              <ChipLink
-                href={xUrl(persona.xHandle)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.chip}
-              >
-                {persona.xHandle} <Icon name="external" size={13} />
-              </ChipLink>
-            )}
+        <div className={styles.personaIdentity}>
+          <AgentAvatar name={persona.name} accent={persona.accent} large />
+          <div className={styles.personaInfo}>
+            <h1 className={`${styles.heroTitle} ${styles.personaTitle}`}>{persona.name}</h1>
+            <div className={styles.personaMeta}>
+              <ChipText className={`${styles.chip} ${styles.beatChip}`}>
+                {persona.beat.toUpperCase()}
+              </ChipText>
+              <span className={styles.personaVenue}>{venueLabel(persona.venue)}</span>
+              {persona.xHandle && (
+                <ChipLink
+                  href={xUrl(persona.xHandle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.chip}
+                >
+                  {persona.xHandle} <Icon name="external" size={13} />
+                </ChipLink>
+              )}
+            </div>
           </div>
-
-          <p className={styles.personaDecides}>{persona.decides}</p>
-
-          <dl className={styles.keyStats}>
-            <KeyStat
-              label="SCORE"
-              value={score === null ? "—" : String(score)}
-              className={score === null ? undefined : styles[scoreTone(score)]}
-            />
-            <KeyStat
-              label="HIT RATE"
-              value={formatPercent(persona.hitRate)}
-              className={styles.toneOpen}
-            />
-            <KeyStat label="PREDICTIONS" value={formatInteger(persona.resolved)} />
-            <KeyStat
-              label="P&L"
-              value={`${formatSigned(persona.net)} MON`}
-              className={persona.net < 0 ? styles.toneLoss : styles.toneWin}
-            />
-          </dl>
-
-          <div className={styles.personaActions}>
-            {takingQuestions ? (
-              <ButtonLink
-                as={Link}
-                href={`/agents/${persona.handle}/ask`}
-                className={styles.askButton}
-              >
-                Ask · ${service.price}
-              </ButtonLink>
-            ) : (
-              <Tag className={styles.closedTag}>NOT TAKING QUESTIONS</Tag>
-            )}
-            <Button
-              variant="secondary"
-              className={following ? styles.followingButton : undefined}
-              disabled={preview}
-              aria-pressed={following}
-              onClick={() =>
-                wallet.status === "connected"
-                  ? follows.toggle(persona.handle)
-                  : wallet.connect(`Ask ${persona.name} for a read`)
-              }
-              title={
-                wallet.status === "connected"
-                  ? undefined
-                  : "Connect a wallet to keep a list of who you follow"
-              }
-            >
-              {following ? "Following" : "Follow"}
-            </Button>
-          </div>
-
-          {service !== null && !service.open && service.closedNote && (
-            <p className={styles.quiet}>{service.closedNote}</p>
-          )}
         </div>
+
+        {persona.decides.trim() && <p className={styles.personaDecides}>{persona.decides}</p>}
+
+        <dl className={styles.keyStats}>
+          <KeyStat
+            label="SCORE"
+            value={score === null ? "—" : String(score)}
+            className={score === null ? undefined : styles[scoreTone(score)]}
+          />
+          <KeyStat
+            label="HIT RATE"
+            value={formatPercent(persona.hitRate)}
+            className={styles.toneOpen}
+          />
+          <KeyStat label="PREDICTIONS" value={formatInteger(persona.resolved)} />
+          <KeyStat
+            label="P&L"
+            value={`${formatSigned(persona.net)} MON`}
+            className={persona.net < 0 ? styles.toneLoss : styles.toneWin}
+          />
+        </dl>
+
+        <div className={styles.personaActions}>
+          {takingQuestions ? (
+            <ButtonLink
+              as={Link}
+              href={`/agents/${persona.handle}/ask`}
+              className={styles.askButton}
+            >
+              Ask · ${service.price}
+            </ButtonLink>
+          ) : (
+            <span className={styles.personaAvailability}>Not taking questions</span>
+          )}
+          <Button
+            variant="secondary"
+            className={following ? styles.followingButton : undefined}
+            disabled={preview}
+            aria-pressed={following}
+            onClick={() =>
+              wallet.status === "connected"
+                ? follows.toggle(persona.handle)
+                : wallet.connect(`Ask ${persona.name} for a read`)
+            }
+            title={
+              wallet.status === "connected"
+                ? undefined
+                : "Connect a wallet to keep a list of who you follow"
+            }
+          >
+            {following ? "Following" : "Follow"}
+          </Button>
+        </div>
+
+        {service !== null && !service.open && service.closedNote && (
+          <p className={styles.personaAvailability}>{service.closedNote}</p>
+        )}
       </header>
 
-      <div className={styles.personaToken}>
-        <AgentTokenCard
-          token={persona.launchedToken ?? null}
-          confirmationPending={persona.tokenConfirmation === "pending"}
+      {marketPreview && preview && persona.launchedToken ? (
+        <PublicTokenMarketPreview token={persona.launchedToken} />
+      ) : persona.launchedToken ? (
+        <PublicTokenMarket
+          key={`${persona.launchedToken.chainId}:${persona.launchedToken.address}`}
+          handle={persona.handle}
+          token={persona.launchedToken}
           preview={preview}
         />
-      </div>
+      ) : (
+        <div className={styles.personaToken}>
+          <AgentTokenCard
+            token={null}
+            confirmationPending={persona.tokenConfirmation === "pending"}
+            preview={preview}
+          />
+        </div>
+      )}
 
       <div className={styles.tabs} role="tablist" aria-label="Agent sections">
         {TABS.map((key) => (
@@ -176,6 +217,39 @@ export function PersonaPage({
             aria-selected={tab === key}
             aria-controls={`panel-${key}`}
             className={styles.tab}
+            tabIndex={tab === key ? 0 : -1}
+            ref={(button) => {
+              if (button) {
+                tabButtons.current[key] = button;
+              } else {
+                delete tabButtons.current[key];
+              }
+            }}
+            onKeyDown={(event) => {
+              const index = TABS.indexOf(key);
+              let next: Tab | undefined;
+              switch (event.key) {
+                case "ArrowRight":
+                  next = TABS[(index + 1) % TABS.length];
+                  break;
+                case "ArrowLeft":
+                  next = TABS[(index + TABS.length - 1) % TABS.length];
+                  break;
+                case "Home":
+                  next = TABS[0];
+                  break;
+                case "End":
+                  next = TABS[TABS.length - 1];
+                  break;
+                default:
+                  return;
+              }
+              if (next) {
+                event.preventDefault();
+                setTab(next);
+                tabButtons.current[next]?.focus();
+              }
+            }}
             onClick={() => setTab(key)}
           >
             {tabLabel[key]}

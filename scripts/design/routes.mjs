@@ -41,6 +41,30 @@ import { only } from "./lib/only.mjs";
 
 const ALL = [
   {
+    path: "/perpl?preview=wallet",
+    name: "perpl-dashboard-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Perpl read-only dashboard",
+    proves: "#perpl-portfolio [role=progressbar]",
+  },
+  {
+    path: "/?tokens=preview#tokens",
+    name: "landing-token-market-board-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Token market board",
+    proves: "[data-market-row] canvas",
+  },
+  {
+    path: "/agents/public_trade",
+    name: "public-agent-token-market-live",
+    product: "marketplace",
+    surface: "light",
+    task: "Production public token market",
+    proves: "[data-token-market=live] canvas",
+  },
+  {
     path: "/studio?stage=perpl-token-empty",
     name: "studio-token-empty",
     product: "studio",
@@ -84,6 +108,24 @@ const ALL = [
     task: "Agent token preview",
     proves: `[data-token-state=${state}]`,
   })),
+
+  {
+    path: "/agents/halftime?stage=token-launched",
+    name: "public-agent-token-market-flow-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market controlled flow",
+    proves: "[data-token-market=live] canvas",
+  },
+
+  {
+    path: "/agents/halftime?stage=token-launched&market=preview",
+    name: "public-agent-token-market-preview",
+    product: "marketplace",
+    surface: "light",
+    task: "Public token market mockup",
+    proves: 'main[data-token-market=true] [aria-label="Token market preview"]',
+  },
 
   ...["brief", "skills", "console", "identity"].map((section) => ({
     path: `/studio/agents/preview-draft/${section}?stage=draft`,
@@ -180,11 +222,12 @@ const ALL = [
     surface: "light",
     task: "Marketplace",
     // Two screens, one of which must be present. #agents-empty is the launch-day screen: no agent
-    // exists yet, so the directory draws that instead of a beat filter with nothing under it. The
-    // other selector is the populated directory — the beat filter is authored there and nowhere
-    // else, and the row proves it has agents in it. A filter with no rows under it, or a page with
-    // neither, is the stub this pairing exists to refuse.
-    proves: '#agents-empty, main:has([role="group"][aria-label="Beat"]) a[href="/agents/halftime"]',
+    // exists yet, so the directory draws that instead of filters with nothing under them. The
+    // other selector is the populated directory — its filter group is authored there and nowhere
+    // else, and the profile link proves it has agents. An empty list, or a page with neither
+    // screen, is the stub this pairing exists to refuse.
+    proves:
+      '#agents-empty, main:has([role="group"][aria-label="Filter agents"]) a[href="/agents/halftime"]',
   },
   {
     path: "/agents/halftime",
@@ -844,6 +887,38 @@ const ALL = [
     task: "Live studio",
     /* One route per stage (studio-landing.test.ts): the section and its ANALYSES IN THE APP card. */
     proves: "#live-section-limits #live-limits-advice",
+  },
+  {
+    path: "/studio?stage=perpl-trading-ready",
+    name: "studio-perpl-trading-ready",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-start-trading",
+  },
+  {
+    path: "/studio?stage=perpl-trading-setup",
+    name: "studio-perpl-trading-setup",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-controls",
+  },
+  {
+    path: "/studio?stage=perpl-trading-active",
+    name: "studio-perpl-trading-active",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-positions",
+  },
+  {
+    path: "/studio?stage=perpl-trading-closed",
+    name: "studio-perpl-trading-closed",
+    product: "studio",
+    surface: "dark",
+    task: "Perpl trading",
+    proves: "#perpl-trading-record",
   },
   {
     path: "/studio?stage=perpl-controls",

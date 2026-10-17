@@ -824,7 +824,7 @@ test("the account's rows say what is true today", () => {
 // ─── Stages ────────────────────────────────────────────────────────────────────────────────────
 
 test("each live stage is staged outside production only", () => {
-  assert.equal(LIVE_STAGES.length, 28);
+  assert.equal(LIVE_STAGES.length, 32);
   for (const stage of LIVE_STAGES) {
     assert.equal(stageFromSearch("development", stage), stage);
     assert.equal(stageFromSearch("production", stage), undefined);
@@ -909,4 +909,9 @@ test("price history times and board observation keep their own provenance", () =
   assert.equal(marketsView([stale], {}, ["BTC"]).cards[0]?.stale, true);
   const sample = market({ source: { venue: "sample" } });
   assert.equal(marketsView([sample], {}, ["BTC"]).cards[0]?.observedAt, null);
+});
+
+test("fractional AUSD limits keep the Studio warning comparison usable", () => {
+  assert.deepEqual(liveWarnings({ ausdMicro: 60_000n, monWei: GAS_LOW_WEI }, 0.06), []);
+  assert.equal(liveWarnings({ ausdMicro: 59_999n, monWei: GAS_LOW_WEI }, 0.06)[0]?.key, "ausd");
 });

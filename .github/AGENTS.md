@@ -28,3 +28,8 @@ migration-before-Cloudflare-build guarantee. The coordinated gate disables this 
 The Design rendered job also runs `scripts/design/sidebar-motion.mjs` against the same local-only
 fixture architecture, in a fresh server lifecycle after the surface checks. It checks both draft
 and published-agent Studio frames and responsive breakpoints. No deployed credentials are used.
+
+Design also runs `scripts/design/public-token-trading.mjs` with tsx in its own loopback server
+lifecycle. It verifies taken-username recovery and visitor approvals/buy/sell, including uncertain
+submission across reloads. Wallets, preparation and receipt responses are controlled; there are
+no hosted credentials or real transactions. Failure diagnostics use the existing artifact directory.

@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
+import { NetworkSelector } from "@/features/site/network-selector";
 import { Icon } from "@pickler/ui";
 import type { StudioWallets } from "../api";
 import { unitsOf } from "../new-agent/model";
@@ -43,10 +44,7 @@ export function StudioTopBar({
       </Link>
       <StudioSidebarToggle controls={sidebarId} />
       <span className={home.spacer} data-navbar-spacer />
-      <span className={styles.testnet} title="Monad testnet" aria-label="Monad testnet">
-        <span className={styles.networkLabel}>TESTNET</span>
-        <span className={styles.networkDot} aria-hidden="true" />
-      </span>
+      <NetworkSelector />
       <div className={styles.globalControls}>
         <WalletBalanceButton
           ausdMicro={unitsOf(master?.ausdMicro ?? null)}

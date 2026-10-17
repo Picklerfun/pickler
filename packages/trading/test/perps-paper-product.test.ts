@@ -176,6 +176,11 @@ test("the service opens at the notional it is given and hands the exits to compl
     observe: async () => view,
     initialize: async () => view,
     view: async () => view,
+    executionSnapshot: async () => ({
+      ...view,
+      operational: true,
+      accounting: { realizedToday: "0", newMarginToday: "0" },
+    }),
     begin: async (_scope, _version, key, intent) => {
       begun.push(intent);
       return { attempt: pending(intent, key), lease: { key, owner: "o", expiresAt: now + 1 } };

@@ -133,7 +133,16 @@ async function run({ delay = 0, invalid = false, remaining = 24 } = {}) {
         ...result,
       }),
     },
-    paper: () => ({ view: async () => view, observe: async () => view, closePosition: forbidden }),
+    paper: () => ({
+      executionSnapshot: async () => ({
+        ...view,
+        operational: true,
+        accounting: { realizedToday: "0", newMarginToday: "0" },
+      }),
+      view: async () => view,
+      observe: async () => view,
+      closePosition: forbidden,
+    }),
     initialCash: forbidden,
     data: async () => ({
       read: async () => ({ frame, candles, sources: [] }),

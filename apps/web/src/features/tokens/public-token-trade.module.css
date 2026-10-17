@@ -1,0 +1,138 @@
+.panel {
+  composes: pk-panel from global;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  margin-top: 16px;
+  min-width: 0;
+}
+.panel .choices {
+  background: var(--pk-bg);
+  border: 1px solid var(--pk-rule-strong);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.quiet {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.quote {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+.quote > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+}
+.quote dt {
+  color: var(--pk-ink-muted);
+}
+.quote dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quote .receive {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--pk-bg);
+  border: 1px solid var(--pk-rule);
+  border-radius: var(--pk-radius-lg);
+  min-width: 0;
+}
+.receive dd {
+  text-align: left;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  min-height: 29px;
+  animation: quoteReveal 180ms ease-out;
+}
+.receive abbr {
+  text-decoration: none;
+}
+.quoteLoading {
+  color: var(--pk-ink-muted);
+  animation: quotePulse 1s ease-in-out infinite alternate;
+}
+@keyframes quoteReveal {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes quotePulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .receive dd,
+  .quoteLoading {
+    animation: none;
+  }
+}
+.transactions {
+  display: grid;
+  gap: 4px;
+  margin: -8px 0 0;
+}
+.transaction dd {
+  margin: 0;
+  min-width: 0;
+}
+.transaction {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 12px;
+  color: var(--pk-ink-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions > :first-child {
+  flex: 1;
+}
+
+.panel.embedded {
+  border: 0;
+  background: var(--pk-bg);
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  align-content: start;
+}

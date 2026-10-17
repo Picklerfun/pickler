@@ -1,19 +1,27 @@
 import { runTokenIndexer, tokenIndexerPolicySchema } from "@pickler/infrastructure";
 
 type Pass = Awaited<ReturnType<typeof runTokenIndexer>>;
-type StopReason = "caught_up" | "pass_limit" | "busy" | "gap" | "reorg";
+type StopReason = "caught_up" | "pass_limit" | "busy" | "gap" | "reorg" | "time_limit";
 
 /** Scheduling only: each infrastructure pass owns its lease, RPC quota and canonical writes. */
 export async function runScheduledTokenIndexing(input: {
   policy: string;
   runPass: () => Promise<Pass>;
+  now?: () => number;
 }) {
   const policy = tokenIndexerPolicySchema.parse(JSON.parse(input.policy));
   const limit = policy.version === 2 ? policy.maxPassesPerTick : 1;
+  const now = input.now ?? Date.now;
+  const deadline = now() + 45_000;
   const passes: Pass[] = [];
   let stopReason: StopReason = "pass_limit";
 
   for (let index = 0; index < limit; index++) {
+    // Cooperative boundary: never abandon an in-flight transaction/provider read.
+    if (index > 0 && now() >= deadline) {
+      stopReason = "time_limit";
+      break;
+    }
     const pass = await input.runPass();
     passes.push(pass);
 

@@ -18,8 +18,8 @@ test("the held action names what the gate kept, and is null when it kept nothing
 
 test("the screen sets of the light redesign (D1, D23)", () => {
   expect([...COMING_SOON]).toEqual(["launchpad", "activity"]);
-  expect([...GATED]).toEqual(["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "portfolio", "read", "agent"]);
-  expect([...CAN_BACK]).toEqual(["market", "perpsFunds", "deposit", "withdraw", "signin", "agent", "read"]);
+  expect([...GATED]).toEqual(["markets", "market", "perpsFunds", "wallet", "deposit", "withdraw", "portfolio", "read", "agent", "advice"]);
+  expect([...CAN_BACK]).toEqual(["market", "perpsFunds", "deposit", "withdraw", "signin", "agent", "read", "advice"]);
   expect([...SHOW_TABS]).toEqual(["markets", "agents", "portfolio", "wallet", "launchpad", "activity"]);
 });
 
@@ -62,8 +62,8 @@ test("isComingSoonTab is the type guard behind comingSoon, exactly the COMING_SO
 
 test("INITIAL opens Market on Trade; sign out clears Ask and the focused read", () => {
   expect(INITIAL).toEqual({ marketTab: "trade" });
-  const s = signedOutState({ marketTab: "ask", askCell: { levelBps: 50, horizonMin: 60 }, askAgentId: "drift", readId: "r1", agentId: "drift" });
-  expect(s).toEqual({ marketTab: "ask", askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined });
+  const s = signedOutState({ marketTab: "ask", askCell: { levelBps: 50, horizonMin: 60 }, askAgentId: "drift", readId: "r1", agentId: "drift", adviceAgentId: "mira" });
+  expect(s).toEqual({ marketTab: "ask", askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined, adviceAgentId: undefined });
 });
 
 test("askMarketId keeps the last market, else BTC, else the first listed", () => {

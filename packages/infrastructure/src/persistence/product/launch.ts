@@ -348,7 +348,7 @@ export const tokenOperations = launch
       check("operations_chain", sql`${t.chain} = 'eip155:10143'`),
       check(
         "operations_action",
-        sql`${t.action} IN ('launch','graduate','collect_curve_fees','collect_lp_fees','claim_fees')`,
+        sql`${t.action} IN ('launch','graduate','collect_curve_fees','collect_lp_fees','claim_fees','approve_buy','approve_sell','buy','sell')`,
       ),
       check(
         "operations_status",

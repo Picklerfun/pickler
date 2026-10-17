@@ -14,9 +14,13 @@
   // .dev.vars locally; never commit them.
   "vars": {
     "ADVICE_ENABLED": "false",
-    // Sells each fresh advice analysis with x402; "true" without the X402_RELAYER_PRIVATE_KEY
-    // secret and MONAD_RPC_URL answers 503 (docs/agent-advice.md, "Payment (x402)").
+    // Sells each fresh advice analysis with x402 through the advice splitter; "true" without the
+    // X402_RELAYER_PRIVATE_KEY secret, MONAD_RPC_URL and both splitter variables below answers 503,
+    // and so does a splitter whose on-chain treasury() differs from ADVICE_SPLITTER_TREASURY
+    // (docs/agent-advice.md, "Payment (x402)"). Both stay empty until the deployment is recorded.
     "ADVICE_X402_ENABLED": "false",
+    "ADVICE_SPLITTER_ADDRESS": "",
+    "ADVICE_SPLITTER_TREASURY": "",
     "APP_ENV": "development",
     "SUPABASE_URL": "",
     "JWT_ISSUER": "",
@@ -45,5 +49,6 @@
     "PERPL_BOARD_NETWORK": "testnet",
     // The Perpl paper runtime's manual checks and approvals; keep it equal to the research worker's.
     "PERPL_RUNTIME_ENABLED": "false",
+    "PERPL_STUDIO_ENABLED": "false",
   },
 }

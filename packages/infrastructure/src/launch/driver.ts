@@ -1,10 +1,12 @@
 import {
   decodeFunctionResult,
   encodeFunctionData,
+  getAddress,
   keccak256,
   parseTransaction,
   serializeTransaction,
   toHex,
+  erc20Abi,
   type Abi,
   type Hex,
 } from "viem";
@@ -22,23 +24,35 @@ import {
 } from "@pickler/chain";
 import {
   AGENT_WALLET_ACTIVITY_TYPES,
+  TokenTradeError,
+  TokenPreparationError,
+  InvalidSignedActivityError,
+  SignedActivityRejectedError,
+  SigningServiceUnavailableError,
+  isTokenTradeAction,
+  tokenTradeMinimumOutput,
+  type TokenTradeQuote,
   type AgentWalletActivityBuilders,
   type SignedActivityForwarder,
   type TurnkeyActivity,
   type TurnkeyReader,
   type TokenIntent,
+  type TokenScope,
   type TokenOperationDriver,
   type TokenPreparedTransaction,
 } from "@pickler/core";
 import {
   pendingNonce,
   quoteFees,
+  FeeQuoteLimitExceededError,
   verifySignedTransfer,
   transactionHash,
   broadcastTransaction,
 } from "../chain/deposit-tx.js";
-import type { Rpc } from "../chain/erc20.js";
-import type { TokenLaunchPolicy } from "./policy.js";
+import { JsonRpcError, type Rpc } from "../chain/erc20.js";
+import { reconcileExpiredLaunch } from "./expired-launch.js";
+import { tokenAgentKey } from "../studio/token-launch-store.js";
+import { tokenLaunchAllowsAgent, type TokenLaunchPolicy } from "./policy.js";
 
 function completed(activity: TurnkeyActivity) {
   if (!activity.id) {
@@ -52,7 +66,8 @@ function completed(activity: TurnkeyActivity) {
   }
   const raw = activity.result?.signTransactionResult?.signedTransaction;
   if (typeof raw !== "string" || !/^(0x)?[0-9a-f]+$/i.test(raw)) {
-    throw new Error("INVALID_SIGNED_RESULT");
+    // Keep an accepted provider identity even when its signed result is incomplete.
+    return { activityId: activity.id, status: "pending" as const };
   }
   return {
     activityId: activity.id,
@@ -69,18 +84,62 @@ export function createTokenOperationDriver(deps: {
   forwarder: SignedActivityForwarder;
   reader: TurnkeyReader;
   reserveRpc(operationId: string, limit: number): Promise<void>;
+  publishLaunch?(scope: TokenScope, intent: TokenIntent, rpc: Rpc): Promise<void>;
 }): TokenOperationDriver {
   const { policy } = deps;
   const configurationHash = keccak256(toHex(JSON.stringify(policy)));
   const rpcFor = (id: string, recovery = false): Rpc => ({
     async call(method, params) {
-      await deps.reserveRpc(
-        id,
-        recovery ? policy.rpcRequestsPerOperation : policy.rpcRequestsPerOperation - 100,
-      );
-      return deps.rpc.call(method, params);
+      try {
+        await deps.reserveRpc(
+          id,
+          recovery ? policy.rpcRequestsPerOperation : policy.rpcRequestsPerOperation - 100,
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message === "TOKEN_RPC_BUDGET_EXHAUSTED") {
+          throw new TokenPreparationError("RPC_BUDGET_EXHAUSTED");
+        }
+        throw error;
+      }
+      try {
+        return await deps.rpc.call(method, params);
+      } catch (error) {
+        // Preserve the shared fee reader's explicit unsupported-method fallback.
+        if (
+          method === "eth_maxPriorityFeePerGas" &&
+          error instanceof JsonRpcError &&
+          (error.code === -32601 || /method not found/i.test(error.message))
+        ) {
+          throw error;
+        }
+        const simulating =
+          method === "eth_estimateGas" ||
+          (method === "eth_call" &&
+            typeof params[0] === "object" &&
+            params[0] !== null &&
+            "from" in params[0]);
+        if (simulating && error instanceof JsonRpcError) {
+          if (/insufficient funds/i.test(error.message)) {
+            throw new TokenPreparationError("INSUFFICIENT_GAS_BALANCE");
+          }
+          if (error.code === 3 || error.code === -32000 || error.code === -32015) {
+            throw new TokenPreparationError("SIMULATION_REJECTED");
+          }
+        }
+        throw new TokenPreparationError("RPC_UNAVAILABLE");
+      }
     },
   });
+  async function policyFees(rpc: Rpc) {
+    try {
+      return await quoteFees(rpc, BigInt(policy.maxFeePerGas));
+    } catch (error) {
+      if (error instanceof FeeQuoteLimitExceededError) {
+        throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+      }
+      throw error;
+    }
+  }
   async function read(
     rpc: Rpc,
     address: string,
@@ -289,6 +348,7 @@ export function createTokenOperationDriver(deps: {
       !tx.maxFeePerGas ||
       tx.gas > BigInt(policy.maxGas) ||
       tx.maxFeePerGas > BigInt(policy.maxFeePerGas) ||
+      (tx.maxPriorityFeePerGas ?? 0n) > tx.maxFeePerGas ||
       tx.gas * tx.maxFeePerGas > BigInt(policy.maxGasCost) ||
       (tx.gas * tx.maxFeePerGas).toString() !== prepared.maximumGasCost
     ) {
@@ -315,13 +375,14 @@ export function createTokenOperationDriver(deps: {
     ready: true,
     checkReadiness: (id) => verifyDeployment(rpcFor(id)),
     async prepare(scope, intent: TokenIntent) {
-      if (!policy.allowedAgents.includes(scope.agentId)) {
+      if (!tokenLaunchAllowsAgent(policy, scope.agentId)) {
         throw new Error("TESTNET_AGENT_NOT_ADMITTED");
       }
       const rpc = rpcFor(intent.id);
       await verifyDeployment(rpc);
       let to = policy.factory.address;
       let data: Hex;
+      let quote: TokenTradeQuote | undefined;
       if (intent.action === "launch") {
         const g = intent.authorization;
         if (
@@ -385,7 +446,73 @@ export function createTokenOperationDriver(deps: {
         ) {
           throw new Error("TOKEN_VENUE_MISMATCH");
         }
-        if (intent.action === "graduate") {
+        if (isTokenTradeAction(intent.action)) {
+          if (
+            !intent.trade ||
+            launch.agentKey !== tokenAgentKey(10143, scope.agentId) ||
+            launch.token.toLowerCase() !== token.toLowerCase() ||
+            launch.quoteToken.toLowerCase() !== policy.preset.quoteAddress ||
+            launch.presetHash !== policy.preset.configHash ||
+            intent.context.token?.chainId !== 10143
+          ) {
+            throw new Error("TOKEN_VENUE_MISMATCH");
+          }
+          const buying = intent.action === "buy" || intent.action === "approve_buy";
+          const approval = intent.action === "approve_buy" || intent.action === "approve_sell";
+          const amount = BigInt(intent.trade.amount);
+          const inputAsset = buying ? (policy.preset.quoteAddress as Hex) : token;
+          const owner = intent.context.masterAddress as Hex;
+          const phase = await read(rpc, launch.curve, PicklerBondingCurveAbi, "phase");
+          if (phase !== 0) {
+            throw new TokenTradeError("CURVE_CLOSED");
+          }
+          const [balance, allowance, expectedOutput, remaining] = (await Promise.all([
+            read(rpc, inputAsset, erc20Abi, "balanceOf", [owner]),
+            read(rpc, inputAsset, erc20Abi, "allowance", [owner, launch.curve]),
+            read(rpc, launch.curve, PicklerBondingCurveAbi, buying ? "quoteBuy" : "quoteSell", [
+              amount,
+            ]),
+            read(rpc, launch.curve, PicklerBondingCurveAbi, "remainingTokens"),
+          ])) as bigint[];
+          if (balance! < amount) {
+            throw new TokenTradeError("INSUFFICIENT_TOKEN_BALANCE");
+          }
+          if (expectedOutput! <= 0n) {
+            throw new TokenTradeError("TRADE_TOO_SMALL");
+          }
+          if (buying && expectedOutput! > remaining!) {
+            throw new TokenTradeError("EXCEEDS_CURVE_INVENTORY");
+          }
+          if (approval && allowance! >= amount) {
+            throw new TokenTradeError("APPROVAL_NOT_REQUIRED");
+          }
+          if (!approval && allowance! < amount) {
+            throw new TokenTradeError("APPROVAL_REQUIRED");
+          }
+          const minimumOutput = tokenTradeMinimumOutput(expectedOutput!, intent.trade.slippageBps);
+          quote = {
+            ...intent.trade,
+            side: buying ? "buy" : "sell",
+            approval,
+            expectedOutput: expectedOutput!.toString(),
+            minimumOutput: minimumOutput.toString(),
+            balance: balance!.toString(),
+            allowance: allowance!.toString(),
+            feeBps: buying ? policy.preset.buyFeeBps : policy.preset.sellFeeBps,
+          };
+          to = approval ? inputAsset : launch.curve;
+          data = approval
+            ? encodeFunctionData({
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [launch.curve, amount],
+              })
+            : encodeFunctionData({
+                abi: PicklerBondingCurveAbi,
+                functionName: buying ? "buyExactInput" : "sellExactInput",
+                args: [amount, minimumOutput, owner, BigInt(intent.deadline)],
+              });
+        } else if (intent.action === "graduate") {
           if (!intent.context.venue?.readyToGraduate || intent.context.venue.status !== "curve") {
             throw new Error("CURVE_NOT_READY");
           }
@@ -414,7 +541,7 @@ export function createTokenOperationDriver(deps: {
             functionName: "collectFees",
             args: [token],
           });
-        } else {
+        } else if (intent.action === "claim_fees") {
           to = policy.escrow.address;
           const asset = intent.asset === "agent" ? token : policy.preset.quoteAddress;
           data = encodeFunctionData({
@@ -422,12 +549,14 @@ export function createTokenOperationDriver(deps: {
             functionName: "claim",
             args: [asset as Hex, intent.context.masterAddress as Hex],
           });
+        } else {
+          throw new Error("UNSUPPORTED_TOKEN_ACTION");
         }
       }
       const from = intent.context.masterAddress!;
       const [nonce, fees, estimate, organizationId] = await Promise.all([
         pendingNonce(rpc, from),
-        quoteFees(rpc),
+        policyFees(rpc),
         rpc.call("eth_estimateGas", [{ from, to, data, value: "0x0" }]),
         deps.organization(scope),
       ]);
@@ -435,6 +564,13 @@ export function createTokenOperationDriver(deps: {
         throw new Error("INVALID_GAS_ESTIMATE");
       }
       const gas = (BigInt(estimate) * 12n + 9n) / 10n;
+      if (
+        gas > BigInt(policy.maxGas) ||
+        fees.maxFeePerGas > BigInt(policy.maxFeePerGas) ||
+        gas * fees.maxFeePerGas > BigInt(policy.maxGasCost)
+      ) {
+        throw new TokenPreparationError("GAS_LIMIT_EXCEEDED");
+      }
       const unsignedTransaction = serializeTransaction({
         type: "eip1559",
         chainId: 10143,
@@ -457,9 +593,11 @@ export function createTokenOperationDriver(deps: {
         maxFeePerGas: fees.maxFeePerGas.toString(),
         maximumGasCost: (gas * fees.maxFeePerGas).toString(),
         deadline: intent.deadline,
+        ...(quote ? { quote } : {}),
         activity: deps.activities.signTransaction({
           subOrganizationId: organizationId,
-          signWith: from,
+          // Turnkey resolves Ethereum signing resources by their exact checksum address.
+          signWith: getAddress(from as Hex),
           unsignedTransaction,
         }),
       };
@@ -475,8 +613,13 @@ export function createTokenOperationDriver(deps: {
         rpc.call("eth_getBalance", [prepared.sender, "latest"]),
         rpc.call("eth_getBlockByNumber", ["latest", false]),
       ]);
-      const timestamp = (block as { timestamp?: string } | null)?.timestamp;
+      const header = block as { timestamp?: string; baseFeePerGas?: string } | null;
+      const timestamp = header?.timestamp;
+      const baseFee = header?.baseFeePerGas;
       if (
+        !baseFee ||
+        !/^0x[0-9a-f]+$/i.test(baseFee) ||
+        BigInt(baseFee) + (tx.maxPriorityFeePerGas ?? 0n) > tx.maxFeePerGas! ||
         !timestamp ||
         BigInt(timestamp) >= BigInt(prepared.deadline) ||
         nonce !== tx.nonce ||
@@ -484,22 +627,59 @@ export function createTokenOperationDriver(deps: {
       ) {
         throw new Error("TRANSACTION_NOT_SENDABLE");
       }
+      // Re-simulate the exact swap/approval after the passkey delay; slippage, balances,
+      // allowance and curve phase remain on-chain constraints, never a fresh rewritten quote.
+      if (prepared.quote) {
+        await rpc.call("eth_call", [
+          { from: prepared.sender, to: tx.to, data: tx.data, value: "0x0" },
+          "latest",
+        ]);
+      }
     },
     async sign(prepared, request) {
       if (request.url !== prepared.activity.url || request.body !== prepared.activity.body) {
         throw new Error("ACTIVITY_MISMATCH");
       }
-      const result = await deps.forwarder.forward(request, {
-        organizationId: prepared.activity.organizationId,
-        allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
-      });
-      if (
-        result.organizationId !== prepared.activity.organizationId ||
-        result.type !== AGENT_WALLET_ACTIVITY_TYPES.signTransaction
-      ) {
-        throw new Error("ACTIVITY_MISMATCH");
+      let phase = "forward";
+      try {
+        const result = await deps.forwarder.forward(request, {
+          organizationId: prepared.activity.organizationId,
+          allowedActivityTypes: [AGENT_WALLET_ACTIVITY_TYPES.signTransaction],
+        });
+        phase = "validate_activity";
+        if (
+          result.organizationId !== prepared.activity.organizationId ||
+          result.type !== AGENT_WALLET_ACTIVITY_TYPES.signTransaction
+        ) {
+          throw new Error("ACTIVITY_MISMATCH");
+        }
+        return completed(result);
+      } catch (error) {
+        let reason = "invalid_response";
+        if (
+          error instanceof InvalidSignedActivityError ||
+          error instanceof SignedActivityRejectedError
+        ) {
+          reason = "request_rejected";
+        } else if (error instanceof SigningServiceUnavailableError) {
+          reason = "service_unavailable";
+        }
+        console.warn("Token signing failed", { operationId: prepared.operationId, phase, reason });
+        throw error;
       }
-      return completed(result);
+    },
+    async recoverExpiredLaunch(scope, intent) {
+      if (!intent.prepared) {
+        return null;
+      }
+      // Historical read-only recovery must not depend on a newer gas/configuration hash.
+      // Exact factory, creator, grant deadline and agent identity are checked by the proof.
+      return reconcileExpiredLaunch({
+        rpc: rpcFor(intent.id, true),
+        policy,
+        prepared: intent.prepared,
+        agentKey: tokenAgentKey(policy.chainId, scope.agentId),
+      });
     },
     async activity(prepared, id) {
       const result = await deps.reader.getActivity(prepared.activity.organizationId, id);
@@ -522,6 +702,12 @@ export function createTokenOperationDriver(deps: {
       return transactionHash(raw);
     },
     broadcast: async (raw, prepared) => broadcastTransaction(rpcFor(prepared.operationId), raw),
+    ...(deps.publishLaunch
+      ? {
+          publishLaunch: (scope: TokenScope, intent: TokenIntent) =>
+            deps.publishLaunch!(scope, intent, rpcFor(intent.id, true)),
+        }
+      : {}),
     async receipt(hash, prepared) {
       const rpc = rpcFor(prepared.operationId, true);
       const receipt = (await rpc.call("eth_getTransactionReceipt", [hash])) as {

@@ -62,11 +62,13 @@ describe("the deadline covers the body, not only the headers", () => {
 });
 
 describe("the username screen waits for the foreground to be quiet", () => {
-  test("a treasury operation, a read in flight or Perpl's onboarding each keep it closed", () => {
-    expect(appQuiet({ treasuryBusy: false, readPending: false, perplOnboarding: false })).toBe(true);
-    expect(appQuiet({ treasuryBusy: true, readPending: false, perplOnboarding: false })).toBe(false);
-    expect(appQuiet({ treasuryBusy: false, readPending: true, perplOnboarding: false })).toBe(false);
-    expect(appQuiet({ treasuryBusy: false, readPending: false, perplOnboarding: true })).toBe(false);
+  test("a treasury operation, a read in flight, Perpl's onboarding or a paid analysis each keep it closed", () => {
+    const calm = { treasuryBusy: false, readPending: false, perplOnboarding: false, advicePending: false };
+    expect(appQuiet(calm)).toBe(true);
+    expect(appQuiet({ ...calm, treasuryBusy: true })).toBe(false);
+    expect(appQuiet({ ...calm, readPending: true })).toBe(false);
+    expect(appQuiet({ ...calm, perplOnboarding: true })).toBe(false);
+    expect(appQuiet({ ...calm, advicePending: true })).toBe(false);
   });
 
   test("Perpl's onboarding counts while it runs, not once it stopped on an error", () => {

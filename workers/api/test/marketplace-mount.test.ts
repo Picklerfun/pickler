@@ -50,6 +50,8 @@ const emptyDirectory: AgentDirectory = {
 
 function app(markets: MarketBoard = createSampleMarketBoard()) {
   const growth = {
+    pageAgents: async () => ({ items: [], nextCursor: null }),
+    pageDirectory: async () => ({ items: [], nextCursor: null }),
     clock: systemClock,
     getHealth: createGetHealth(systemClock),
     listAgents: createListAgents(emptyDirectory),
@@ -87,6 +89,7 @@ const PUBLIC_READS = [
   "/v1/marketplace/agents",
   "/v1/marketplace/activity",
   "/v1/marketplace/directory",
+  "/v1/marketplace/tokens",
   "/v1/marketplace/reads",
   "/v1/marketplace/markets",
   "/v1/marketplace/analytics",
@@ -108,7 +111,7 @@ test("an empty database is an empty list, not an error", async () => {
   const response = await app().request("/v1/marketplace/agents", {}, env);
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), []);
+  assert.deepEqual(await response.json(), { items: [], nextCursor: null });
   // The sample marker is gone with the sample: nothing here says the data is invented.
   assert.equal(response.headers.get("x-pickler-data-source"), null);
 });
@@ -174,4 +177,13 @@ test("with a network the board is Perpl's, and what it remembers outlives the re
   assert.equal(first.length, 7);
   assert.deepEqual(first[0]!.source.venue, "perpl");
   assert.deepEqual(second[0]!.source, first[0]!.source);
+});
+
+test("catalogue pages reject invalid caps before services and avoid public caching", async () => {
+  for (const query of ["limit=51", "limit=0", "available=maybe", "q=" + "x".repeat(81)]) {
+    const response = await app().request(`/v1/marketplace/directory?${query}`, {}, env);
+    assert.equal(response.status, 400, query);
+  }
+  const response = await app().request("/v1/marketplace/directory", {}, env);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });

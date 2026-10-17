@@ -21,6 +21,13 @@ export interface AdviceRouteServices {
   notify(): Promise<void>;
 }
 const PAYMENT_HEADER_REQUIRED = "X-PAYMENT header is required";
+/** The header is a base64 string; its decoded JSON is `paymentPayloadSchema`. */
+const X_PAYMENT_SCHEMA = {
+  type: "string",
+  contentEncoding: "base64",
+  contentMediaType: "application/json",
+  contentSchema: z.toJSONSchema(dto.paymentPayloadSchema, { target: "draft-2020-12" }),
+};
 function notForSale(error: PilotError): boolean {
   return error.code === "NOT_FOUND" && error.message === "ADVICE_NOT_FOR_SALE";
 }
@@ -135,7 +142,8 @@ export function adviceRoutes(services: AdviceRouteServices) {
       headers: {
         "X-PAYMENT": {
           description:
-            "x402 v1: base64 JSON { x402Version: 1, scheme: exact, network: monad-testnet, payload: { signature, authorization } } with an EIP-3009 TransferWithAuthorization for AUSD signed by a wallet linked to the caller. Only read when x402 is on.",
+            "x402 v1: base64 JSON { x402Version: 1, scheme: exact, network: monad-testnet, payload: { signature, authorization } } (contentSchema). The authorization is an EIP-3009 ReceiveWithAuthorization for AUSD to the advice splitter (accepts[0].payTo), signed by a wallet linked to the caller; it also carries salt, 32 random bytes with nonce = keccak256(abi.encode(payee, salt)) for accepts[0].extra.payee. Only read when x402 is on.",
+          schema: X_PAYMENT_SCHEMA,
         },
       },
       responseHeaders: {
@@ -180,6 +188,37 @@ export function adviceRoutes(services: AdviceRouteServices) {
         c.header("X-PAYMENT-RESPONSE", result.settlement);
       }
       return accepted(c, result.job);
+    },
+  );
+  api.get(
+    "/recommendations/:id/status",
+    describe("adviceStatus", dto.adviceStatusSchema),
+    async (c) => {
+      const id = z.string().uuid().parse(c.req.param("id"));
+      const job = await services.service.status(c.get("principal"), id);
+      const error =
+        job.status === "failed"
+          ? ["ANALYSIS_EXPIRED", "ANALYSIS_INTERRUPTED"].includes(job.error ?? "")
+            ? job.error
+            : "ANALYSIS_FAILED"
+          : null;
+      return c.json(
+        successEnvelope(
+          dto.adviceStatusSchema.parse({
+            id: job.id,
+            agentId: job.publicAgentId,
+            symbol: job.symbol,
+            status: job.status,
+            createdAt: new Date(job.createdAt).toISOString(),
+            startedAt: job.startedAt === null ? null : new Date(job.startedAt).toISOString(),
+            finishedAt: job.finishedAt === null ? null : new Date(job.finishedAt).toISOString(),
+            error,
+            resultAvailable: job.resultAvailable,
+            lastEventId: job.lastEventId,
+          }),
+          c.req.path,
+        ),
+      );
     },
   );
   api.get(

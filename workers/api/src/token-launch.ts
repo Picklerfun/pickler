@@ -10,6 +10,7 @@ import {
   createPlatformTokenIssuer,
   createTokenMetadata,
   createTokenOperationDriver,
+  createConfirmedLaunchPublisher,
   createActivityBuilders,
   createTurnkeyActivityForwarder,
   createTurnkeyReader,
@@ -22,6 +23,7 @@ export function composeTokenLauncher(pool: TokenLaunchDatabase, env: Env, chainI
   let repository = new PostgresTokenLaunchStore(pool);
   let issuer;
   let driver;
+  let marketProfile;
   if (env.TOKEN_LAUNCH_ENABLED === "true") {
     if (
       chainId !== 10143 ||
@@ -36,6 +38,12 @@ export function composeTokenLauncher(pool: TokenLaunchDatabase, env: Env, chainI
       throw new Error("Token launcher configuration incomplete");
     }
     const policy = parseTokenLaunchPolicy(env.TOKEN_LAUNCH_POLICY_JSON);
+    marketProfile = {
+      chain: "eip155:10143",
+      factory: policy.factory.address,
+      configHash: policy.preset.configHash,
+      economics: tokenReferenceEconomics(AUSD[10143]),
+    };
     repository = new PostgresTokenLaunchStore(
       pool,
       policy.escrow.address,
@@ -48,6 +56,7 @@ export function composeTokenLauncher(pool: TokenLaunchDatabase, env: Env, chainI
     driver = createTokenOperationDriver({
       policy,
       rpc: createJsonRpc(env.MONAD_RPC_URL),
+      publishLaunch: createConfirmedLaunchPublisher(pool, policy),
       reader,
       forwarder: createTurnkeyActivityForwarder({ reader, pollAttempts: 0 }),
       activities: createActivityBuilders(),
@@ -87,6 +96,7 @@ export function composeTokenLauncher(pool: TokenLaunchDatabase, env: Env, chainI
       : {}),
   });
   return {
+    marketProfile,
     tokens,
     tokenOperations: createTokenOperationService({
       repository,

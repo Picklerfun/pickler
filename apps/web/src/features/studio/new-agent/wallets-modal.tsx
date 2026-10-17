@@ -66,7 +66,7 @@ export function WalletsModal({
   const network = wallets?.chainId == null ? null : networkByChainId(wallets.chainId);
   let networkLabel = "NETWORK UNAVAILABLE";
   if (network) {
-    networkLabel = network.testnet ? "MONAD TESTNET" : "MONAD MAINNET";
+    networkLabel = "MONAD";
   }
   const [moving, setMoving] = useState<{ walletId: string; toAgent: boolean } | null>(null);
   const [token, setToken] = useState<Token>("AUSD");
@@ -298,7 +298,8 @@ export function WalletsModal({
           </div>
           {network && (
             <p className={styles.networkNote}>
-              Balances and transfers on {network.name}. Fund these wallets on this network only.
+              Balances and transfers on Monad (chain {network.chainId}). Fund these wallets on this
+              network only.
             </p>
           )}
           {wallets !== null && network === null && (

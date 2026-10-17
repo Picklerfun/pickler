@@ -156,6 +156,8 @@ export interface DirectoryAgentRefDto extends ActivityAgentDto {
 
 export interface DirectoryAgentDto {
   agent: DirectoryAgentRefDto;
+  /** Confirmed token of a published agent on the configured network. */
+  launchedToken?: AgentTokenDto | null | undefined;
   beat: string;
   venue: VenueDto;
   decides: string;

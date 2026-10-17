@@ -32,11 +32,15 @@ TURNKEY_DELEGATED_API_PRIVATE_KEY=
 CHAIN_ID=10143
 MONAD_RPC_URL=
 # Paid advice (x402, docs/agent-advice.md "Payment (x402)"). On when the flag is "true"; it then
-# needs both the relayer key and MONAD_RPC_URL above, and without them every advice request answers
-# 503. Any other flag value keeps a fresh analysis free. The relayer key is a secret: a testnet EOA
-# that pays gas in MON and holds no AUSD.
+# needs the relayer key, MONAD_RPC_URL above, the PicklerAdviceSplitter address and the treasury it
+# was deployed with, and without them every advice request answers 503. A splitter whose on-chain
+# treasury() differs from ADVICE_SPLITTER_TREASURY answers 503 too. Any other flag value keeps a
+# fresh analysis free. The relayer key is a secret: a testnet EOA that pays gas in MON and holds no
+# AUSD.
 ADVICE_X402_ENABLED=
 X402_RELAYER_PRIVATE_KEY=
+ADVICE_SPLITTER_ADDRESS=
+ADVICE_SPLITTER_TREASURY=
 # The Perpl network the public market board reads: testnet or mainnet. Absent serves the sample
 # board, labelled SAMPLE DATA on the page. With it set, /v1/marketplace/markets calls Perpl's
 # public API from this machine.
@@ -45,6 +49,7 @@ PERPL_BOARD_NETWORK=testnet
 # and proposal approvals, which the research worker runs; keep it equal to the research worker's.
 # Anything else answers 409 RUNTIME_DISABLED; reads, closes and stops stay on.
 PERPL_RUNTIME_ENABLED=false
+PERPL_STUDIO_ENABLED=false
 
 # Wallet sign-in. Both are required together: `walletAuthServices` returns undefined when either
 # is missing, so /v1/auth/wallet is simply not mounted rather than mounted and broken.

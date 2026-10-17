@@ -7,19 +7,37 @@ import {
 } from "@pickler/infrastructure";
 import { liveBuySchema, liveOrderSchema, idempotencyKeySchema } from "@pickler/api-schema";
 import { z } from "zod";
+import { perplTradingRequest, tickPerplTrading } from "./perpl";
+
+export type TradingWakeup =
+  | { kind: "trading-wakeup" }
+  | {
+      kind: "perpl-wakeup";
+      scope?: { userId: string; productAgentId: string };
+      generation?: number;
+      owner?: string;
+    };
 
 export interface Env {
   APP_ENV: string;
   DATABASE?: Hyperdrive;
   DATABASE_URL?: string;
   TRADING_ADMISSIONS_ENABLED: string;
-  TRADING_QUEUE: Queue<{ kind: "trading-wakeup" }>;
+  TRADING_QUEUE: Queue<TradingWakeup>;
   POLYMARKET_SIGNER_PRIVATE_KEY?: string;
   POLYMARKET_SIGNER_ADDRESS?: string;
   POLYMARKET_WALLET_ADDRESS?: string;
   POLYMARKET_CLOB_API_KEY?: string;
   POLYMARKET_CLOB_API_SECRET?: string;
   POLYMARKET_CLOB_API_PASSPHRASE?: string;
+  PERPL_ADMISSIONS_ENABLED?: string;
+  PERPL_ACCOUNT_SETUP_ENABLED?: string;
+  PERPL_LIVE_POLICY_JSON?: string;
+  PERPL_KEY_ENCRYPTION_KEY?: string;
+  TURNKEY_API_PUBLIC_KEY?: string;
+  TURNKEY_API_PRIVATE_KEY?: string;
+  JWT_ISSUER?: string;
+  JWT_AUDIENCE?: string;
 }
 function compose(env: Env) {
   const credentials = {
@@ -73,9 +91,12 @@ const inputSchema = z
   .strict();
 export function createTradingWorker(
   runtime: typeof compose = compose,
-): ExportedHandler<Env, { kind: "trading-wakeup" }> {
+): ExportedHandler<Env, TradingWakeup> {
   return {
     async fetch(request, env) {
+      if (new URL(request.url).pathname.startsWith("/perpl/")) {
+        return perplTradingRequest(request, env);
+      }
       if (request.method !== "POST") {
         return new Response(null, { status: 405 });
       }
@@ -133,12 +154,23 @@ export function createTradingWorker(
     },
     async queue(batch, env) {
       for (const message of batch.messages) {
-        if (message.body?.kind !== "trading-wakeup") {
+        if (message.body?.kind !== "trading-wakeup" && message.body?.kind !== "perpl-wakeup") {
           message.ack();
           continue;
         }
         let instance: ReturnType<typeof compose> | undefined;
         try {
+          if (message.body.kind === "perpl-wakeup") {
+            if (env.PERPL_LIVE_POLICY_JSON && env.PERPL_KEY_ENCRYPTION_KEY) {
+              await tickPerplTrading(env, undefined, message.body);
+            }
+            message.ack();
+            continue;
+          }
+          if (runtime === compose && !env.POLYMARKET_SIGNER_PRIVATE_KEY) {
+            message.ack();
+            continue;
+          }
           instance = runtime(env);
           await instance.service.tick(env.TRADING_ADMISSIONS_ENABLED === "true");
           message.ack();
@@ -151,6 +183,7 @@ export function createTradingWorker(
     },
     async scheduled(_event, env) {
       await env.TRADING_QUEUE.send({ kind: "trading-wakeup" });
+      await env.TRADING_QUEUE.send({ kind: "perpl-wakeup" });
     },
   };
 }

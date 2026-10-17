@@ -95,7 +95,6 @@ export function StatusFrame({ children, foot }: { children: ReactNode; foot: str
           PICKLER
         </Link>
         <span className={styles.spacer} />
-        <span className={styles.pill}>TESTNET</span>
       </header>
       {children}
       <p className={styles.frameFoot}>{foot}</p>

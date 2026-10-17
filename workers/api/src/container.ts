@@ -1,7 +1,11 @@
+import { boundedBalanceReads } from "./balance-reads";
+import { PerplDashboardGateway } from "@pickler/infrastructure";
+import { composePublicTokenTrading } from "./public-token-trading";
 import { composeTokenLauncher } from "./token-launch";
 import { createXOAuthService } from "@pickler/core";
 import { PostgresApplicationReview, PostgresStudioAccessRequests } from "@pickler/infrastructure";
 import {
+  AUSD_TESTNET,
   createAdviceService,
   createPaidAdvice,
   type AdviceRepository,
@@ -11,6 +15,8 @@ import {
   createAusdAuthorizationGateway,
   PostgresAdvicePayments,
   PostgresAdviceStore,
+  type AusdAuthorizationGateway,
+  type AusdAuthorizationGatewayInput,
 } from "@pickler/infrastructure";
 import { parseAdvicePolicy } from "@pickler/trading/perps";
 import {
@@ -40,6 +46,7 @@ import {
   PolymarketPaperResolution,
   PostgresStudioDirectory,
   PostgresBudgetLedger,
+  PostgresExecutionReads,
   PostgresAgentEventLog,
   PostgresAgentRegistry,
   PostgresApiKeyDirectory,
@@ -81,6 +88,8 @@ import type { WalletAuthServices } from "./routes/wallet-auth";
 import { apiDatabase } from "./database";
 
 import { createGrowthServices, marketBoardFor } from "./growth/services";
+
+const perplDashboardGateway = new PerplDashboardGateway();
 
 /**
  * Fresh BTC/ETH marks for the studio's paper positions, from the same per-isolate market board as
@@ -198,19 +207,55 @@ function unavailablePaidAdvice(): ReturnType<typeof createPaidAdvice> {
   };
 }
 
+/** A 20-byte address in 0x-prefixed hex; any case, since only its bytes are compared. */
+const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+
+const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+
+function isUsableAddress(value: string | undefined): value is string {
+  return value !== undefined && ADDRESS.test(value) && value.toLowerCase() !== ZERO_ADDRESS;
+}
+
+function sameAddress(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
+}
+
+/**
+ * Splitter and treasury pairs whose on-chain `treasury()` already matched the configured one, and
+ * whose `asset()` is AUSD, in this isolate. Both are immutable, so one successful comparison
+ * stands for the isolate's life; a mismatch or a failed read is never cached and is retried on the
+ * next request.
+ */
+const confirmedSplitterTreasuries = new Set<string>();
+
 /**
  * The paid advice request (x402), or undefined when it is off. It is off unless
  * `ADVICE_X402_ENABLED` is "true"; off, `POST /v1/agent-advice/.../recommendations` is free exactly
- * as before. On, it sells only with both the relayer key and `MONAD_RPC_URL`: the flag without
- * them, or with a key viem refuses, fails closed (every request answers 503) and says so by
- * variable name, never by value.
+ * as before. On, it sells only with the relayer key, `MONAD_RPC_URL`, `ADVICE_SPLITTER_ADDRESS` and
+ * `ADVICE_SPLITTER_TREASURY`: the flag without them, with a malformed key or address, or with a key
+ * viem refuses, fails closed (every request answers 503). Before a request is served, the
+ * splitter's on-chain `treasury()` must equal `ADVICE_SPLITTER_TREASURY` and its `asset()` must be
+ * AUSD; a mismatch or a failed read refuses that request with 503. The gateway matches each
+ * settlement's treasury transfer against that verified address, so it reads nothing after a
+ * broadcast. Every refusal is logged by variable name, never by value.
  */
 export function paidAdviceFrom(
-  env: Pick<Env, "ADVICE_X402_ENABLED" | "X402_RELAYER_PRIVATE_KEY" | "MONAD_RPC_URL">,
+  env: Pick<
+    Env,
+    | "ADVICE_X402_ENABLED"
+    | "X402_RELAYER_PRIVATE_KEY"
+    | "MONAD_RPC_URL"
+    | "ADVICE_SPLITTER_ADDRESS"
+    | "ADVICE_SPLITTER_TREASURY"
+  >,
   deps: {
     advice: ReturnType<typeof createAdviceService>;
     repository: AdviceRepository;
     pool: PostgresResearchStore["pool"];
+    /** Tests only: replaces the chain gateway. */
+    gatewayFor?: (input: AusdAuthorizationGatewayInput) => AusdAuthorizationGateway;
+    /** Tests only: replaces the isolate's cache of confirmed treasuries. */
+    confirmedTreasuries?: Set<string>;
   },
   log: (message: string) => void = console.error,
 ): ReturnType<typeof createPaidAdvice> | undefined {
@@ -227,26 +272,90 @@ export function paidAdviceFrom(
     log("X402_RELAYER_PRIVATE_KEY is not a 32-byte hex private key; advice requests are refused");
     return unavailablePaidAdvice();
   }
-  let gateway: ReturnType<typeof createAusdAuthorizationGateway>;
+  const splitter = env.ADVICE_SPLITTER_ADDRESS;
+  const treasury = env.ADVICE_SPLITTER_TREASURY;
+  if (!isUsableAddress(splitter)) {
+    log(
+      "x402 is on but ADVICE_SPLITTER_ADDRESS is missing or not an address; advice requests are refused",
+    );
+    return unavailablePaidAdvice();
+  }
+  if (!isUsableAddress(treasury)) {
+    log(
+      "x402 is on but ADVICE_SPLITTER_TREASURY is missing or not an address; advice requests are refused",
+    );
+    return unavailablePaidAdvice();
+  }
+  let gateway: AusdAuthorizationGateway;
   try {
-    gateway = createAusdAuthorizationGateway({
+    const gatewayFor = deps.gatewayFor ?? createAusdAuthorizationGateway;
+    gateway = gatewayFor({
       rpcUrl,
       relayerPrivateKey: relayerPrivateKey as `0x${string}`,
+      splitter,
+      treasury,
     });
   } catch {
     // The error is dropped unread: it may quote the key.
     log("X402_RELAYER_PRIVATE_KEY or MONAD_RPC_URL was refused; advice requests are refused");
     return unavailablePaidAdvice();
   }
-  return createPaidAdvice({
+  const paid = createPaidAdvice({
     advice: deps.advice,
     repository: deps.repository,
     store: new PostgresAdvicePayments(deps.pool),
     gateway,
     now: () => Date.now(),
     resourceBase: "https://pickler.fun/api",
+    splitter,
     reportUnrecordedSettlement: reportUnrecordedSettlement(log),
   });
+  const confirmed = deps.confirmedTreasuries ?? confirmedSplitterTreasuries;
+  const pair = `${rpcUrl}|${splitter.toLowerCase()}|${treasury.toLowerCase()}`;
+  const confirmTreasury = async (): Promise<void> => {
+    if (confirmed.has(pair)) {
+      return;
+    }
+    let matches: boolean;
+    try {
+      // Compared inside the try: a read that is not a string fails closed like a failed read.
+      matches = sameAddress(await gateway.splitterTreasury(), treasury);
+    } catch {
+      // The error is dropped unread: it may quote the RPC URL.
+      log(
+        "the treasury of ADVICE_SPLITTER_ADDRESS could not be read through MONAD_RPC_URL; this advice request is refused",
+      );
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    if (!matches) {
+      log(
+        "the treasury of ADVICE_SPLITTER_ADDRESS differs from ADVICE_SPLITTER_TREASURY; advice requests are refused",
+      );
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    let assetMatches: boolean;
+    try {
+      // Compared inside the try: a read that is not a string fails closed like a failed read.
+      assetMatches = sameAddress(await gateway.splitterAsset(), AUSD_TESTNET);
+    } catch {
+      // The error is dropped unread: it may quote the RPC URL.
+      log(
+        "the asset of ADVICE_SPLITTER_ADDRESS could not be read through MONAD_RPC_URL; this advice request is refused",
+      );
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    if (!assetMatches) {
+      log("the asset of ADVICE_SPLITTER_ADDRESS is not AUSD; advice requests are refused");
+      throw new PilotError("ADVICE_UNAVAILABLE", "Paid analyses are not configured");
+    }
+    confirmed.add(pair);
+  };
+  return {
+    async request(...args) {
+      await confirmTreasury();
+      return paid.request(...args);
+    },
+  };
 }
 
 /**
@@ -482,24 +591,14 @@ function walletAuthServices(
   };
 }
 
-const ausdReaders = new Map<string, ReturnType<typeof createAusdBalanceReader>>();
-
-/**
- * AUSD balances for the studio, cached 15 s per address. Services are composed per request, so the
- * reader is kept per isolate (per chain and endpoint) or its cache would never be hit. A failed
- * read fails the request; it is never reported as a zero balance.
- */
+/** Fresh per invocation: no private balance state crosses request boundaries. */
 function ausdBalances(env: Pick<Env, "MONAD_RPC_URL">, chainId: number) {
-  const key = `${chainId}|${env.MONAD_RPC_URL ?? ""}`;
-  let reader = ausdReaders.get(key);
-  if (!reader) {
-    reader = createAusdBalanceReader({
+  return boundedBalanceReads(
+    createAusdBalanceReader({
       chainId,
       ...(env.MONAD_RPC_URL ? { rpcUrl: env.MONAD_RPC_URL } : {}),
-    });
-    ausdReaders.set(key, reader);
-  }
-  return reader;
+    }),
+  );
 }
 
 /** The studio's balances where `CHAIN_ID` is unusable: every read is 503 BALANCES_UNAVAILABLE. */
@@ -548,6 +647,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
   const chainId = supportedChainId(env);
   const custody = custodyServices(env, repository.pool, authenticate, profiles, chainId);
   const walletAuth = walletAuthServices(env, repository.pool, authenticate);
+  const launcher = composeTokenLauncher(repository.pool, env, chainId);
   // One advice store and service per invocation, shared by the free and the paid request.
   const adviceStore = new PostgresAdviceStore(repository.pool);
   const adviceService = createAdviceService(adviceStore, {
@@ -558,6 +658,10 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     advice: adviceService,
     repository: adviceStore,
     pool: repository.pool,
+  });
+  const growth = createGrowthServices(repository.pool, {
+    tokenChainId: chainId,
+    ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
   });
   return {
     authenticate,
@@ -574,18 +678,32 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
     },
     ...(custody ? { custody } : {}),
     ...(walletAuth ? { walletAuth } : {}),
-    growth: createGrowthServices(repository.pool, {
-      tokenChainId: chainId,
-      ...(env.PERPL_BOARD_NETWORK ? { perplBoardNetwork: env.PERPL_BOARD_NETWORK } : {}),
-    }),
-    launches: new PostgresLaunchReadModel(repository.pool),
+    growth,
+    perplDashboard: { authenticate, gateway: perplDashboardGateway },
+    publicTokenTrading: composePublicTokenTrading(repository.pool, env, growth),
+    launches: new PostgresLaunchReadModel(repository.pool, undefined, launcher.marketProfile),
     ...(env.TOKEN_METADATA
       ? { tokenAssets: createTokenMetadata(env.TOKEN_METADATA, "https://app.pickler.fun") }
       : {}),
     close: () => repository.close(),
     onboard: (userId, email) => directory.onboard(userId, email),
     studio: {
-      ...composeTokenLauncher(repository.pool, env, chainId),
+      tokens: launcher.tokens,
+      ...(env.PERPL_STUDIO_ENABLED === "true" && env.TRADING_EXECUTOR
+        ? {
+            perplLive: {
+              invoke: (path: string, input: unknown, authorization: string) =>
+                env.TRADING_EXECUTOR!.fetch(
+                  new Request(`https://trading.internal${path}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: authorization },
+                    body: JSON.stringify(input),
+                  }),
+                ),
+            },
+          }
+        : {}),
+      tokenOperations: launcher.tokenOperations,
       perplMarkets: {
         catalog: (network, signal) =>
           new PerplMarketData().catalog(network, {
@@ -618,6 +736,7 @@ export function createServices(env: Env): Services & { close(): Promise<void> } 
       authenticate,
       directory,
       repository,
+      executionReads: new PostgresExecutionReads(repository.pool),
       previews: new PostgresPreviewStore(repository.pool),
       wallets: new PostgresCustodyStore(repository.pool),
       walletChainId: chainId,

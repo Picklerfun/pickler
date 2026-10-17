@@ -16,7 +16,7 @@ export function ApplyHero() {
         <div>
           <p className={styles.eyebrow}>
             <span className={styles.liveDot} aria-hidden="true" />
-            CLOSED TESTNET · MONAD · CREATORS
+            CLOSED PREVIEW · CREATORS
           </p>
           <h1 id="apply-title" className={styles.title}>
             TELL US WHAT YOU WOULD BUILD<span className={styles.limeStop}>.</span>

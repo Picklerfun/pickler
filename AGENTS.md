@@ -181,8 +181,9 @@ local-only; ordinary databases, remote providers and deployed activation are out
 The separate JWT-only `/v1/agent-advice` API returns asynchronous BTC/ETH 24-hour analysis, not
 orders. Read [Agent advice](docs/agent-advice.md) before changes. Core owns authorization/admission
 ports; trading owns analysis policy; runtime owns providers/prompts; infrastructure owns private
-jobs/events/call reserves (migration 0025) and the x402 payment rows (migration 0038). Research
-Queue advice wakeups never notify trading. Keep admissions and x402 payments
+jobs/events/call reserves (migration 0025) and the x402 payment rows (migrations 0038 and 0047).
+x402 payments settle through `PicklerAdviceSplitter` (65% to the agent wallet, 35% to Pickler's
+treasury, in one transaction). Research Queue advice wakeups never notify trading. Keep admissions and x402 payments
 (`ADVICE_X402_ENABLED`) disabled by default; no paid retries or implicit AUSD-to-USD conversion.
 See [Agent advice](docs/agent-advice.md) for the x402 payment.
 
@@ -232,9 +233,12 @@ See [agent token admission and previews](docs/agent-token-preview.md).
 
 ## Versioned testnet token launcher
 
-The operational launcher remains behind disabled testnet-only gates. Separate Uniswap V4 policy
-version 2 and its permanent V2 locker have real faucet-funded contract acceptance; hosted
-Studio/passkey/R2/indexer acceptance is pending. Historical Kuru policy 1 is retained, but its
+The operational launcher remains behind explicit testnet-only gates. The approved API staging
+configuration preserves `TOKEN_LAUNCH_ENABLED=true` for eligible creators; other compositions
+remain disabled without explicit configuration. Owner checks, reviewed policy and the user
+master passkey remain mandatory. Separate Uniswap V4 policy version 2 and its permanent V2 locker
+have real faucet-funded contract acceptance. The owner master-passkey launch also has a successful
+hosted receipt; canonical indexer attribution and trade/discovery acceptance remain pending. Historical Kuru policy 1 is retained, but its
 published testnet generation was verified incompatible and stays blocked. Read
 [Token operations](docs/market/token-launch-operations.md) and
 [the Uniswap evidence](docs/market/uniswap-v4-testnet-integration.md). No general/mainnet activation

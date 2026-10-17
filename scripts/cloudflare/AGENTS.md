@@ -1,12 +1,16 @@
 # Cloudflare build operations
 
 Read the root instructions before changing this directory. The [build guide](README.md)
-documents the dashboard configuration for the four existing staging Workers; it does not
+documents the dashboard configuration for the five independent staging Workers (API, research, trading, web and indexer); it does not
 provision resources, enable admissions, or run migrations.
 
 Keep commands consistent with the committed Wrangler configurations and staging operations
 guide. Never include actual provider keys, Supabase credentials, or private environment files.
 Distinguish build variables, runtime bindings, and GitHub Actions deployment credentials.
+Indexer Builds must preserve its reviewed runtime policy variables using the committed
+`keep_vars=true`, remain main-only and retain its trusted Hyperdrive, minute Cron and RPC budgets.
+The independent indexer is not part of the optional four-Worker coordinated release. No build
+credential or connection alone establishes remote catch-up or public trade acceptance.
 Documentation checks are sufficient for guide-only changes. `deploy-staging.mjs` owns the gated
 main release adapter, with an injected command runner for controlled tests. It must migrate before
 any publication, preserve the checked commit, stop on failures/cancellation and separate migration

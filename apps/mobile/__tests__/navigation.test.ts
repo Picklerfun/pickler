@@ -90,6 +90,15 @@ describe("navigation/ref adapter — forma exacta de las órdenes a navigationRe
     );
   });
 
+  test("navigateTo advice opens the Studio agent's screen inside the Agents stack", () => {
+    navigateTo("advice");
+    expect(ref.navigate).toHaveBeenCalledWith(
+      "Tabs",
+      { screen: "AgentsTab", params: { screen: "advice", initial: false, pop: true } },
+      { pop: true },
+    );
+  });
+
   test("navigateTo a la raíz de una pestaña no manda initial (D10)", () => {
     navigateTo("wallet");
     expect(ref.navigate).toHaveBeenCalledWith(

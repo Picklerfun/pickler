@@ -49,6 +49,7 @@ jobs:
       - run: node --import tsx scripts/design/studio-loading.mjs
       - run: node scripts/design/studio-routing.mjs
       - run: node scripts/design/token-preview.mjs
+      - run: node --import tsx scripts/design/public-token-trading.mjs
       - run: node scripts/design/public-navigation.mjs
       - run: node scripts/design/creator-application.mjs
       - if: failure()

@@ -9,6 +9,12 @@
   align-items: center;
   gap: 12px;
 }
+.card[data-token-state="launched"] .head {
+  flex-wrap: wrap;
+}
+.card[data-token-state="launched"] .identity {
+  flex-basis: 100px;
+}
 .head h3 {
   margin: 0;
   font-size: 18px;
@@ -16,19 +22,13 @@
 .identity {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .quiet {
   color: var(--pk-ink-muted);
   font-size: 14px;
   margin: 0;
   line-height: 1.5;
-}
-.address {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  font-variant-numeric: tabular-nums;
 }
 .actions {
   display: flex;
@@ -236,9 +236,6 @@
   .walletDetails {
     gap: 12px;
   }
-  .address {
-    flex-wrap: wrap;
-  }
 }
 
 .economics {
@@ -289,5 +286,133 @@
   }
   .walletDetails {
     grid-template-columns: 1fr;
+  }
+}
+
+.trade {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  border-block: 1px solid var(--pk-rule);
+}
+.trade h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.trade .head {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.operationStage {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 220ms ease,
+    opacity 220ms ease;
+}
+.operationStage[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.stageContent {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+}
+.statusMessage {
+  display: grid;
+  gap: 6px;
+  animation: token-state 180ms ease;
+}
+.attempt {
+  margin: 0;
+  color: var(--pk-ink-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chainReference {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.chainValue {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chainReference a.chainValue {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--pk-border-strong);
+  text-underline-offset: 3px;
+}
+.chainReference a.chainValue:hover {
+  text-decoration-color: currentColor;
+}
+.chainReference a.chainValue:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 4px;
+}
+.chainReference .copyButton {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.copyFallback {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.operationCard .detail {
+  align-items: center;
+  font-size: 14px;
+}
+@keyframes token-state {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 480px) {
+  .operationCard .detail {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .operationCard .detail dd {
+    max-width: 100%;
+    text-align: left;
+  }
+  .operationCard .chainReference {
+    justify-content: flex-start;
+  }
+}
+
+.spinner {
+  flex-shrink: 0;
+  animation: token-progress 1s linear infinite;
+}
+.feedback {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+@keyframes token-progress {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .statusMessage {
+    animation: none;
+  }
+  .operationStage {
+    transition: none;
   }
 }

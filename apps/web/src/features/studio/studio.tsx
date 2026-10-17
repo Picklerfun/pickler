@@ -1,4 +1,5 @@
 "use client";
+import { researchReads } from "./lib/research-reads";
 import { StudioSkeleton } from "./skeleton";
 import Image from "next/image";
 import { AccountMenu } from "./shell/account-menu";
@@ -401,6 +402,45 @@ export function Studio({
     routed?.section,
   ]);
 
+  const researchReader = useMemo(() => {
+    void agentId;
+    void access?.workspaceId;
+    return researchReads((path, signal) => studioApi(path, { signal }));
+  }, [agentId, access?.workspaceId]);
+  const [moreRuns, setMoreRuns] = useState(false);
+  const historyRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const changed = () => {
+      if (document.hidden) {
+        historyRequest.current?.abort();
+      }
+    };
+    document.addEventListener("visibilitychange", changed);
+    return () => {
+      document.removeEventListener("visibilitychange", changed);
+      historyRequest.current?.abort();
+      historyRequest.current = null;
+    };
+  }, [agentId, access?.workspaceId]);
+  const loadOlderRuns = useCallback(async () => {
+    if (!agentId || document.hidden || historyRequest.current) {
+      return;
+    }
+    const controller = new AbortController();
+    historyRequest.current = controller;
+    try {
+      const page = await researchReader.older(agentId, controller.signal);
+      if (!controller.signal.aborted) {
+        setRuns(page.runs);
+        setMoreRuns(Boolean(page.nextCursor));
+      }
+    } finally {
+      if (historyRequest.current === controller) {
+        historyRequest.current = null;
+      }
+    }
+  }, [agentId, researchReader]);
+
   /* One cancellable read loop owns both the run list and the selected trace. The home reads its
      own latest run, so the loop only runs while a section is showing. */
   /* Which studio the agent opens (live L1): a draft's and a published Perpl agent's each read
@@ -411,19 +451,22 @@ export function Studio({
     if (!agentId || preview || ownStudio || section === "home" || section === "new") {
       return;
     }
+    const reader = researchReader;
     return startPolling(
       async (signal) => {
-        const list = await studioApi<{ runs: Run[] }>(`/agents/${agentId}/runs`, { signal });
+        const list = await reader.list(agentId, signal);
         if (signal.aborted) {
           return null;
         }
         setRuns(list.runs);
+        setMoreRuns(Boolean(list.nextCursor));
         const selected = runId ?? list.runs[0]?.id ?? null;
         setRunId(selected);
         if (selected) {
-          const body = await studioApi<{ events: RunEvent[] }>(`/runs/${selected}/events`, {
-            signal,
-          });
+          const selectedRun = await reader.selected(selected, signal);
+          list.runs = list.runs.map((item) => (item.id === selected ? selectedRun : item));
+          setRuns(list.runs);
+          const body = await reader.events(selected, signal);
           if (signal.aborted) {
             return null;
           }
@@ -436,7 +479,37 @@ export function Studio({
         setError(caught instanceof Error ? caught.message : "Could not refresh research.");
       },
     );
-  }, [agentId, runId, agent?.scheduleEnabled, refresh, preview, section, ownStudio]);
+  }, [
+    agentId,
+    runId,
+    agent?.scheduleEnabled,
+    refresh,
+    preview,
+    section,
+    ownStudio,
+    researchReader,
+  ]);
+
+  useEffect(() => {
+    if (preview || !loaded || section !== "new") {
+      return;
+    }
+    const controller = new AbortController();
+    void studioApi<import("@pickler/api-schema").LockDto>("/creation-eligibility", {
+      signal: controller.signal,
+    })
+      .then((eligibility) => {
+        if (!controller.signal.aborted) {
+          setAgents((items) => items.map((item) => ({ ...item, canCreateAnother: eligibility })));
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(caught instanceof Error ? caught.message : "Creation status unavailable.");
+        }
+      });
+    return () => controller.abort();
+  }, [preview, loaded, section]);
 
   /* The home's reads of one agent: its wallet balance and both locks, fresh from the API. */
   const refreshAgent = useCallback(async () => {
@@ -446,7 +519,9 @@ export function Studio({
     const fresh = await studioAgent(agentId);
     setAgents((list) =>
       list.map((candidate) =>
-        (candidate.productId ?? candidate.id) === agentId ? fresh : candidate,
+        (candidate.productId ?? candidate.id) === agentId
+          ? { ...fresh, canCreateAnother: fresh.canCreateAnother ?? candidate.canCreateAnother }
+          : candidate,
       ),
     );
   }, [agentId, preview, setAgents]);
@@ -533,7 +608,7 @@ export function Studio({
   const counts = useMemo(() => {
     const day = now - 24 * 60 * 60 * 1000;
     return {
-      picks: runs.filter((run) => run.decision).length,
+      picks: runs.filter((run) => run.decision || run.resultAvailable).length,
       running: runs.filter((run) => run.status === "queued" || run.status === "running").length,
       today: runs.filter((run) => run.createdAt >= day).length,
     };
@@ -772,12 +847,14 @@ export function Studio({
           }
           onOpen={(run) => {
             setRunId(run.id);
-            setSection(run.decision ? "picks" : "activity");
+            setSection(run.decision || run.resultAvailable ? "picks" : "activity");
           }}
           go={go}
         />
       ) : section === "picks" ? (
         <Picks
+          more={moreRuns}
+          onMore={() => void loadOlderRuns()}
           runs={runs}
           runId={runId}
           events={events}
@@ -789,6 +866,8 @@ export function Studio({
         />
       ) : section === "activity" ? (
         <Activity
+          more={moreRuns}
+          onMore={() => void loadOlderRuns()}
           runs={runs}
           runId={runId}
           events={events}

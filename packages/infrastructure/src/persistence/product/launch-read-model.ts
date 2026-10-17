@@ -12,6 +12,7 @@ import type {
 } from "@pickler/api-schema";
 
 import { databasePoolConfig, type DatabaseConnectionOptions } from "../connection.js";
+import { readTokenMarket, type TokenMarketProfile } from "./token-market-read.js";
 import { indexerCursors, pools, tokens, trades } from "./market.js";
 
 /**
@@ -40,7 +41,11 @@ export class PostgresLaunchReadModel {
   private readonly database: NodePgDatabase;
   private readonly ownsPool: boolean;
 
-  constructor(connection: string | Pool, options?: DatabaseConnectionOptions) {
+  constructor(
+    connection: string | Pool,
+    options?: DatabaseConnectionOptions,
+    private readonly marketProfile?: TokenMarketProfile,
+  ) {
     this.ownsPool = typeof connection === "string";
     this.pool =
       typeof connection === "string"
@@ -89,7 +94,7 @@ export class PostgresLaunchReadModel {
   }
 
   async getLaunch(id: string): Promise<ReadDto<LaunchDetailDto> | null> {
-    const [token] = await this.database.select().from(tokens).where(eq(tokens.id, id)).limit(1);
+    const token = await this.findToken(id);
 
     if (!token) {
       return null;
@@ -99,14 +104,22 @@ export class PostgresLaunchReadModel {
 
     const curve = poolRows.find((row) => row.phase === "pre_graduation");
     const post = poolRows.find((row) => row.phase === "post_graduation");
-    const freshness = await this.readFreshness(token.chain);
+    const freshness = await this.readFreshness(token.chain, curve?.address ?? undefined);
+    const market = await readTokenMarket(this.pool, token, this.marketProfile);
 
     return {
       ...freshness,
       data: {
         ...toSummary(token),
+        quote: {
+          ...toSummary(token).quote,
+          symbol:
+            token.quoteSymbol ??
+            (market?.terms ? (this.marketProfile?.economics.quoteSymbol ?? null) : null),
+        },
         curve: curve ? toCurve(curve, token.graduationTarget) : null,
         pool: post ? toCurve(post, null) : null,
+        market,
       },
     };
   }
@@ -115,11 +128,7 @@ export class PostgresLaunchReadModel {
     launchId: string,
     options: { limit?: number | undefined; cursor?: string | undefined } = {},
   ): Promise<ReadDto<TradeDto[]> | null> {
-    const [token] = await this.database
-      .select({ id: tokens.id, chain: tokens.chain })
-      .from(tokens)
-      .where(eq(tokens.id, launchId))
-      .limit(1);
+    const token = await this.findToken(launchId);
 
     if (!token) {
       return null;
@@ -173,13 +182,28 @@ export class PostgresLaunchReadModel {
     };
   }
 
+  private async findToken(id: string) {
+    const addressKey = /^(eip155:[1-9][0-9]*):(0x[0-9a-fA-F]{40})$/.exec(id);
+    if (
+      !addressKey &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    ) {
+      return null;
+    }
+    const condition = addressKey
+      ? and(eq(tokens.chain, addressKey[1]!), eq(tokens.address, addressKey[2]!.toLowerCase()))
+      : eq(tokens.id, id);
+    const [token] = await this.database.select().from(tokens).where(condition).limit(1);
+    return token ?? null;
+  }
+
   /**
    * How far the indexer has read, and whether that is far enough to trust.
    *
    * With no cursor at all the answer is not "fresh": nothing has ever been indexed, so every
    * projection is empty for a reason a caller needs to know about.
    */
-  private async readFreshness(chain?: string): Promise<FreshnessDto> {
+  private async readFreshness(chain?: string, contract?: string): Promise<FreshnessDto> {
     const rows = await this.database
       .select({
         lastBlock: indexerCursors.lastBlock,
@@ -187,7 +211,12 @@ export class PostgresLaunchReadModel {
         updatedAt: indexerCursors.updatedAt,
       })
       .from(indexerCursors)
-      .where(chain ? eq(indexerCursors.chain, chain) : undefined)
+      .where(
+        and(
+          chain ? eq(indexerCursors.chain, chain) : undefined,
+          contract ? eq(indexerCursors.contract, contract) : undefined,
+        ),
+      )
       .orderBy(desc(indexerCursors.lastBlock))
       .limit(1);
 

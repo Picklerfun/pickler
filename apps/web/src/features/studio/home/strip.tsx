@@ -12,7 +12,7 @@ export function Strip({
   log,
 }: {
   strip: StripView;
-  log: { id: number; at: string; text: string }[];
+  log: { id: string | number; at: string; text: string }[];
 }) {
   const [open, setOpen] = useState(false);
   return (

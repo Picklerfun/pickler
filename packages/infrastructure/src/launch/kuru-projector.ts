@@ -1,3 +1,4 @@
+import { lockCanonicalGraduationBlocks } from "./projection-locks.js";
 import type { Pool } from "pg";
 import type { KuruTokenLaunchPolicy } from "./policy.js";
 export interface KuruPositionSnapshot {
@@ -36,8 +37,11 @@ export class PostgresKuruProjector {
       FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
       WHERE e.chain='eip155:10143' AND e.emitter=$1 AND e.event_name='LaunchGraduatedKuru'
         AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')
+        AND EXISTS (SELECT 1 FROM market.tokens t
+                    WHERE t.chain=e.chain AND t.address=lower(e.decoded->>'token')
+                      AND t.agent_id IS NOT NULL AND t.status<>'failed')
         AND NOT EXISTS(SELECT 1 FROM market.kuru_graduations g WHERE g.chain=e.chain AND g.token=lower(e.decoded->>'token') AND g.block_hash=e.block_hash)
-      ORDER BY e.block_number,e.log_index`,
+      ORDER BY e.block_number,e.log_index LIMIT 100`,
       [this.policy.adapter.address],
     );
     let projected = 0;
@@ -162,9 +166,7 @@ export class PostgresKuruProjector {
           throw new Error("INDEX_LEASE_LOST");
         }
       }
-      await client.query(
-        `SELECT hash FROM market.chain_blocks WHERE chain='eip155:10143' AND NOT orphaned FOR SHARE`,
-      );
+      await lockCanonicalGraduationBlocks(client, "kuru");
       await client.query(
         `UPDATE market.tokens t SET status='graduated',graduated_at=b.block_time FROM market.kuru_graduations g JOIN market.chain_blocks b ON b.chain=g.chain AND b.hash=g.block_hash WHERE t.chain=g.chain AND t.address=g.token AND t.status<>'failed' AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')`,
       );

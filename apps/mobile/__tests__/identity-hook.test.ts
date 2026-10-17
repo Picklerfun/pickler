@@ -17,6 +17,8 @@ jest.mock("expo-secure-store", () => ({
 (globalThis as unknown as { __store: Map<string, string> }).__store = store;
 
 jest.mock("../src/config/api", () => ({ API_URL: "https://pickler.test/api/v1" }));
+jest.mock("../src/config/advice", () => ({ studioAgentsEnabled: () => (globalThis as unknown as { __studio: boolean }).__studio }));
+(globalThis as unknown as { __studio: boolean }).__studio = true;
 // `config/rp` lee app.config.ts vía expo-constants, que no existe bajo Jest.
 jest.mock("../src/config/rp", () => ({ RP_ID: "pickler.fun", RP_NAME: "Pickler" }));
 jest.mock("../src/wallet/wallet", () => ({ unlockStoredWallet: jest.fn(), describeError: (e: unknown) => ((e as { code?: string } | null)?.code === "ERR_AUTHENTICATION" ? "" : e instanceof Error ? e.message : String(e)) }));
@@ -277,4 +279,115 @@ test("availability is asked for the normalised handle", async () => {
   await mount(unlocked(A));
   expect(await latest.check(" @NightOwl")).toBe(true);
   expect(api.handleAvailable).toHaveBeenCalledWith("https://pickler.test/api/v1", "nightowl");
+});
+
+describe("authedFetch", () => {
+  const sent: { url: string; auth: string }[] = [];
+  const respond = (...statuses: number[]) => {
+    sent.length = 0;
+    const queue = [...statuses];
+    globalThis.fetch = jest.fn(async (url: string, init: RequestInit) => {
+      sent.push({ url, auth: (init.headers as Record<string, string>).Authorization! });
+      return new Response("{}", { status: queue.shift() ?? 200 });
+    }) as never;
+  };
+
+  test("reuses a fresh session: one sign-in for the account hook and the request, bearer attached", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    expect(api.presentSignature).toHaveBeenCalledTimes(1);
+    const res = await latest.authedFetch("/agent-advice/recommendations/r1", { method: "GET" });
+    expect(res.status).toBe(200);
+    expect(api.presentSignature).toHaveBeenCalledTimes(1);
+    expect(sent[0]!.url).toBe("https://pickler.test/api/v1/agent-advice/recommendations/r1");
+    expect(sent[0]!.auth).toMatch(/^Bearer /);
+  });
+
+  test("a 401 signs in once more and retries once; a second 401 is returned", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(401, 200);
+    await mount(unlocked(A));
+    expect((await latest.authedFetch("/x")).status).toBe(200);
+    expect(api.presentSignature).toHaveBeenCalledTimes(2);
+    expect(sent).toHaveLength(2);
+    respond(401, 401, 200);
+    expect((await latest.authedFetch("/x")).status).toBe(401);
+    expect(sent).toHaveLength(2);
+  });
+
+  test("with the wallet locked it throws WalletLockedError and sends nothing", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(locked(A));
+    await expect(latest.authedFetch("/x")).rejects.toMatchObject({ name: "WalletLockedError" });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+  });
+
+  test("a wallet the caller just unlocked is used before the render that carries it", async () => {
+    // useUnlock hands the wallet back before App re-renders with it: the retry after WalletLockedError passes it.
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(locked(A));
+    const opened = wallet(A);
+
+    const res = await latest.authedFetch("/x", { method: "GET" }, opened as never);
+
+    expect(res.status).toBe(200);
+    expect(opened.account.signMessage).toHaveBeenCalledTimes(1);
+    expect(sent[0]!.auth).toMatch(/^Bearer /);
+    expect(unlockStoredWallet).not.toHaveBeenCalled();
+  });
+
+  test("the path must start with a slash", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    await expect(latest.authedFetch("x")).rejects.toThrow(/start with "\/"/);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test("a Headers instance keeps its entries", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+    await latest.authedFetch("/x", { headers: new Headers({ "Idempotency-Key": "k1" }) });
+    expect(seen[0]).toMatchObject({ "idempotency-key": "k1" });
+    expect(seen[0]!.Authorization).toMatch(/^Bearer /);
+  });
+
+  test("a caller's own Authorization never travels beside the bearer", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    const seen: Record<string, string>[] = [];
+    globalThis.fetch = jest.fn(async (_u: string, init: RequestInit) => { seen.push(init.headers as Record<string, string>); return new Response("{}"); }) as never;
+    await mount(unlocked(A));
+
+    await latest.authedFetch("/x", { headers: { authorization: "Bearer someone-else", "Idempotency-Key": "k1" } });
+
+    const sent = new Headers(seen[0]);
+    expect(Object.keys(seen[0]!).filter((k) => k.toLowerCase() === "authorization")).toHaveLength(1);
+    expect(sent.get("Authorization")).toMatch(/^Bearer /);
+    expect(sent.get("Authorization")).not.toContain("someone-else");
+    expect(sent.get("Idempotency-Key")).toBe("k1");
+  });
+
+  test("the token is never persisted", async () => {
+    api.fetchProfile.mockResolvedValue({ handle: "owl" });
+    respond(200);
+    await mount(unlocked(A));
+    await latest.authedFetch("/x");
+    const token = sent[0]!.auth.slice("Bearer ".length);
+    expect(JSON.stringify([...store.values()])).not.toContain(token);
+  });
+
+  test("studioAgents follows studioAgentsEnabled()", async () => {
+    await mount({ status: "none" });
+    expect(latest.studioAgents).toBe(true);
+    (globalThis as unknown as { __studio: boolean }).__studio = false;
+    await mount({ status: "none" });
+    expect(latest.studioAgents).toBe(false);
+    (globalThis as unknown as { __studio: boolean }).__studio = true;
+  });
 });

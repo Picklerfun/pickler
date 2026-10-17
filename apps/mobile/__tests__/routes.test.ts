@@ -1,9 +1,9 @@
-import { GATED, ROOT_OF, type Screen } from "../src/store";
+import { CAN_BACK, GATED, heldActionFor, ROOT_OF, type Screen, SHOW_TABS } from "../src/store";
 import { ALL_TABS, gateTarget, SCREENS_ALL, screenOfRoute, TAB_OF, TAB_ORDER, TAB_ROOT } from "../src/navigation/routes";
 
 test("every screen except signin belongs to exactly one tab; only four tabs are visible (D1)", () => {
   const screens = SCREENS_ALL.filter((s) => s !== "signin" && s !== "onboarding");
-  expect(screens).toHaveLength(12);
+  expect(screens).toHaveLength(13);
   for (const s of screens) {
     const tab = TAB_OF[s as Exclude<Screen, "signin" | "onboarding">];
     expect(ALL_TABS).toContain(tab);
@@ -14,6 +14,19 @@ test("every screen except signin belongs to exactly one tab; only four tabs are 
   expect(TAB_OF.perpsFunds).toBe("WalletTab");
   expect(TAB_OF.read).toBe("PortfolioTab");
   expect(TAB_OF.agent).toBe("AgentsTab");
+  expect(TAB_OF.advice).toBe("AgentsTab");
+});
+
+test("the advice screen of a Studio agent lives in the Agents stack and asks for an account, like the profile", () => {
+  expect(SCREENS_ALL).toContain("advice");
+  expect(screenOfRoute("advice")).toBe("advice");
+  expect(ROOT_OF.advice).toBe("agents");
+  expect(GATED).toContain("advice");
+  expect(CAN_BACK).toContain("advice");
+  expect(SHOW_TABS).not.toContain("advice");
+  expect(gateTarget(false, "advice")).toEqual({ screen: "signin", next: "advice" });
+  expect(gateTarget(true, "advice")).toEqual({ screen: "advice" });
+  expect(heldActionFor("advice")).toBe("An analysis");
 });
 
 test("onboarding lives in the RootStack, outside the tabs (D21)", () => {

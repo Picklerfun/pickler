@@ -11,7 +11,8 @@ second endpoint catalogue. Export composition must throw if any service method i
 Every explicit HTTP operation needs a description, unique operation id, concrete success/error
 schemas and accurate security. Opaque JSON is allowed only for documented extension fields.
 
-`operation` also takes `headers` (extra request headers, such as advice's `X-PAYMENT`) and
+`operation` also takes `headers` (extra request headers, such as advice's `X-PAYMENT`; a header's
+optional `schema` replaces the default `{ type: "string" }`, e.g. a base64 `contentSchema`) and
 `responses` (a status with its own JSON body, documented over the error statuses, such as the
 advice 402). `responseHeaders` documents headers of the success response.
 
@@ -23,3 +24,7 @@ owner JWT-only and private/no-store. See [Studio X OAuth](../../../../docs/studi
 `operation.ts` supports explicit response media schemas for immutable token JSON/SVG assets.
 JSON remains the default for ordinary operations; asset reads do not inherit private Studio
 authentication or permit public writes.
+
+Documentation composition includes `perplDashboard` by default for the read-only market, scope-1
+enrollment and signed-wallet route group. An explicit feature selection can omit it. Like every
+other export service, this group is shape-only and throws if invoked while generating the document.

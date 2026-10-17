@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   if (marketId !== null && !Number.isInteger(marketId)) return fail(422, "bad_market");
   const [{ credits }] = await sql<{ credits: number }[]>`select mobile.ensure_wallet(${auth.address}) as credits`;
   const rows = await sql<ReadRow[]>`
-    select * from mobile.reads where address = ${auth.address} ${marketId === null ? sql`` : sql`and market_id = ${marketId}`}
+    select id,address,agent_id,market_id,symbol,level_bps,horizon_min,price_decimals,mark_at_request,target,question,status,probability,reasons,limits,credits_charged,error,created_at,expires_at,resolved_at,mark_at_resolution,outcome,brier from mobile.reads where address = ${auth.address} ${marketId === null ? sql`` : sql`and market_id = ${marketId}`}
     order by created_at desc limit 50`;
   return json({ reads: rows.map(toReadDto), credits });
 });

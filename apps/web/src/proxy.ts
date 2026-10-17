@@ -15,8 +15,8 @@ export type Decision =
  * Where Supabase sends someone back after Google or a magic link. It is the one studio path that
  * can arrive on the marketplace: the provider falls back to the project's Site URL when the
  * `redirectTo` it was given is not on its allow list, and the Site URL is the apex. The same path
- * as `AUTH_CALLBACK_PATH` in features/auth/lib/account.ts, which is a client module the edge
- * middleware does not import; test/middleware.test.ts holds the two equal.
+ * as `AUTH_CALLBACK_PATH` in features/auth/lib/account.ts, which is a client module the request
+ * proxy does not import; test/middleware.test.ts holds the two equal.
  */
 export const AUTH_CALLBACK = "/auth/callback";
 
@@ -95,7 +95,7 @@ export function decide(
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const configured = authConfigured(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const decision = decide(
     request.headers.get("host"),
     request.nextUrl.pathname,

@@ -1,0 +1,143 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { PerplDashboardGateway } from "../src/perpl/dashboard.js";
+import { controlledPerpl, DASHBOARD_WALLET } from "./perpl-dashboard-fixture.js";
+const signal = new AbortController().signal;
+function proofs(now: number) {
+  const proof = {
+    apiKey: "controlled-read-token",
+    timestamp: String(now),
+    nonce: "a".repeat(22),
+    signature: "b".repeat(86),
+  };
+  return {
+    wallet: DASHBOARD_WALLET,
+    walletProof: proof,
+    positionsProof: { ...proof, nonce: "c".repeat(22) },
+  };
+}
+test("gateway reads fixed private GET paths, real-model projections and no signing secrets", async () => {
+  const fake = controlledPerpl();
+  const gateway = new PerplDashboardGateway(fake.fetcher);
+  const result = await gateway.portfolio(proofs(Date.now()), signal);
+  assert.equal(result.wallet.toLowerCase(), DASHBOARD_WALLET);
+  assert.equal(result.positions.length, 2);
+  assert.equal(result.availableAusd, "480");
+  assert.equal(result.realizedPnlAusd, "32.5");
+  assert.equal(result.block, 100);
+  assert.ok(fake.calls.every((call) => call.method === "GET" && call.body === null));
+  assert.equal(JSON.stringify(result).includes("controlled-read-token"), false);
+});
+test("default fetch preserves the native runtime receiver", async (t) => {
+  const fake = controlledPerpl();
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async function (this: unknown, ...args: Parameters<typeof fetch>) {
+      assert.ok(this === undefined || this === globalThis, "fetch received the gateway as this");
+      return fake.fetcher(...args);
+    },
+  );
+
+  const result = await new PerplDashboardGateway().markets(signal);
+
+  assert.equal(result.markets.length, 7);
+  assert.equal(fake.calls.length, 1);
+});
+test("wrong wallet and stale/replayed credential proofs are refused", async () => {
+  const fake = controlledPerpl();
+  const gateway = new PerplDashboardGateway(fake.fetcher);
+  const input = proofs(Date.now());
+  await assert.rejects(
+    gateway.portfolio({ ...input, positionsProof: input.walletProof }, signal),
+    /INVALID_AUTHORIZATION/,
+  );
+  assert.equal(fake.calls.length, 0);
+  fake.setWrongWallet(true);
+  await assert.rejects(gateway.portfolio(input, signal), /INVALID_RESPONSE/);
+});
+test("public context is cached; failed refresh becomes stale, then unavailable, never invented", async () => {
+  let now = Date.now();
+  const fake = controlledPerpl(() => now);
+  const gateway = new PerplDashboardGateway(fake.fetcher, () => now);
+  const first = await gateway.markets(signal);
+  assert.equal(first.stale, false);
+  await gateway.markets(signal);
+  assert.equal(fake.calls.length, 1);
+  now += 11000;
+  fake.setUnavailable(true);
+  const stale = await gateway.markets(signal);
+  assert.equal(stale.stale, true);
+  assert.deepEqual(stale.markets, first.markets);
+  now += 60000;
+  await assert.rejects(gateway.markets(signal), /UNAVAILABLE/);
+});
+test("payload requests only read scope and validates unchanged signer/public key/expiry", async () => {
+  const fake = controlledPerpl();
+  const gateway = new PerplDashboardGateway(fake.fetcher);
+  const input = {
+    wallet: DASHBOARD_WALLET,
+    publicKey: "0x" + "6".repeat(64),
+    expiresAt: Date.now() + 3500000,
+  };
+  const result = await gateway.payload(input, signal);
+  assert.equal(result.typedData.message.scope, "1");
+  assert.equal(result.typedData.message.expiresAt, String(input.expiresAt));
+  assert.equal(fake.calls.length, 1);
+  assert.equal(fake.calls[0]?.path, "/api/v1/api-key/payload");
+});
+
+test("another collateral asset cannot be labelled AUSD", async () => {
+  const fake = controlledPerpl();
+  const gateway = new PerplDashboardGateway(async (url, init) => {
+    const response = await fake.fetcher(url, init);
+    const body = await response.json();
+    if (String(url).endsWith("/pub/context")) {
+      body.tokens[0].decimals = 18;
+    }
+    return Response.json(body);
+  });
+  await assert.rejects(gateway.markets(signal), /INVALID_RESPONSE/);
+});
+
+test("enrollment refusal is distinct from stale signing terms and failed account proofs", async () => {
+  let now = Date.now();
+  const fake = controlledPerpl(() => now);
+  let refused = "";
+  let status = 400;
+  const gateway = new PerplDashboardGateway(
+    async (url, init) => {
+      if (refused && String(url).endsWith(refused)) {
+        return new Response("private provider detail", { status });
+      }
+      return fake.fetcher(url, init);
+    },
+    () => now,
+  );
+  const input = {
+    wallet: DASHBOARD_WALLET,
+    publicKey: "0x" + "6".repeat(64),
+    expiresAt: now + 3_500_000,
+  };
+  const payload = await gateway.payload(input, signal);
+  const enrollment = {
+    wallet: input.wallet,
+    ...payload,
+    signature: "0x" + "1".repeat(130),
+    popSignature: "0x" + "2".repeat(128),
+  };
+  refused = "/api-key/enroll";
+
+  await assert.rejects(gateway.enroll(enrollment, signal), /AUTHORIZATION_REJECTED/);
+  now += 31_000;
+  await assert.rejects(gateway.enroll(enrollment, signal), /AUTHORIZATION_STALE/);
+  refused = "/trading/wallet";
+  status = 401;
+  await assert.rejects(gateway.portfolio(proofs(now), signal), /READ_SIGNATURE_REJECTED/);
+  refused = "/api-key/payload";
+  status = 422;
+  await assert.rejects(
+    gateway.payload({ ...input, expiresAt: now + 3_500_000 }, signal),
+    /INTEGRATION_NOT_ALLOWED/,
+  );
+});

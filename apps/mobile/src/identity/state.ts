@@ -20,13 +20,15 @@ export type Foreground = {
   readPending: boolean;
   /** Habilitar trading en Perpl: approve, cuenta con depósito y key, varios pasos con dinero. */
   perplOnboarding: boolean;
+  /** A Studio agent analysis from its confirmation until it is resolved or left (src/advice/copy.ts, keepsGateOff). */
+  advicePending: boolean;
 };
 
 /**
- * La pantalla no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read o habilitar
- * trading ve primero cómo termina. Todas desbloquean la wallet, y desbloquear es lo que dispara la consulta.
+ * La pantalla no cae encima de una operación en curso: quien desbloqueó para retirar, pedir una read, habilitar
+ * trading o pagar un análisis de un Studio agent ve primero cómo termina. Todas desbloquean la wallet, y desbloquear es lo que dispara la consulta.
  */
-export const appQuiet = (f: Foreground): boolean => !f.treasuryBusy && !f.readPending && !f.perplOnboarding;
+export const appQuiet = (f: Foreground): boolean => !f.treasuryBusy && !f.readPending && !f.perplOnboarding && !f.advicePending;
 
 /**
  * Perpl está habilitando trading: `onboarding` sin error. Detenido en un error (sin MON, tx rechazada) ya no corre

@@ -5,9 +5,10 @@ import type { MarketData } from "./hooks/useMarketData";
 import type { Notifications } from "./hooks/useNotifications";
 import type { Perpl } from "./hooks/usePerpl";
 import type { RefreshSeal } from "./hooks/useRefreshSeal";
+import type { Studio } from "./hooks/useStudio";
 import type { Reads } from "./hooks/useReads";
 import type { Treasury } from "./hooks/useTreasury";
 import type { AppStore } from "./store";
 
 /** Todo lo que reciben Page/Navigator, DevControls y las pantallas. */
-export type AppCtx = AppStore & AccountActions & { account: AccountState; treasury: Treasury; perpl: Perpl; marketData: MarketData; reads: Reads; identity: IdentityApi; notifications: Notifications; seal: RefreshSeal; setControls: (v: boolean) => void };
+export type AppCtx = AppStore & AccountActions & { account: AccountState; treasury: Treasury; perpl: Perpl; marketData: MarketData; reads: Reads; identity: IdentityApi; studio: Studio; notifications: Notifications; seal: RefreshSeal; setControls: (v: boolean) => void };

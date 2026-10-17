@@ -155,14 +155,41 @@ export const tokenActionSchema = z.enum([
   "collect_curve_fees",
   "collect_lp_fees",
   "claim_fees",
+  "approve_buy",
+  "approve_sell",
+  "buy",
+  "sell",
 ]);
+export const tokenTradeInputSchema = z
+  .object({
+    amount: z
+      .string()
+      .regex(/^[1-9][0-9]{0,77}$/)
+      .refine((value) => /^[1-9][0-9]{0,77}$/.test(value) && BigInt(value) < 2n ** 256n),
+    slippageBps: z.number().int().min(1).max(100),
+  })
+  .strict();
+export const tokenTradeQuoteSchema = tokenTradeInputSchema.extend({
+  side: z.enum(["buy", "sell"]),
+  approval: z.boolean(),
+  expectedOutput: integer,
+  minimumOutput: integer,
+  balance: integer,
+  allowance: integer,
+  feeBps: z.number().int().min(0).max(10000),
+});
 export const tokenOperationInputSchema = z
   .object({
     action: tokenActionSchema,
     expectedVersion: z.number().int().nonnegative(),
     asset: z.enum(["ausd", "agent"]).optional(),
+    trade: tokenTradeInputSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => {
+    const trading = ["approve_buy", "approve_sell", "buy", "sell"].includes(input.action);
+    return trading ? !!input.trade && input.asset === undefined : input.trade === undefined;
+  }, "Trade parameters are required only for trade and exact approval actions");
 export const tokenOperationConfirmSchema = z
   .object({ expectedVersion: z.number().int().positive(), signed: signedActivitySchema.optional() })
   .strict();
@@ -192,6 +219,7 @@ export const tokenOperationSchema = z.object({
   blockHash: hash.nullable(),
   error: z.string().nullable(),
   deadline: integer,
+  quote: tokenTradeQuoteSchema.nullable().optional(),
   transaction: z
     .object({
       chainId: z.literal(10143),

@@ -167,6 +167,8 @@ test("only a canonical confirmed event from the granted factory attributes a tok
         },
       ],
     });
+    const directory = new PostgresAgentDirectory(f.store.pool, 10143);
+    assert.equal((await directory.listDirectory())[0]?.launchedToken, null);
     const metadata = async () => ({
       name: draft.name,
       symbol: draft.ticker,
@@ -194,6 +196,24 @@ test("only a canonical confirmed event from the granted factory attributes a tok
     assert.deepEqual(state.token?.avatar, { accent: "lime", pattern: 1 });
     const profile = await new PostgresAgentDirectory(f.store.pool, 10143).getPersona(f.handle);
     assert.equal(profile?.launchedToken?.address, token);
+    assert.deepEqual((await directory.listDirectory())[0]?.launchedToken, profile?.launchedToken);
+    assert.equal(
+      (await new PostgresAgentDirectory(f.store.pool, 143).listDirectory())[0]?.launchedToken,
+      null,
+    );
+    await f.store.pool.query(
+      "UPDATE agents.agents SET visibility='private',published_at=NULL WHERE id=$1",
+      [f.scope.agentId],
+    );
+    assert.deepEqual(
+      await directory.listDirectory(),
+      [],
+      "private agent tokens never reach the landing",
+    );
+    await f.store.pool.query(
+      "UPDATE agents.agents SET visibility='public',published_at=now() WHERE id=$1",
+      [f.scope.agentId],
+    );
     assert.equal(
       (await new PostgresAgentDirectory(f.store.pool, 143).getPersona(f.handle))?.launchedToken,
       null,
@@ -211,6 +231,7 @@ test("only a canonical confirmed event from the granted factory attributes a tok
       (error: unknown) => (error as { code?: string }).code === "23505",
     );
     await f.store.pool.query("UPDATE market.chain_blocks SET orphaned=true");
+    assert.equal((await directory.listDirectory())[0]?.launchedToken, null);
     assert.equal((await f.service.state(f.scope)).confirmation, "pending");
     const count = await f.store.pool.query("SELECT count(*) FROM market.tokens");
     assert.equal(count.rows[0].count, "1");

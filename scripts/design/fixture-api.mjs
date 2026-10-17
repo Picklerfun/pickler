@@ -48,6 +48,7 @@ import { growthRoutes } from "../../workers/api/src/routes/growth.ts";
 import { createSampleMarketBoard } from "./fixtures/sample-market-board.mts";
 import { createSampleAgentDirectory } from "./fixtures/sample-agent-directory.mts";
 import { createSampleActionFeed } from "./fixtures/sample-actions.mts";
+import { sampleTokenMarket } from "./fixtures/sample-token-market.mts";
 import { sampleLaunches } from "./fixtures/sample-launches.mts";
 import {
   toAgentActionDto,
@@ -99,14 +100,34 @@ const growth = growthRoutes({
 const routes = [
   // The worker reads launches from its index; the harness has none, so the board gets two rows.
   [/^\/v1\/launches$/, async () => sampleLaunches()],
-  [/^\/v1\/marketplace\/agents$/, async () => (await services.listAgents()).map(toAgentSummaryDto)],
+  [
+    /^\/v1\/launches\/eip155:10143:0x1111111111111111111111111111111111111111$/,
+    async () => sampleTokenMarket(),
+  ],
+  [
+    /^\/v1\/marketplace\/tokens$/,
+    async () => ({
+      items: (await services.listDirectory())
+        .filter((item) => item.launchedToken)
+        .slice(0, 8)
+        .map(toDirectoryAgentDto),
+      nextCursor: null,
+    }),
+  ],
+  [
+    /^\/v1\/marketplace\/agents$/,
+    async () => ({ items: (await services.listAgents()).map(toAgentSummaryDto), nextCursor: null }),
+  ],
   [
     /^\/v1\/marketplace\/activity$/,
     async () => (await services.listAgentActions()).map(toAgentActionDto),
   ],
   [
     /^\/v1\/marketplace\/directory$/,
-    async () => (await services.listDirectory()).map(toDirectoryAgentDto),
+    async () => ({
+      items: (await services.listDirectory()).map(toDirectoryAgentDto),
+      nextCursor: null,
+    }),
   ],
   [/^\/v1\/marketplace\/reads$/, async () => (await services.listReads()).map(toAgentReadDto)],
   [
@@ -123,7 +144,24 @@ const routes = [
   ],
   [
     /^\/v1\/marketplace\/personas\/([^/]+)$/,
-    async (handle) => one(await services.getAgentPersona(handle), toAgentPersonaDto),
+    async (handle) => {
+      if (handle === "public_trade") {
+        const persona = toAgentPersonaDto(await services.getAgentPersona("halftime"));
+        return {
+          ...persona,
+          handle,
+          launchedToken: {
+            name: "Halftime",
+            ticker: "HALF",
+            address: "0x1111111111111111111111111111111111111111",
+            chainId: 10143,
+            imageUri: null,
+            avatar: { accent: "lime", pattern: 0 },
+          },
+        };
+      }
+      return one(await services.getAgentPersona(handle), toAgentPersonaDto);
+    },
   ],
   [/^\/v1\/marketplace\/markets$/, async () => (await services.listMarkets()).map(toPerpMarketDto)],
   [
@@ -174,7 +212,7 @@ const server = createServer(async (request, response) => {
     return send(200, toPlatformAnalyticsDto(value));
   }
   for (const [pattern, handler] of routes) {
-    const match = pattern.exec(url.pathname);
+    const match = pattern.exec(decodeURIComponent(url.pathname));
     if (match) {
       try {
         return send(200, await handler(...match.slice(1).map(decodeURIComponent)));

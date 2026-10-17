@@ -100,7 +100,7 @@ export function TokenPanel({
     state?.chainId === null ||
     (state?.blockers.some((b) => b !== "GO_PUBLIC_FIRST" && b !== "LAUNCH_UNAVAILABLE") ?? false);
   let availabilityMessage = state?.available
-    ? "Testnet launch is available for this agent."
+    ? "Token launch is available for this agent."
     : "Token launch is not available yet. You can save your draft.";
   if (state?.confirmation === "pending") {
     availabilityMessage = "Waiting for token confirmation.";
@@ -171,7 +171,6 @@ export function TokenPanel({
                 <h3>Launch token</h3>
                 <p className={styles.quiet}>For {agent.name}</p>
               </div>
-              {state?.chainId && <Tag>{state.chainId === 10143 ? "TESTNET" : "MAINNET"}</Tag>}
             </div>
             {loading && (
               <div aria-label="Loading token" role="status">

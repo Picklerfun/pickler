@@ -29,7 +29,9 @@ export type CreateGate<A extends GateAgent = GateAgent> =
 
 /** Closed for funding: any closed lock whose reason is not the draft limit. */
 const unfundedLock = (agent: GateAgent): boolean =>
-  !agent.canCreateAnother.ok && agent.canCreateAnother.reason !== "draft_limit";
+  agent.canCreateAnother !== null &&
+  !agent.canCreateAnother.ok &&
+  agent.canCreateAnother.reason !== "draft_limit";
 
 /**
  * The funding lock, which is the whole gate for the create screen. Open with no agents, when the API
@@ -57,7 +59,7 @@ export function createGate<A extends GateAgent>(agents: readonly A[]): CreateGat
  */
 export function draftLimitLock(agents: readonly GateAgent[]): string {
   const drafts = agents.filter((agent) => agent.draft).length;
-  const told = agents.some((agent) => agent.canCreateAnother.reason === "draft_limit");
+  const told = agents.some((agent) => agent.canCreateAnother?.reason === "draft_limit");
   return drafts >= MAX_DRAFTS || told ? DRAFT_LIMIT_NOTE : "";
 }
 
@@ -68,6 +70,9 @@ export function draftLimitLock(agents: readonly GateAgent[]): string {
  * money moved.
  */
 export function newAgentLock(agents: readonly GateAgent[]): string {
+  if (agents.some((agent) => agent.canCreateAnother === null)) {
+    return "Refresh creation status before creating another agent.";
+  }
   const gate = createGate(agents);
   if (gate.open) {
     return draftLimitLock(agents);

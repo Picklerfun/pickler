@@ -62,6 +62,7 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   const [request, setRequest] = useState<RequestState>({ step: "idle" });
   const [active, setActive] = useState(false);
   const sessionRef = useRef<ReadsSession | null>(null);
+  const listRequest = useRef<AbortController | null>(null);
   // Actualizados en cada render (no en un efecto) para que el trabajo async en vuelo pueda comparar
   // contra el valor vivo, no contra el que tenía cuando arrancó (Findings #2 y #4).
   const addressRef = useRef(address);
@@ -85,6 +86,8 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
   // Arranque y cambio de cuenta: la sesión guardada vale sólo para su dirección y mientras sea usable (P2).
   useEffect(() => {
     let stale = false;
+    listRequest.current?.abort();
+    listRequest.current = null;
     sessionRef.current = null;
     droppedRef.current = false;
     setStatus("none");
@@ -156,19 +159,23 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
 
   const loadReads = useCallback(async () => {
     const s = sessionRef.current;
-    if (!s) return;
+    if (!s || listRequest.current || AppState.currentState === "background" || AppState.currentState === "inactive") return;
+    const controller = new AbortController();
+    listRequest.current = controller;
     // Una respuesta tardía de la cuenta A no debe pintarse (ni tirar la sesión) tras cambiar a la cuenta B (I1).
     const addr = addressRef.current;
     try {
-      const r = await fetchReads(READS_URL, s); // todas tus reads (máx. 50); el board filtra por mercado (D26)
-      if (isStaleAccount(addr, addressRef.current)) return;
+      const r = await fetchReads(READS_URL, s, undefined, fetch, controller.signal); // todas tus reads (máx. 50); el board filtra por mercado (D26)
+      if (controller.signal.aborted || isStaleAccount(addr, addressRef.current)) return;
       setReads(r.reads);
       setCredits(r.credits);
       setListError("");
     } catch (e) {
-      if (isStaleAccount(addr, addressRef.current)) return;
+      if (controller.signal.aborted || isStaleAccount(addr, addressRef.current)) return;
       if (isSessionError(e)) { await dropSession(); return; }
       setListError(describeReadsError(e));
+    } finally {
+      if (listRequest.current === controller) listRequest.current = null;
     }
   }, [dropSession]);
 
@@ -181,8 +188,11 @@ export function useReads(account: AccountState, onUnlock: (w: Wallet) => void, n
     if (status !== "ready") return;
     void loadReads();
     const timer = setInterval(() => { void loadReads(); }, READS_POLL_MS);
-    const sub = AppState.addEventListener("change", (st) => { if (st === "active") void loadReads(); });
-    return () => { clearInterval(timer); sub.remove(); };
+    const sub = AppState.addEventListener("change", (st) => {
+      if (st === "active") void loadReads();
+      else { listRequest.current?.abort(); listRequest.current = null; }
+    });
+    return () => { clearInterval(timer); sub.remove(); listRequest.current?.abort(); listRequest.current = null; };
   }, [active, status, loadAgents, loadReads]);
 
   const ask = useCallback(async (cell: AskCell, agentId: string) => {

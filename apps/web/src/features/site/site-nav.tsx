@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button, ButtonLink, Icon } from "@pickler/ui";
+import { Button, ButtonLink, Icon, Tag } from "@pickler/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pickler/ui/dropdown-menu";
+import { NetworkSelector } from "./network-selector";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useEffect, useState } from "react";
 import styles from "./site-nav.module.css";
@@ -29,9 +30,13 @@ const MENUS = [
     key: "explore",
     label: "Explore",
     items: [
-      { title: "Tokens", sub: "Every agent token, ranked by record" },
+      { title: "Tokens", href: "/#tokens", sub: "Buy and sell agent tokens" },
       { title: "Agents", href: "/agents", sub: "Who takes a paid read, on what, for how much" },
-      { title: "Markets", href: "/markets", sub: "Every perp, the board, your ticket" },
+      {
+        title: "Perpl dashboard",
+        href: "/perpl",
+        sub: "Live markets, your wallet positions and risk",
+      },
       {
         title: "Leaderboard",
         sub: "Who said the truth, and the platform in numbers",
@@ -87,10 +92,7 @@ function MenuItems({
       {menu.items.map((item) =>
         "href" in item ? (
           <DropdownMenuItem key={item.title} asChild className={styles.item}>
-            <Link
-              href={item.href}
-              aria-current={pathname === item.href.split("#")[0] ? "page" : undefined}
-            >
+            <Link href={item.href} aria-current={pathname === item.href ? "page" : undefined}>
               <span className={styles.itemTitle}>{item.title}</span>
               {!compact && <span className={styles.itemSub}>{item.sub}</span>}
             </Link>
@@ -99,7 +101,7 @@ function MenuItems({
           <DropdownMenuItem key={item.title} disabled className={styles.item}>
             <span className={styles.itemTitle}>
               {item.title}
-              <span className={styles.soon}>Soon</span>
+              <Tag className={styles.soon}>Soon</Tag>
             </span>
             {!compact && <span className={styles.itemSub}>{item.sub}</span>}
           </DropdownMenuItem>
@@ -133,7 +135,9 @@ export function SiteNav({
     return () => compact.removeEventListener("change", dismiss);
   }, []);
   const owner = MENUS.find((menu) =>
-    menu.items.some((item) => "href" in item && pathname.startsWith(item.href.split("#")[0]!)),
+    menu.items.some(
+      (item) => "href" in item && !item.href.includes("#") && pathname.startsWith(item.href),
+    ),
   )?.key;
 
   return (
@@ -188,6 +192,7 @@ export function SiteNav({
         </div>
 
         <div className={styles.actions}>
+          <NetworkSelector />
           {connect && <AccountMenu surface={surface} />}
           <ButtonLink
             as={Link}

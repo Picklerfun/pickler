@@ -58,7 +58,7 @@ export function Picks({
         <h2 className={styles.colHead}>Picks</h2>
         {calls > 0 && (
           <span className={styles.colCount}>
-            {calls} {calls === 1 ? "CALL" : "CALLS"}
+            {calls} {calls === 1 ? "CALL SHOWN" : "CALLS SHOWN"}
           </span>
         )}
       </div>

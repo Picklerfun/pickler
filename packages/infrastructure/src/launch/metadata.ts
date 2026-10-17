@@ -1,5 +1,10 @@
 import { keccak256, stringToHex } from "viem";
-import { AVATAR_PATTERNS, type TokenContext, type TokenDraft } from "@pickler/core";
+import {
+  AVATAR_PATTERNS,
+  TokenPreparationError,
+  type TokenContext,
+  type TokenDraft,
+} from "@pickler/core";
 /** Only the object operations needed by immutable internal writes and public hash reads. */
 export interface TokenMetadataBucket {
   get(key: string): Promise<{ text(): Promise<string>; size: number } | null>;
@@ -40,16 +45,20 @@ export function createTokenMetadata(bucket: TokenMetadataBucket, origin: string)
   async function immutable(content: string, extension: "svg" | "json") {
     const hash = keccak256(stringToHex(content));
     const key = `tokens/${hash.slice(2)}.${extension}`;
-    await bucket.put(key, content, {
-      onlyIf: new Headers({ "If-None-Match": "*" }),
-      httpMetadata: {
-        contentType: extension === "svg" ? "image/svg+xml" : "application/json",
-        cacheControl: "public, max-age=31536000, immutable",
-      },
-    });
-    const stored = await bucket.get(key);
-    if (!stored || stored.size > 32768 || keccak256(stringToHex(await stored.text())) !== hash) {
-      throw new Error("METADATA_INTEGRITY_FAILED");
+    try {
+      await bucket.put(key, content, {
+        onlyIf: new Headers({ "If-None-Match": "*" }),
+        httpMetadata: {
+          contentType: extension === "svg" ? "image/svg+xml" : "application/json",
+          cacheControl: "public, max-age=31536000, immutable",
+        },
+      });
+      const stored = await bucket.get(key);
+      if (!stored || stored.size > 32768 || keccak256(stringToHex(await stored.text())) !== hash) {
+        throw new Error("METADATA_INTEGRITY_FAILED");
+      }
+    } catch {
+      throw new TokenPreparationError("METADATA_UNAVAILABLE");
     }
     return { hash, uri: base + key.slice(7) };
   }

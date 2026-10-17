@@ -25,6 +25,8 @@ export type StoreState = {
   readId?: string;
   /** Perfil abierto en `agent` (F2). */
   agentId?: string;
+  /** Studio agent open on `advice` (paid analyses in AUSD). */
+  adviceAgentId?: string;
   tradeLevel?: TradeLevel;
 };
 
@@ -45,7 +47,7 @@ export const REFRESHABLE: readonly Screen[] = ["wallet", "markets", "market", "p
 /** Sign out: limpia el estado de Ask (revisión final F2, Minor 3): con otra cuenta no debe
  *  quedar una celda, agente, read o perfil abiertos de la sesión anterior. La pila la resetea el adaptador. */
 export function signedOutState(s: StoreState): StoreState {
-  return { ...s, askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined };
+  return { ...s, askCell: undefined, askAgentId: undefined, readId: undefined, agentId: undefined, tradeLevel: undefined, adviceAgentId: undefined };
 }
 
 /** Texto de la tarjeta "We kept what you were about to do" de Sign in (D18); null si el gate no retuvo nada. */
@@ -58,6 +60,7 @@ export function heldActionFor(next: Screen | undefined): string | null {
     case "portfolio": return "Your portfolio";
     case "read": return "A read";
     case "agent": return "An agent's record";
+    case "advice": return "An analysis";
     default: return null;
   }
 }
@@ -135,6 +138,7 @@ export function headerFor(screen: Screen, perpsSymbol?: string, agent?: { name: 
     case "withdraw": return ["Withdraw", "AUSD to an external address"];
     case "read": return ["Read", ""];
     case "agent": return agent ? [agent.name, `By ${agent.owner}`] : ["Agent", ""];
+    case "advice": return agent ? [agent.name, `@${agent.owner} · 24h analysis`] : ["Studio agent", ""];
     case "signin": return ["Pickler", ""];
     case "onboarding": return ["Pickler", ""];
     case "launchpad": case "activity": return [COMING_SOON_COPY[screen].title, "Coming soon"];

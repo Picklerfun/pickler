@@ -332,13 +332,28 @@ export const perpsPaperAttempts = pickler
         .notNull()
         .references(() => perpsPaperAccounts.id),
       key: text("key").notNull(),
+      sequence: bigserial("sequence", { mode: "bigint" }).notNull(),
       document: jsonb("document")
         .$type<import("@pickler/trading/perps").PerpsPaperAttempt>()
         .notNull(),
       owner: text("owner"),
       expiresAt: milliseconds("expires_at"),
     },
-    (t) => [primaryKey({ columns: [t.accountId, t.key] })],
+    (t) => [
+      primaryKey({ columns: [t.accountId, t.key] }),
+      index("paper_attempt_history_sequence").on(t.accountId, t.sequence),
+      index("paper_sizeup_attempt_history")
+        .on(
+          t.accountId,
+          sql`(${t.document}->'intent'->>'symbol')`,
+          sql`((${t.document}->>'createdAt')::bigint)`,
+          t.key,
+        )
+        .where(sql`${t.document}->>'status'='filled' AND ${t.document}->>'reason'='size_up'`),
+      index("paper_attempt_pending_expiry")
+        .on(t.accountId, t.expiresAt, t.key)
+        .where(sql`${t.owner} IS NOT NULL`),
+    ],
   )
   .enableRLS();
 export const perpsPaperPositions = pickler
@@ -349,8 +364,10 @@ export const perpsPaperPositions = pickler
         .notNull()
         .references(() => perpsPaperAccounts.id),
       id: text("id").notNull(),
+      sequence: bigserial("sequence", { mode: "number" }).notNull(),
       symbol: text("symbol").notNull(),
       closedAt: milliseconds("closed_at"),
+      closedSequence: milliseconds("closed_sequence"),
       document: jsonb("document")
         .$type<import("@pickler/trading/perps").PerpsPaperPosition>()
         .notNull(),
@@ -370,6 +387,10 @@ export const perpsPaperPositions = pickler
     },
     (t) => [
       primaryKey({ columns: [t.accountId, t.id] }),
+      uniqueIndex("perps_paper_position_sequence").on(t.accountId, t.sequence),
+      index("paper_closed_sequence")
+        .on(t.accountId, t.closedSequence)
+        .where(sql`${t.closedAt} IS NOT NULL`),
       uniqueIndex("perps_paper_open_symbol")
         .on(t.accountId, t.symbol)
         .where(sql`${t.closedAt} is null`),

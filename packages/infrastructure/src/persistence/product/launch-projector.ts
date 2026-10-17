@@ -80,13 +80,20 @@ export class PostgresLaunchProjector {
   }
 
   /**
-   * Projects every canonical event for a chain, in chain order.
+   * Explicit rebuilds replay canonical history. The scheduled pending-only path selects at
+   * most 101 events and applies 100. Existing projection rows are durable progress, so a
+   * crash retries only unfinished effects, including events inserted behind another stream.
+   * Missing dependencies stay eligible for a later pass, without blocking ready work.
    *
    * Idempotent by construction: each write is keyed by something the chain already made
    * unique — a token address, a pool's phase, a log's position — so running this twice
    * produces the same catalogue as running it once.
    */
-  async project(chain: string, readMetadata: MetadataReader): Promise<ProjectionResult> {
+  async project(
+    chain: string,
+    readMetadata: MetadataReader,
+    options: { pendingOnly?: boolean } = {},
+  ): Promise<ProjectionResult & { hasMore: boolean }> {
     await this.mutation(chain, null, async (tx) => {
       await tx.execute(
         sql`DELETE FROM market.trades tr USING market.pools p,market.tokens t,market.chain_blocks b WHERE tr.pool_id=p.id AND p.token_id=t.id AND b.chain=t.chain AND b.hash=tr.block_hash AND t.chain=${chain} AND b.orphaned`,
@@ -94,8 +101,39 @@ export class PostgresLaunchProjector {
       await tx.execute(
         sql`UPDATE market.tokens t SET status='failed',graduated_at=NULL WHERE t.chain=${chain} AND t.launch_tx_hash IS NOT NULL AND EXISTS(SELECT 1 FROM market.chain_events e WHERE e.chain=t.chain AND e.tx_hash=t.launch_tx_hash AND e.event_name='LaunchCreated') AND NOT EXISTS(SELECT 1 FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash WHERE e.chain=t.chain AND e.tx_hash=t.launch_tx_hash AND e.event_name='LaunchCreated' AND NOT e.orphaned AND NOT b.orphaned)`,
       );
+      if (options.pendingOnly) {
+        // Incremental projection cannot rely on replaying LaunchCreated to undo a legacy
+        // graduation. Remove only its orphaned interpretation, preserving V4/Kuru snapshots.
+        await tx.execute(sql`
+          DELETE FROM market.pools p USING market.tokens t
+          WHERE p.token_id=t.id AND t.chain=${chain} AND p.phase='post_graduation'
+            AND EXISTS (SELECT 1 FROM market.chain_events e
+                        WHERE e.chain=t.chain AND e.tx_hash=p.opened_tx_hash
+                          AND e.event_name='LaunchGraduated' AND e.orphaned)
+            AND NOT EXISTS (SELECT 1 FROM market.chain_events e
+                            WHERE e.chain=t.chain AND e.tx_hash=p.opened_tx_hash
+                              AND e.event_name='LaunchGraduated' AND NOT e.orphaned)
+        `);
+        await tx.execute(sql`
+          UPDATE market.tokens t SET status='pre_graduation',graduated_at=NULL
+          WHERE t.chain=${chain} AND t.status='graduated'
+            AND EXISTS (SELECT 1 FROM market.chain_events e
+                        WHERE e.chain=t.chain AND e.event_name='LaunchGraduated' AND e.orphaned
+                          AND lower(e.decoded->>'token')=t.address)
+            AND NOT EXISTS (SELECT 1 FROM market.pools p
+                            WHERE p.token_id=t.id AND p.phase='post_graduation')
+        `);
+        await tx.execute(sql`
+          UPDATE market.pools p SET closed_at=NULL,closed_tx_hash=NULL
+          FROM market.tokens t WHERE p.token_id=t.id AND t.chain=${chain}
+            AND t.status='pre_graduation' AND p.phase='pre_graduation'
+            AND EXISTS (SELECT 1 FROM market.chain_events e
+                        WHERE e.chain=t.chain AND e.tx_hash=p.closed_tx_hash
+                          AND e.event_name='LaunchGraduated' AND e.orphaned)
+        `);
+      }
     });
-    const rows = await this.database
+    const query = this.database
       .select({
         blockNumber: chainEvents.blockNumber,
         blockHash: chainEvents.blockHash,
@@ -110,12 +148,46 @@ export class PostgresLaunchProjector {
         )`.as("block_time"),
       })
       .from(chainEvents)
-      .where(and(eq(chainEvents.chain, chain), eq(chainEvents.orphaned, false)))
-      .orderBy(chainEvents.blockNumber, chainEvents.logIndex);
+      .where(
+        and(
+          eq(chainEvents.chain, chain),
+          eq(chainEvents.orphaned, false),
+          sql`EXISTS (SELECT 1 FROM market.chain_blocks b
+                    WHERE b.chain=${chainEvents.chain} AND b.hash=${chainEvents.blockHash}
+                      AND NOT b.orphaned)`,
+          options.pendingOnly
+            ? sql`${chainEvents.decoded} IS NOT NULL AND (
+          (${chainEvents.eventName} = 'LaunchCreated' AND NOT EXISTS (
+            SELECT 1 FROM market.tokens t JOIN market.pools p ON p.token_id=t.id
+            WHERE t.chain=${chain} AND t.address=lower(${chainEvents.decoded}->>'token')
+              AND t.launch_tx_hash=${chainEvents.txHash} AND t.status<>'failed'
+              AND p.phase='pre_graduation' AND p.address=lower(${chainEvents.decoded}->>'curve')
+          )) OR
+          (${chainEvents.eventName} IN ('CurveBought','CurveSold') AND EXISTS (
+            SELECT 1 FROM market.pools p JOIN market.tokens t ON t.id=p.token_id
+            WHERE t.chain=${chain} AND p.address=${chainEvents.emitter} AND p.phase='pre_graduation'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM market.trades tr JOIN market.pools p ON p.id=tr.pool_id
+            JOIN market.tokens t ON t.id=p.token_id
+            WHERE t.chain=${chain} AND p.address=${chainEvents.emitter} AND p.phase='pre_graduation'
+              AND tr.block_hash=${chainEvents.blockHash} AND tr.tx_hash=${chainEvents.txHash} AND tr.log_index=${chainEvents.logIndex}
+          )) OR
+          (${chainEvents.eventName} = 'LaunchGraduated' AND EXISTS (
+            SELECT 1 FROM market.tokens t WHERE t.chain=${chain}
+              AND t.address=lower(${chainEvents.decoded}->>'token') AND t.status='pre_graduation'
+          ))
+        )`
+            : undefined,
+        ),
+      )
+      .orderBy(chainEvents.blockNumber, chainEvents.logIndex, chainEvents.txHash)
+      .$dynamic();
+    const rows = await query.limit(options.pendingOnly ? 101 : 2147483647);
 
-    const result: ProjectionResult = { launches: 0, trades: 0, graduations: 0, skipped: 0 };
+    const hasMore = options.pendingOnly === true && rows.length > 100;
+    const result = { launches: 0, trades: 0, graduations: 0, skipped: 0, hasMore };
 
-    for (const raw of rows) {
+    for (const raw of options.pendingOnly ? rows.slice(0, 100) : rows) {
       // The driver hands a raw subquery column back as a string; every write below stores a
       // timestamp, so it is normalised once here rather than at each call site.
       const row = { ...raw, blockTime: new Date(raw.blockTime) };
@@ -154,7 +226,35 @@ export class PostgresLaunchProjector {
       }
     }
 
+    if (options.pendingOnly && !result.hasMore) {
+      // Launches committed above can make previously deferred trades/graduations ready.
+      result.hasMore = (await query.limit(1)).length > 0;
+    }
     return result;
+  }
+
+  /** Project one verified receipt without replaying unrelated history or moving any cursor. */
+  async projectReceipt(chain: string, txHash: string, readMetadata: MetadataReader): Promise<void> {
+    const result = await this.pool.query<{
+      txHash: string;
+      blockNumber: number;
+      blockTime: Date;
+      blockHash: string;
+      emitter: string;
+      decoded: Record<string, string>;
+    }>(
+      `SELECT e.tx_hash AS "txHash",e.block_number AS "blockNumber",b.block_time AS "blockTime",
+         e.block_hash AS "blockHash",e.emitter,e.decoded
+       FROM market.chain_events e JOIN market.chain_blocks b ON b.chain=e.chain AND b.hash=e.block_hash
+       WHERE e.chain=$1 AND e.tx_hash=$2 AND e.event_name='LaunchCreated'
+         AND NOT e.orphaned AND NOT b.orphaned AND b.finality IN ('confirmed','finalized')`,
+      [chain, txHash],
+    );
+    if (result.rows.length !== 1) {
+      throw new Error("AMBIGUOUS_CONFIRMED_LAUNCH");
+    }
+    const row = result.rows[0]!;
+    await this.projectLaunch(chain, row.decoded, row, readMetadata);
   }
 
   private async projectLaunch(

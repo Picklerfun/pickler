@@ -33,6 +33,12 @@ import { allocationRows } from "./run-model";
 import { Sources } from "./sources";
 import { Trades } from "./trades";
 import { useDraft } from "./use-draft";
+import { usePerplExecution } from "../perpl-execution/use-execution";
+import {
+  PerplTradingControls,
+  PerplTradingPositions,
+  PerplTradingRecord,
+} from "../perpl-execution/execution";
 
 /**
  * The header line's first part (canvas `headerSub`): the agent's handle, or on the YOU sections the
@@ -47,7 +53,7 @@ const headerWho = (you: boolean, handle: string | undefined, account: string | n
 
 /**
  * A private agent's studio (studio-draft-dashboard-v1 D1), the "Pickler Studio Draft" canvas's
- * created phase: the top bar (the agent and its switcher, DRAFT · PRIVATE, TESTNET, the master
+ * created phase: the top bar (the agent and its switcher, DRAFT · PRIVATE, the network selector, the master
  * wallet's AUSD | MON opening "Your wallets", AI credits, the account), the rail of RUN / BUILD /
  * GROW / YOU with the locked sections (D2), the header with the five tiles (D15), and the section.
  *
@@ -102,6 +108,7 @@ export function DraftStudio({
   const wallClock = useNow();
   const now = staged ? staged.now : wallClock;
   const draft = useDraft({ agent, staged, preview, onRefreshAgent, onPublished });
+  const execution = usePerplExecution(agent.productId ?? agent.id, preview || !!staged);
   const modals = useShellModals(draft.readWallets);
   /* "Back to Overview" unmounts the button it was on, so focus moves to the rail's Overview. */
   const focusRail = useRef(false);
@@ -141,11 +148,22 @@ export function DraftStudio({
     }
     switch (section) {
       case "overview":
-        return <Overview {...props} goPublic={staged?.goPublic ?? null} />;
+        return (
+          <>
+            <PerplTradingControls execution={execution} agent={agent} canManage={canManage} />
+            <PerplTradingPositions execution={execution} canManage={canManage} />
+            <Overview {...props} goPublic={staged?.goPublic ?? null} />
+          </>
+        );
       case "console":
         return <Console {...props} />;
       case "picks":
-        return <Trades {...props} />;
+        return (
+          <>
+            <PerplTradingRecord execution={execution} />
+            <Trades {...props} />
+          </>
+        );
       case "brief":
         return <Brief {...props} />;
       case "skills":

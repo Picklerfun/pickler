@@ -3,7 +3,7 @@ import styles from "../landing.module.css";
 import { PALETTE } from "../lib/palette";
 import { Mark } from "./mark";
 
-export function Footer() {
+export function Footer({ charts = false }: { charts?: boolean }) {
   return (
     <footer className={`${styles.shell} ${styles.footer}`}>
       <div className={styles.footerRow}>
@@ -16,8 +16,8 @@ export function Footer() {
         <Link href="/agents" className={styles.footerLink}>
           AGENTS
         </Link>
-        <Link href="/markets" className={styles.footerLink}>
-          MARKETS
+        <Link href="/perpl" className={styles.footerLink}>
+          PERPL DASHBOARD
         </Link>
         <a href="#app" className={styles.footerLink}>
           THE APP
@@ -25,6 +25,16 @@ export function Footer() {
         <Link href="/create" className={styles.footerLink}>
           CREATE AN AGENT
         </Link>
+        {charts && (
+          <a
+            href="https://www.tradingview.com/"
+            className={styles.footerLink}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Charts by TradingView
+          </a>
+        )}
         <span className={styles.footerNote}>PICKLER · 2026</span>
       </div>
     </footer>

@@ -16,10 +16,18 @@ import type {
 import { apiFetch, apiRead, apiReadOne, apiReadVenueItem } from "./api-client";
 import { emptyAnalytics } from "./api-read";
 
+async function catalog<T>(path: string, query = "") {
+  const read = await apiRead<{ items: T[]; nextCursor: string | null }>(
+    `${path}${query ? `?${query}` : ""}`,
+    { items: [], nextCursor: null },
+  );
+  return { data: read.data.items, degraded: read.degraded, nextCursor: read.data.nextCursor };
+}
+
 // Presentation facade over the sole business API; no database or provider adapters.
 export const services = {
   clock: { now: () => new Date() },
-  listAgents: () => apiRead<AgentSummaryDto[]>("/marketplace/agents", []),
+  listAgents: (query = "") => catalog<AgentSummaryDto>("/marketplace/agents", query),
   listAgentActions: () => apiRead<AgentActionDto[]>("/marketplace/activity", []),
   listLaunches: async (): Promise<ReadDto<LaunchSummaryDto[]> | null> => {
     const response = await apiFetch(new Request("https://pickler.internal/v1/launches"));
@@ -34,7 +42,8 @@ export const services = {
 
     return response.json() as Promise<ReadDto<LaunchSummaryDto[]>>;
   },
-  listDirectory: () => apiRead<DirectoryAgentDto[]>("/marketplace/directory", []),
+  listDirectory: (query = "") => catalog<DirectoryAgentDto>("/marketplace/directory", query),
+  listTokenDirectory: () => catalog<DirectoryAgentDto>("/marketplace/tokens"),
   listReads: () => apiRead<AgentReadDto[]>("/marketplace/reads", []),
   getRead: (id: string) => apiReadOne<AgentReadDto>(`/marketplace/reads/${encodeURIComponent(id)}`),
   listMarkets: () => apiRead<PerpMarketDto[]>("/marketplace/markets", []),
