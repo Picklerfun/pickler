@@ -411,8 +411,95 @@ of `applyPaperObservation` remain unchanged. Controlled tests under `test/hourly
 exercise injected clocks, the complete fixed calendar, financial invariants and historical
 parity without database, provider, model or real-order access.
 
+Product incremental observations retain their covered-through funding checkpoints and advance
+them only with verified coverage. The extracted position kernel defaults to the original full
+held-interval behavior for laboratory accounts; disputes restore every product checkpoint to
+its pre-observation value and discard all proposed postings before the shared finalizer.
+
 The `pts` subpath also exports pure causal research inspections and chronological sessions.
 Research policies and signals have separate identities/types from executable PTS versions and
 intents. Preserve historical baseline actions and hashes; dependency failures are not downstream
 passes. Candidate signals and candle projections never establish financial returns. See
 [PTS causal research](../../apps/agent-service/PTS-CAUSAL-RESEARCH.md).
+
+## Perpl real testnet sessions
+
+The read-only state optionally obtains public account/deposit requirements from its injected
+driver. Provider failure retains account/session history with unknown requirements. It never
+changes owner limits or funds an account as a consequence of reading state.
+
+The public `perpl-live` subpath owns the separate bounded real-execution contracts and service.
+It admits testnet 1x, one position and controlled open/hold/close cycles; it has no model tool.
+Keep durable intent IDs, unknown submissions, partial reductions and lease fences. Increasing
+admissions require current owner settings/access; required exits survive configuration changes.
+Infrastructure owns credentials, provider I/O and transactional persistence. See
+[Perpl trading](../../docs/perpl-trading.md); controlled tests do not establish remote acceptance.
+
+## Read-only Perpl portfolio projections
+
+`features/perpl-dashboard/model.ts`, exported from `@pickler/trading/perps`, owns the provider-independent `PerplDashboardData` read port and exact integer
+scaling for observed open interest, price-only P&L, available/locked collateral, gross/net exposure
+and current-collateral exhaustion estimates. These are real-wallet projections, independent of
+paper accounts, order admission and strategy execution. Missing marks/statistics keep aggregates
+unknown. Realized P&L comes from the venue's reported all-time statistics. Never call the
+collateral-exhaustion threshold a venue liquidation price or subtract estimated fees twice.
+
+The dashboard read port also exposes public contract snapshots. Position inputs accept the
+contract's optional Q16 entry residue and nullable original leverage. Exact entry/risk arithmetic
+preserves long-ceil/short-floor semantics. Missing context/marks retain the position with unknown
+price-dependent aggregates. Original leverage and historical statistics must not be invented
+from current collateral. The infrastructure-provided optional `source: "onchain"` is provenance,
+not permission to trade.
+
+Existing Perpl key connection uses a two-phase read validation and fenced encrypted-credential
+commit. It rechecks current owner/configuration and refuses pending setup, sessions, orders or
+leases; no provider I/O runs under locks. It preserves history/budgets and imposes a 24-hour
+Pickler deadline. `setupAdmissions` independently closes account funding/enrollment without
+closing existing-key sessions or required exits. See [Perpl trading](../../docs/perpl-trading.md).
+
+A live position must match the current session's verified net filled quantity and original
+leverage before any closing order. Foreign additions, reductions or leverage changes freeze the
+session rather than closing exposure that the session cannot attribute.
+
+New bounded sessions record pre-existing positions in other markets before their first opening.
+Those position identities remain unmanaged and visible; they can never become exit targets.
+An occupied selected market is refused before any order. New unexplained positions still freeze
+execution. Historical sessions with orders do not adopt a baseline retrospectively. The limit is
+one new session-owned position, with the same quantity/leverage provenance and daily budgets.
+
+An explicit key-wallet import can bind the authenticated venue wallet to its owned agent while
+retaining the custody identity fence. External connections disable every custody setup/funding
+operation. `isPerplSessionPosition` is the shared net-fill ownership predicate used by execution
+and the private host's `managedBySession` presentation projection. Existing histories cannot move
+to another wallet/account, and key reconnection never clears budgets or orders.
+
+## Operational Paper reads
+
+Product consumers use `executionSnapshot` (open positions and pending attempts only), point
+attempt results and accounting scalars. Full `snapshot`/`view` remain explicit archival ports.
+`paperFundingRange` and incremental observations use per-position confirmed covered-through
+checkpoints and bounded one-hour windows with30-second overlap. Entry timestamps stay immutable;
+incomplete or disputed coverage cannot advance a checkpoint or admit additional exposure.
+Historical closed-position funding validation runs through infrastructure's bounded epochs.
+
+`PaperHistoryEntities` and `historyPage` define50/default100/max archival pages for positions,
+attempts,movements and size-ups. Cursors freeze a sequence watermark and cannot cross account or
+entity kind. A point position/attempt read never hydrates the archive. Closed history's optional
+complete flag allows existing test adapters; real legacy storage returns false until conversion.
+
+Product mutation views expose optional changes (changed positions/attempts/new movements),
+separately from open-only/pending-only execution arrays. Duplicate operations have no new deltas.
+
+Perpl live persistence exposes explicit business operations in `features/perpl-live/operations.ts`
+(start/control, setup, credential connection, lease, immutable request reservation and fenced
+submission/result). `PerplLiveFacts` carries invocation-only SQL aggregates and indexed ownership
+facts; it never enters compact persistence or public DTOs. Keep its budget predicates identical to
+the legacy full-history rules. Unknown orders cannot be resent, and net-filled provenance must
+match quantity, leverage and request membership before closing a position. History is a separate
+100-entry cursor port; operating work must not materialize complete account histories.
+
+On takeover of an expired/unowned Perpl lease, `prepared` intents are definitely unsent because
+`beginDispatch` changes status before provider I/O and accepts only `prepared`. Recovery cancels
+unsent openings and freezes entries. Unsent reductions retain a durable required-exit marker;
+only a fresh snapshot/lease can reserve a new monotonic request for the owned remaining position.
+Dispatching/unknown records remain ambiguous and cannot begin dispatch again.
