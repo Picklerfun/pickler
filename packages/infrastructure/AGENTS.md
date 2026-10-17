@@ -17,7 +17,7 @@ or install it. See [controlled Studio acceptance](../../docs/studio-acceptance.m
 
 It also carries the adapters ported from Relayer for the public product: AES-256-GCM crypto byte-compatible with stored values, the Supabase JWT verifier (`jose`), and Turnkey stamping and activity forwarding. The Supabase data adapters that came with them (workspaces, API keys, agents, budgets, profiles, and the PostgREST client the growth functions used) were removed on 2026-09-29: the API reads those tables through the PostgreSQL classes below. supabase-js remains for auth only (`createSupabaseJwtVerifier`, and `createSupabaseAdmin` inside `createWalletAccounts`). `createInMemoryApplicantStore` serves the application flow without a database. The sample market board and the sample landing read model left this package on 2026-10-08 (docs/specs/marketplace-real-only-v1.md N7): the board now lives in `scripts/design/fixtures/sample-market-board.mts`, for the design harness only, and the landing model is gone. The invented agents are not here: they live in `scripts/design/fixtures/` and only the design harness's fixture API serves them; the marketplace reads its agents through `PostgresAgentDirectory` below. These adapters read the product schemas defined in `src/persistence/product/`; see [supabase/AGENTS.md](../../supabase/AGENTS.md) for the hosted project.
 
-`createAusdAuthorizationGateway` (`src/chain/ausd-authorization.ts`) implements core's `AdvicePaymentGateway` with viem: it verifies and settles EIP-3009 `transferWithAuthorization` payments in AUSD on Monad testnet, the relayer key being a Worker secret that never appears in errors. Addresses are compared case-insensitively; `nonceUsed` and `balance` read the latest block. `settle` runs `simulateContract` before `writeContract` and throws `SettlementRejected` only for an unparsable signature, a simulation failure (nothing broadcast) or a mined `reverted` receipt, and then only after reading `authorizationState` at latest shows the nonce still unused: a consumed nonce (the same authorization already executed, e.g. front-run) or a failed state read throws core's `SettlementUnknown`. A `writeContract` error, a receipt timeout (30 s), an RPC error, or a success receipt without the matching AUSD `Transfer(from, to, value)` log throws `SettlementUnknown` too, leaving the payment pending for reconciliation. `SettlementUnknown.txHash` is the broadcast hash once one exists (null after a `writeContract` error or a simulation revert); no settle error carries the signature, the key or a `cause`. Tests inject the client and wallet; none touch the network.
+`createAusdAuthorizationGateway({ rpcUrl, relayerPrivateKey, splitter, treasury, ... })` (`src/chain/ausd-authorization.ts`) implements core's `AdvicePaymentGateway` with viem over the `PicklerAdviceSplitter` (docs/specs/agent-advice-fee-split-v1.md): the buyer signs an EIP-3009 `ReceiveWithAuthorization` in the AUSD domain (`authorizationTypedData`) whose `to` is the splitter, and the relayer (a Worker secret that never appears in errors) is `msg.sender` of `splitter.settle(from, value, validAfter, validBefore, salt, payee, v, r, s)`, since AUSD only lets `to` execute it. The splitter ABI is `PicklerAdviceSplitterAbi` from `@pickler/chain`. `nonceFor(payee, salt)` and the exported `adviceNonce` are `keccak256(abi.encode(payee, salt))`, matching the contract's `nonceFor` vector. `splitterTreasury()` and `splitterAsset()` read the splitter's immutable `treasury()` and `asset()` once each and cache them (a failed read is not cached); the host compares them with its configuration before any request. `treasury` is that verified address: `settle` matches the third transfer against it and reads nothing from the chain after the broadcast. Addresses are compared case-insensitively; `nonceUsed` and `balance` read AUSD at the latest block. `settle` throws `SettlementRejected` before anything is sent when the signature cannot be parsed or the payee and salt do not derive the authorization's nonce; it runs `simulateContract` before `writeContract` against the splitter and throws `SettlementRejected` only for a simulation failure (nothing broadcast) or a mined `reverted` receipt, and then only after reading AUSD's `authorizationState` at latest shows the nonce still unused: a consumed nonce (the same authorization already executed, e.g. relayed by a third party) or a failed state read throws core's `SettlementUnknown`. A `writeContract` error, a receipt timeout (30 s), an RPC error, or a success receipt that lacks any of the three AUSD `Transfer` logs (`settlementTransfersMatch`: payer → splitter for `value`, splitter → payee for core's `adviceShares` creator share, splitter → the input `treasury` for the rest) or the splitter's own matching `AdviceSettled` (payer, payee, nonce, value and shares) throws `SettlementUnknown` too, leaving the payment pending for reconciliation; the event alone is never trusted. A success returns the hash, block and both shares. `SettlementUnknown.txHash` is the broadcast hash once one exists (null after a `writeContract` error or a simulation revert); no settle error carries the signature, the key or a `cause`. Tests inject the client and wallet; none touch the network.
 
 Actual adapters live in `src/research`, `src/polymarket` and `src/persistence`. Business policy comes from core and trading; SQL implements transactional admission, idempotency, claims and scoped access. Drizzle defines the research tables in `src/persistence/schema.ts`, the product schemas (`identity`, `agents`, `budget`, `audit`, `growth`, `market`) in `src/persistence/product/`, and versioned SQL migrations in `drizzle/`. `0006_product_functions_and_grants.sql` is a custom migration holding what Drizzle cannot express: the `internal` helper schema, triggers, deferrable foreign keys, the `auth.users` references, the security-definer functions and the grants. It skips the Supabase-only parts when those roles or tables are absent, so it also runs on the Docker PostgreSQL. Admission, configuration, claims and scheduling lock agent rows in transactions. Never retry ambiguous research automatically. New providers must pass capability contract tests. Public runtime exports use compiled `dist`; relative source imports include `.js` extensions.
 
@@ -50,6 +50,12 @@ Decision v2 and uncertainty-policy settings use the existing JSONB columns; no d
 Provider HTTP calls use `redirect: "manual"` and reject all non-success responses, including redirects. This preserves credential isolation and works in both Node.js and Cloudflare Workers, which does not support the `error` redirect mode.
 
 Execution uses `runs.lease_owner`, `runs.lease_expires_at` and the singleton `execution_policy` (defaults: global 5, tenant 2). Claims lock that policy row only for the admission transaction and choose the oldest eligible job. The per-agent running index remains authoritative. A store instance privately retains the random token for each claim; only that instance may renew or write for its claimed run. Public run projections exclude lease columns. Reservations last 60 seconds and hosts renew every 15 seconds.
+Research claims aggregate active research/preview/advice counts in PostgreSQL and filter paused,
+unauthorized, saturated and already-running agents before selecting one `(created_at,id)` candidate.
+Only its narrow identity/version leaves the selection query; configuration is read by the claimed
+row's `UPDATE ... RETURNING`. Claims lock the policy then agent, and recheck current research access
+when starting. Each claim cancels at most 50 authorized, unpaused stale queued snapshots with
+`CONFIG_CHANGED`; remaining stale snapshots cannot hide a runnable job.
 
 Use PostgreSQL `clock_timestamp()` for expiration, never HTTP timestamps. The optional constructor lease clock is only injected by the test helper; runtime never accepts clock configuration. Event, renewal and finish operations lock/recheck the run atomically. Renewal errors revoke local ownership. Recovery affects only expired running jobs and preserves partial evidence. Migration 0001 interrupts legacy unleased running jobs while preserving queued/history records. Migration 0002 rejects upgrades while an old session owner exists and guards valid leases against legacy global recovery. Valid finalization sets a transaction-local owner token for that trigger. Stop every old executor before applying migrations; do not roll back to old binaries on the upgraded database.
 
@@ -87,6 +93,28 @@ one advisory-locked transaction. This reconciles the published product/research 
 skipping older missing migrations. Use it from both the operator command and isolated test helpers;
 do not substitute the timestamp-only migrator. Unknown histories fail closed. See
 [the integration guide](../../docs/frontend-integration.md) before upgrading an existing database.
+
+## Bounded research maintenance
+
+Research scheduling handles at most 50 due agents per `tick`, ordered by next due time then
+scope and locked with `SKIP LOCKED`. Existing schedule request identities and next-occurrence
+updates commit with that batch. Each research recovery call interrupts at most 50 expired runs
+and 50 expired paper reservations through separate atomic set-based statements. It uses the
+database lease clock, rechecks state/expiration and preserves partial evidence.
+Preview recovery fails at most 50 expired leases and deletes at most 50 retention-eligible
+parents per call, preserving adoption rechecks and the existing 30-day adopted retention.
+Advice recovery atomically fails at most 50 expired jobs and releases only their reserved calls;
+started/settled costs remain unchanged. Advice claims exclude expired queued jobs before selecting one eligible candidate, so unfinished
+expiry cleanup cannot start expired provider work. The claim also fails at most 50 fresh invalid
+jobs, releasing only reserved calls, independently of runnable selection. SQL filters current
+advice permissions, snapshot equality and aggregated research/preview/advice capacity before
+`LIMIT 1`; configs are returned only for the claimed job. The policy lock precedes lateral
+runtime-agent locks and outer job locks, both with `SKIP LOCKED`, so a locked job cannot hide
+another eligible candidate. Fresh authorization and expiry are checked again at the transition.
+The SQL permission predicate mirrors `assertAdviceAgent`; workspace activity is not a new rule.
+`advice.recover()` still reports queued work, not a maintenance continuation flag. These methods
+never drain backlogs in loops or create additional wakeup chains; durable row states/next-due
+markers carry progress to the next existing reconciliation. Public ports and schemas are unchanged.
 
 ## Unified studio persistence
 
@@ -165,7 +193,11 @@ because node-postgres returns unknown array types as a literal. `test/postgres-p
 covers them against the Docker PostgreSQL, including `onboard` right after `createProfile`.
 
 `src/persistence/agent-directory.ts` exports `PostgresAgentDirectory`, the `AgentDirectory` adapter
-behind the marketplace. It reads one join: `agents.agents` left-joined to `agents.agent_profiles`
+behind the marketplace. Its directory also exposes `launchedToken` using one batched
+`readConfirmedAgentTokens` query with the same canonical event, grant, finality and network
+checks as the persona/Studio token read. Private and killed agents are excluded before this
+query; pending, orphaned and unattributed records are never public token cards. No provider
+transport runs on directory reads. Identity reads one join: `agents.agents` left-joined to `agents.agent_profiles`
 (an agent created before profiles existed is still an agent, and gets the profile's defaults), to
 `identity.profiles` for the creator's handle, and to `market.tokens` restricted to `pre_graduation`
 and `graduated`. Every summary, persona and directory entry carries the agent `id` and its
@@ -547,16 +579,19 @@ and records an audit event; it has no consumer HTTP route. Apply migration befor
 research/preview admission queries. See [Agent advice](../../docs/agent-advice.md).
 
 `PostgresAdvicePayments` implements core's `AdvicePaymentStore` over `pickler.advice_payments`
-(migration 0038). `insertPending` is one atomic upsert on (user, agent, request key) that only
+(migration 0038; migration 0047 adds the nullable `payee`, `creator_amount_micro_ausd` and
+`protocol_amount_micro_ausd`, null on phase 1 rows). `pay_to` is the authorization's `to` (the
+splitter), `payee` the agent wallet, and `settled` records both shares from the receipt. `insertPending` is one atomic upsert on (user, agent, request key) that only
 overwrites a `failed` row; any other existing row, or a reused nonce, is `CONFLICT`, so exactly one
-of two concurrent requests proceeds. Payer, recipient and nonce are stored lowercased and address
-comparisons are case-insensitive.
+of two concurrent requests proceeds. Payer, recipient, payee and nonce are stored lowercased and
+address comparisons are case-insensitive. Reuse also replaces the payee and clears both shares.
 Reusing a `failed` row assigns a fresh `id`, so every attempt owns its id; `settled` and `failed`
 only write a `pending` row, `refundOwed` and `attachJob` only a `settled` one (`attachJob` also only
 while `job_id` is null), and a write that matches nothing is a silent no-op, so a stale writer
-cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` is
-`null` without a public, unkilled, priced agent or without a wallet account. The API Worker builds
-it and the gateway per invocation, on that invocation's pool, only while x402 is on.
+cannot touch a newer attempt. `byKey` returns `validBefore` as unix seconds. `saleTerms` returns
+the agent wallet's first account as `payee`, and is `null` without a public, unkilled, priced agent or without a wallet account. The API Worker is to build
+it and the gateway per invocation, on that invocation's pool, only while x402 is on; until the
+splitter address is configured it composes neither and fails closed.
 
 Advice v2 call rows record the frozen forecast provider origin, not a misleading direct-DeepSeek label. Historical v1 rows retain their original meaning. This is a JSON policy extension and requires no schema migration.
 
@@ -678,9 +713,27 @@ private and sequence changes explicit. Restore copies default to read-only and n
 budgets, sessions, applications or schedules. No migrations or financial policy changes belong
 here. Read [baseline recovery](../../apps/agent-service/TRADING-BASELINE.md).
 
+The shared Turnkey activity forwarder preserves the last accepted activity when a follow-up
+reader query fails. It stops bounded polling and returns that identity for explicit reconciliation;
+it never resubmits the accepted request or treats a read failure as signature rejection.
+
+Launcher adapters translate transport, RPC admission, transaction simulation, gas ceilings and
+metadata storage failures into core-owned preparation reasons. They never return provider prose,
+credentials or calldata in those errors. The existing gas ceilings and unsupported-fee-method
+fallback remain unchanged; tests distinguish contract rejection from transport failure.
+`quoteFees` accepts an optional reviewed per-gas ceiling for token operations and public curve
+preparation: only excess twice-base-fee headroom is capped, and the current base plus full tip
+must fit. `FeeQuoteLimitExceededError` is translated inside those adapters. Unbounded deposit and
+wallet-transfer callers retain their historical quote. Owner preflight rechecks the prepared
+maximum and tip against the fresh base without rewriting transaction parameters. Regressions use
+100-gwei base/2-gwei tip with the unchanged 120-gwei policy, plus gas/cost and stale-fee refusals.
+
 ## V4 launcher policy and canonical position history
 
-`src/launch/policy.ts` discriminates strict V4 version 2 from historical Kuru version 1. The V4
+`src/launch/policy.ts` discriminates strict V4 versions 2/3 from historical Kuru version 1.
+Version 3 explicitly admits all eligible creators instead of an agent UUID allowlist; core still
+checks creator access, workspace ownership, publication, master identity and token uniqueness.
+Versions 1/2 retain their non-empty UUID allowlists. Default runtime activation stays disabled. The V4
 driver verifies proxy implementations, exact deployed bindings, full preset/venue, master identity
 and a private preparation configuration hash before signing/submission. No Kuru-to-V4 fallback
 exists. V4 collection requires its canonical locker context; browser contracts remain enumerated.
@@ -701,6 +754,13 @@ renewable lease, four-call concurrency and canonical 100-block ranges. `runToken
 `caughtUp` against its cached confirmed tip for the selected sources. Busy, gap and reorg remain
 visible outcomes; quota/transport errors propagate. The PostgreSQL regression verifies multiple
 ranges and replay without duplicate canonical rows. No runtime budget increases implicitly.
+The private `launch/indexer-rpc-admission.ts` groups up to four queued reads behind one atomic
+PostgreSQL reservation for their actual count, before any provider call. Groups drain before the
+next reservation; denial, lease loss or a provider failure stops queued work without retry.
+The per-pass/daily ceilings, UTC reset, renewals and transactional write fences remain authoritative.
+The scheduler's unit suite and real `uniswap-indexer` PostgreSQL tests cover reservation order,
+four-call concurrency, drain/stop, quota reset/refusal, lease loss and unchanged canonical writes.
+Reducing reservation statements does not establish hosted catch-up capacity.
 Hosted R2 reads/migrations and direct testnet buy/sell have separate evidence in
 [the readiness record](../../docs/market/token-launch-readiness-20261010.md); hosted master-passkey
 launch and sustained indexer throughput are still pending.
@@ -709,7 +769,9 @@ launch and sustained indexer throughput are still pending.
 
 `PostgresLaunchIndexStore.applyBatch` inserts the bounded range's block headers with one
 PostgreSQL statement inside the existing fenced transaction. It preserves first-occurrence
-evidence, replay/upsert, finality and reorg restoration semantics. Events, outbox and cursor
+evidence, replay/upsert, finality and reorg restoration semantics. Header conflicts only update
+when orphan status or the requested finality changes; replaying an identical header does not
+create another tuple version. Unconfirmed input preserves stored finality. Events, outbox and cursor
 still commit atomically; no RPC work runs inside that transaction. Never replace complete
 ancestry validation with sparse sampling or advance a cursor to avoid backfill. The hosted
 capacity measurement and explicit closed launcher gate are recorded in
@@ -917,3 +979,262 @@ is adverse filled-history load, not financial or provider acceptance: 47,040 arc
 funding observation against the archive and compares segmented export hashes at different page
 sizes. Fixtures must seed matching canonical funding statuses/counters explicitly. Never run
 these suites against an existing study database, provider or financial session.
+
+## Owner curve swap driver
+
+Migration 0046 extends the private operations action constraint; no historical payload is rewritten.
+The token driver resolves the confirmed factory launch and checks its agent key, creator/master,
+quote asset and preset before trading. Quotes, balance and allowance come from bounded RPC reads;
+only exact-input swaps and exact-amount ERC20 approvals are encoded. Minimum output and recipient
+are frozen before the passkey. The exact transaction is simulated again before signing and sending.
+Closed curves, inadequate allowance/balance and exhausted inventory fail without a signature.
+Uncertain signing/broadcast recovery retains the existing one-time claims. Indexer behavior is unchanged.
+
+## Public curve preparation
+
+`launch/public-trading.ts` exports the unsigned visitor driver and short transactional RPC reserve.
+It validates the canonical factory/agent/preset and pinned deployment identities, reads curve state
+at one block, and encodes only exact-input swaps or exact-amount approvals to the visitor. Gas uses
+the reviewed existing policy. It never signs, broadcasts or writes financial attribution.
+The existing private `pickler.provider_quotas` admits a shared daily 40-call reservation and six
+preparations per wallet/minute before transport; no new migration or indexer change is required.
+Run the controlled driver and isolated quota tests. See
+[Public token trading](../../docs/market/public-token-trading.md).
+
+## Unidentified expired launch proof
+
+`launch/expired-launch.ts` verifies the immutable factory's chain/code hash and locally decoded
+creator, agent and grant deadlines. It searches public `LaunchCreated` events in canonical
+100-block ranges across the complete inclusive five-minute validity window, with a maximum of
+100 reads inside the existing RPC reservation. Private agent keys, grant signatures and transaction
+bytes are never RPC parameters. A stable confirmed anchor and matching event headers are required;
+transport, incomplete ranges, ambiguous events, quota failures and reorgs cannot prove absence.
+Historical read-only recovery does not require a newer preparation configuration hash.
+An accepted Turnkey identity survives incomplete signed results. Signing failures log only the
+operation ID, broken phase and reviewed reason, never provider prose, calldata or stamps.
+Run the controlled `expired-token-launch`, driver and isolated PostgreSQL operations suites.
+
+## Turnkey token signing address
+
+The token operation driver formats the master wallet as an EIP-55 checksum address only when
+building Turnkey's `signWith`. Turnkey's resource lookup is case-sensitive; the lowercased domain
+identity remains valid for ownership and on-chain comparisons. Prepared transaction bytes and
+historical stamped activities are never rewritten. The driver regression requires the exact
+checksummed resource address and verifies the returned signed bytes against the original sender.
+
+## Confirmed app launches
+
+`src/launch/confirmed-launch.ts` exports `createConfirmedLaunchPublisher`. The operation driver
+passes its existing budgeted RPC to this callback after canonical receipt confirmation. It verifies
+the configured immutable factory/network, exact recorded grant/calldata and creator, receipt/log
+identity, confirmation depth, ERC-20 metadata and a stable source block. RPC work precedes a short
+owner/operation/grant-fenced transaction. Only the verified factory event and block are persisted;
+`PostgresLaunchProjector.projectReceipt` projects that one receipt using already verified metadata.
+This never advances any historical indexer cursor or synthesizes a token from a browser hash.
+Public directory/profile reads retain their shared canonical-event/grant checks and perform no RPC.
+Already published operations use database-only checks; incomplete publication can be repaired by the
+same explicit status path, including earlier finalized operations. The additional proof costs eleven
+RPC reads once in the controlled case, reserved under the existing per-operation ceiling.
+
+Receipt evidence can precede contiguous indexer history. Batch application and receipt persistence
+serialize chain mutations, orphan competing hashes at the same height and preserve notification
+rows as failed with `CHAIN_EVENT_ORPHANED`; a returning branch can restore them to pending. Replays
+retain full log identity and cannot duplicate token/pool rows. Historical traversal, finality,
+ancestry checks, external events, trade recovery and reorg handling remain the indexer's responsibility.
+Tests: `confirmed-launch.test.ts`, `launch-index-store.test.ts` and the existing launch suites.
+
+## Owner token fee cursor transport
+
+`PostgresTokenLaunchStore` reads the escrow cursor as decimal text, then checks and converts it to
+an exact nonnegative safe integer before returning `fees.block`. Native PostgreSQL bigint rows
+are strings; a TypeScript query annotation does not convert them. Amounts remain atomic strings.
+The confirmed-launch regression composes the operational escrow and tests numeric wire output,
+heights above signed int32 and refusal outside JavaScript's exact integer range, without RPC.
+
+## Public token market read
+
+`persistence/product/token-market-read.ts` reads canonical confirmed/finalized launch and curve
+events in one PostgreSQL snapshot, with no RPC or cursor changes. It excludes orphaned blocks
+and events, orders by block/log position, samples each hour's last recorded trade for seven days
+and returns twenty recent trades with transaction/log identity. Volume includes gross traded
+quote amounts; trade prices exclude fees. The configured reference economics apply only when
+chain, factory, committed config hash, quote asset, decimals and total supply match the launch.
+Unknown historical presets retain null allocations and use labelled execution prices.
+`PostgresLaunchReadModel.getLaunch` also resolves a validated chain/address key; UUID IDs remain
+compatible. Missing canonical launch proof yields no market. No migration or backfill is needed.
+
+## Immediate public trade observations
+
+`launch/public-trade-confirmation.ts` verifies chain, pinned immutable factory, agent/preset/curve
+bindings, exact swap calldata, sender/recipient, receipt events and stable policy-confirmed block.
+The driver shares the existing 40-call admission/cap with preparation. Canonical recorded receipts
+are idempotent without provider reads. RPC preparation finishes before a short chain advisory-lock
+transaction. It appends only new confirmed headers and raw events, rechecks canonical launch
+attribution and refuses conflicting or orphaned evidence without changing historical rows.
+Reorg reconciliation, projection replay, outbox and cursors remain the indexer’s responsibility.
+Market reads merge hourly samples, recent receipt observations and the genuine launch-price anchor
+so multiple trades within an hour remain visible. No database migration is required.
+
+The market read prepares `priceMovement` with core's integer helper from the last two canonical
+price observations in chain order. It shares the existing snapshot and orphan filtering; sparse
+launch-only history has no movement. No provider call or migration is added.
+
+The public driver's read-only quote branch reuses canonical identity, curve and decimal checks,
+quote and inventory reads, and business minimum rounding. It returns before balance admission,
+nonce/fee reads, gas estimation and calldata preparation. Quotes reserve the same 40-call daily
+ceiling, with a separate six-per-wallet/minute bucket so typing cannot consume preparation slots.
+They never write financial attribution or change indexer state.
+
+## Private Perpl execution adapters
+
+Perpl owner preparation verifies the reviewed ERC-1967 implementation address and runtime hash
+at one block as well as the proxy hash. Unreviewed proxies and changed implementations fail
+before owner signing or broadcast. The driver exposes public venue minimums and the reviewed
+per-deposit maximum; unavailable reads do not fabricate requirements.
+
+The server-only `perpl-live` export implements Trading's real testnet ports. It owns the private
+RLS aggregate, AES-GCM per-agent credentials, Ed25519 HTTP signing, reviewed policy and exact
+owner WebAuthn onboarding. Resolve owner/wallet/runtime identities from PostgreSQL, never a
+client override. Provider requests stay outside locks; persist intents and signed transaction
+bytes before sends. Never reenroll an ambiguous key or replay an unknown order.
+
+Migrations 0048/0049 append the Perpl table/grants without rewriting earlier identities. Drizzle
+lists actual schema files explicitly and excludes product read models. The test database/token
+fixture helpers accept an optional migration folder only for controlled upgrade validation.
+See [Perpl trading](../../docs/perpl-trading.md). Its tests use disposable loopback databases and
+injected transports; no hosted credentials or automatic activation are authorized.
+
+## Perpl read-only dashboard adapter
+
+`PerplDashboardGateway` in `src/perpl/dashboard.ts` uses only fixed Perpl testnet targets: public
+context, scope-1 enrollment and signed GET wallet/positions. It bounds requests to ten seconds
+and two MiB, rejects redirects, pins the chain/exchange and validates wallet/account identity,
+duplicates, scaled integers and snapshot block skew. Only public context is cached (ten seconds;
+failed refresh may serve up to sixty seconds with stale=true). No private key, access token or
+wallet snapshot is persisted, cached or logged. Fixed origin `https://pickler.fun` must be permitted
+by Perpl; never omit or spoof it to evade their origin policy. Provider keys and orders are outside
+this adapter. Trading owns monetary projection; API-schema owns response validation.
+
+Invoke the default/injected fetch transport as a plain function. Binding Cloudflare's native
+`fetch` to the gateway instance fails with `Illegal invocation`; the default-transport regression
+in `test/perpl-dashboard.test.ts` guards its receiver independently of injected arrow transports.
+
+Dashboard transport failures distinguish enrollment rejection, integration-origin refusal,
+expired signing terms and rejected account proofs. HTTP 401 alone does not prove key expiry.
+Only the upstream numeric status accompanies the reviewed error; provider bodies remain discarded.
+Public-context failures never become private authorization errors. Server freshness checks stay
+at thirty seconds and read grants remain scope 1 with a one-hour maximum.
+
+The dashboard additionally implements `publicPortfolio(wallet, signal)` using
+`perpl/dashboard-chain.ts`, fixed Monad testnet RPC and the compiler-generated `IPerplReadAbi`.
+Only public chain/block/account/position reads are possible; no signer, arbitrary RPC, caller
+calldata or credential is accepted. Pin every eth_call to one canonical block hash. Enumerate
+held markets from the contract bitmap, skip reserved first-bank flags and retain unknown-market
+positions. Validate ownership, response IDs, scaled bounds and block freshness. Only the typed
+missing-account revert for the requested wallet establishes an empty account. Bound one snapshot
+to ten seconds, 64 positions, ten calls per batch and two MiB per response. Never cache/log wallet
+snapshots. Public context alone remains cached. Q16 entry residue goes to Trading; original
+leverage and historical stats stay unknown. This public source is the default web flow and does
+not depend on Perpl's third-party key enrollment or a user's wallet network.
+
+The Perpl driver's existing-key path imports only an owner-provided Ed25519 seed/token, derives
+its public key with WebCrypto, verifies the reviewed contract account and signed wallet reads,
+and returns only encrypted storage values to the business service. No enrollment, forwarding,
+approval, funding or order is sent. Read verification does not prove trade scope; Perpl enforces
+that independently on submission. Never reuse Polymarket credentials for Perpl.
+
+Perpl execution history accepts strict 32-byte transaction hashes with or without the provider's
+optional `0x` prefix and normalizes them before receipt verification or public projection. Invalid
+hashes still reject the response. Existing-key schema failures report `PERPL_RESPONSE_INVALID`,
+separately from credential or venue-authentication failures; no provider payload is included.
+
+Current Perpl position snapshots may use `rq=0`. The driver associates such a snapshot only with
+an opening event belonging to the document for the exact position/account/market/side/leverage;
+it keeps current aggregate quantities, not historical event deltas. Trading independently fences
+closure against verified owned quantity. Unattributed positions remain foreign.
+
+Explicit `useKeyWallet` imports discover the address through Ed25519-signed Perpl reads, verify
+its reviewed contract account and reseal credentials for that address. PostgreSQL retains the
+original agent custody address as an identity fence and still resolves owner/workspace/runtime
+from persisted rows. An account-scoped advisory lock and global duplicate check allow a connected
+Perpl account on only one agent, preventing request-ID collisions across aggregates. No wallet
+address comes from the caller; changing account identity cannot move existing history.
+
+## Scheduled projection memory bounds
+
+`runTokenIndexer` uses `PostgresLaunchProjector.project(..., { pendingOnly: true })`: a bounded
+101-row lookahead, at most 100 effects, and target-row existence as durable progress. It retries
+unfinished effects after crashes without a global height watermark (streams can backfill out of
+order). Missing dependencies defer trades; a post-write lookahead detects newly ready work.
+Explicit `project` rebuild calls retain historical replay semantics. Incremental cleanup restores
+legacy graduation interpretation across reorgs; canonical V4/Kuru snapshots retain their existing
+reconciliation rules. No migration or fabricated cursor is used.
+V4/Kuru pending snapshot reads filter for an attributed active token before LIMIT 100, so foreign
+or deferred history cannot occupy the bounded page ahead of ready work. They retain per-snapshot commits. The internal
+`launch/projection-locks.ts` locks only canonical blocks referenced by stored graduations through
+a server-side aggregate, returning one scalar, never all historical hashes. Existing ownership
+fences and event/block finality checks remain required. See
+[the CPU/memory diagnosis](../../docs/market/indexer-cpu-memory-20261015.md).
+
+## Bounded product reads
+
+PostgresAgentDirectory pages public catalogue rows before batching canonical token proof. PostgresExecutionReads reads narrow run summaries/status, keyset event pages (50 default, 100 maximum, 256 KiB wire budget) and explicit oversized event details. Studio snapshots and wallet links are batched by authorized identities. Only the public JWKS resolver registry may survive invocations: an eight-entry LRU keyed by trusted issuer, URL and audience, retaining jose rotation; JWT identities and balances remain request scoped.
+
+## Bounded product Paper state and historical funding
+
+Migration0050 adds private operational metadata, position/day aggregates, size-up history, funding
+epochs/staged postings and record projection checkpoints. Product financial writers use the
+transaction-local writer fence. Legacy accounts retain close-only compatibility; openings require
+explicit operator conversion. Frozen conversion refuses accounts with active positions or owned
+unexpired attempts and advances at most100 entities/facts in one transaction. Original parent
+JSON stays preserved in paper_storage.original; never silently reset or replay the initial cash.
+Conversion preserves verified legacy funding coverage only through a positive full observation
+receipt matching the frozen position documents and a lastFundingAt covering every close. Receipt
+search and cohort proof pages each contain at most100 entries; the completed migration cursor
+retains the receipt certificate. Compact receipts/account flags alone do not certify history.
+Re-auditing certified history does not block openings; genuinely missing coverage still does.
+
+`paper-storage-operator.ts <account-id>` preflights using DATABASE_MIGRATION_URL; --apply advances
+one transaction. Reinvoke until complete. Reads/startup never invoke conversion. An operational
+account cannot return to an older financial writer: the fence intentionally rejects that writer.
+Use a compatible forward fix and retain close-only operation while investigating rollback.
+
+`executionSnapshot` returns open positions/pending attempts and scalar accounting; `snapshot`
+and `view` retain explicit full archival behavior. Size-up arrays are reconstructed only for that
+archive. HTTP record reads use persisted record checkpoints (at most721 chart samples), never a
+ledger fold. Backdated facts start a resumable100-fact rebuild with a fixed watermark; incomplete
+projections must remain labelled incomplete. All hooks run inside the financial account transaction.
+
+Historical funding owns a fixed cutoff and closed-sequence cohort,50 positions/pass and bounded
+one-hour provider windows. Ownership expires after60 seconds; successful pages retain progress.
+Staged postings remain invisible until the epoch and its cash/day/record delta commit together.
+Disputes commit no staged cash and block additional exposure; legitimate closes remain available.
+The current provider complete-window assertion is required before a coverage checkpoint advances.
+Existing closed-position P&L/hit-rate excludes funding (opening/size-up fees plus close movements);
+funding remains in aggregate cash, realized P&L and fees/funding projections. Do not change this
+financial presentation formula implicitly.
+
+`historyPage` is the private bounded archive port for positions,attempts,movements and size-ups;
+its account/kind-bound cursor freezes the initial sequence watermark. Funding postings use the
+epoch commit-fact sequence,never their earlier staging time. `position` and `attemptResult` read
+one scoped entity. Unconverted archives refuse pagination; closedPositions instead labels its
+empty result complete=false, and exact missing converted position totals are errors. See
+[Paper operational history](../../docs/paper-operational-history.md) for rollout and validation.
+
+## Perpl operational history
+
+Migration 0051 adds private normalized Perpl sessions, orders and setup evidence. New accounts
+use split storage when the schema is present. The compact account holds encrypted credentials,
+wallet identity, current snapshot, request counter and lease; append history is read with indexed
+point lookups and bounded pages. Business mutations use the explicit operations exported by trading;
+no caller receives a generic document transaction. Daily opening aggregates preserve the distinct
+start (including cancelled) and tick (excluding cancelled) predicates and original session margin.
+Net filled quantity and opening leverage are transactional per-session projections.
+
+`perpl:storage` is an operator command: inspect is the default, every mutation requires `--execute`.
+Each `page` normalizes at most 100 entities inside PostgreSQL and persists its cursor with that
+page. Conversion defers active/uncertain accounts, fences old writers, preserves the original
+hash/revision, and verifies full evidence parity before atomic cutover. A controlled rollback
+reconstructs current normalized evidence; it never restores the retained stale original document.
+The new runtime must remain installed after rollback because the writer fence stays at version 2.
+See [Perpl trading](../../docs/perpl-trading.md).
