@@ -33,6 +33,8 @@ export interface PerpsPaperFrame {
 }
 export interface PerpsPaperObservation {
   marksOnly?: boolean;
+  /** Infrastructure product path only: advance confirmed funding coverage in bounded windows. */
+  incrementalFunding?: boolean;
   frames: PerpsPaperFrame[];
   funding: PerpFundingHistory[];
 }
@@ -424,12 +426,23 @@ export function applyPaperObservation(
       previous,
       observation.funding.find((h) => h.market.symbol === p.symbol),
       now,
+      observation.incrementalFunding === true,
     );
     pending ||= result.pending;
     if (result.disputed) {
       a.fundingDisputed = true;
     }
     movements.push(...result.movements);
+  }
+  if (a.fundingDisputed) {
+    for (const p of a.positions) {
+      const original = account.positions.find((item) => item.id === p.id)?.fundingCoveredThrough;
+      if (original === undefined) {
+        delete p.fundingCoveredThrough;
+      } else {
+        p.fundingCoveredThrough = original;
+      }
+    }
   }
   return finalizePaperObservation(a, movements, pending, observation.marksOnly === true, key, now);
 }
@@ -489,12 +502,17 @@ export function applyPaperPositionFunding(
   previous: readonly PerpsPaperMovement[],
   history: PerpFundingHistory | undefined,
   now: number,
+  incrementalFunding = false,
 ): { movements: PerpsPaperMovement[]; pending: boolean; disputed: boolean } {
   const a = account;
   const p = position;
   const movements: PerpsPaperMovement[] = [];
   let pending = false;
   let disputed = false;
+  const incremental = incrementalFunding && a.scope.sessionId === "product";
+  const coverageFrom = incremental
+    ? Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)
+    : p.openedAt;
   if (
     !history ||
     (p.market !== undefined &&
@@ -503,8 +521,8 @@ export function applyPaperPositionFunding(
         p.market.collateral.address !== history.market.collateral.address)) ||
     history.market.provenance.network !== a.scope.network ||
     !history.complete ||
-    history.from > p.openedAt ||
-    history.to < (p.closedAt ?? now) - 30000
+    history.from > coverageFrom ||
+    (incremental ? history.to < coverageFrom : history.to < (p.closedAt ?? now) - 30000)
   ) {
     pending = true;
     return { movements, pending, disputed };
@@ -560,6 +578,15 @@ export function applyPaperPositionFunding(
     );
     movements.push({ key: movementKey, kind: "funding", delta, at: now, evidence });
   }
+  if (incremental && !pending && !disputed && !a.fundingDisputed) {
+    p.fundingCoveredThrough = Math.max(
+      p.fundingCoveredThrough ?? p.openedAt,
+      Math.min(history.to, p.closedAt ?? now, now),
+    );
+    if (p.fundingCoveredThrough < (p.closedAt ?? now) - 30000) {
+      pending = true;
+    }
+  }
   return { movements, pending, disputed };
 }
 
@@ -597,7 +624,7 @@ export function finalizePaperObservationDelta(
   }
   a.cash = d(u(a.cash) + u(nativeCashDelta));
   a.fundingPending = pending;
-  if (a.scope.sessionId === "product" && !marksOnly) {
+  if (a.scope.sessionId === "product" && !marksOnly && !pending) {
     a.lastFundingAt = now;
   }
   const risk = paperRisk(a, [], now);
@@ -628,4 +655,25 @@ export function finalizePaperObservationDelta(
     a.lastValuationAt = now;
   }
   return { account: a, key };
+}
+
+/** The provider's complete=true is the canonical contiguous-window coverage assertion. A missing
+ * interval cannot jump this cursor; overlap revalidates event identities before new postings. */
+export function paperFundingRange(
+  positions: import("./types.js").PerpsPaperPosition[],
+  symbol: PerpSymbol,
+  now: number,
+) {
+  const from = Math.min(
+    ...positions
+      .filter((p) => p.symbol === symbol)
+      .map((p) => Math.max(p.openedAt, (p.fundingCoveredThrough ?? p.openedAt) - 30000)),
+  );
+  const padding = Math.max(
+    0,
+    ...positions
+      .filter((p) => p.symbol === symbol)
+      .map((p) => (p.market?.fundingIntervalSeconds ?? 0) * 1000),
+  );
+  return { from: Math.max(0, from - padding), to: Math.min(now, from + 3600000) };
 }
