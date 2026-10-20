@@ -81,6 +81,10 @@ to `main`. Configure secrets and variables as follows; do not put these in runti
 | staging environment secret   | `DATABASE_MIGRATION_URL`               | Operator direct/session connection to the same Supabase project, port 5432, database `postgres`, no URL TLS overrides |
 | staging environment secret   | `DATABASE_MIGRATION_CA_CERT`           | Existing Supabase origin CA certificate, real PEM newlines or escaped `\n`                                            |
 
+Product analytics does not add a required staging variable. `NEXT_PUBLIC_POSTHOG_KEY` and
+`NEXT_PUBLIC_POSTHOG_HOST` are optional public web build inputs; unset, the web app keeps the
+compiled Pickler Fun fallback. See `apps/web/.env.example`.
+
 The database URL requires operator DDL privileges and is not the Hyperdrive binding or a frontend
 credential. A pooler username must be `postgres.<project-ref>`; a direct host must be
 `db.<project-ref>.supabase.co`. The public Supabase origin and operator connection must identify

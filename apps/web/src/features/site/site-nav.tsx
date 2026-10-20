@@ -13,6 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pickler/ui/dropdown-menu";
+import { captureCta } from "@/features/analytics/client";
+import { TrackCta } from "@/features/analytics/track-cta";
 import { NetworkSelector } from "./network-selector";
 import { AccountMenu } from "@/features/wallet/components/account-menu";
 import { useEffect, useState } from "react";
@@ -194,25 +196,32 @@ export function SiteNav({
         <div className={styles.actions}>
           <NetworkSelector />
           {connect && <AccountMenu surface={surface} />}
-          <ButtonLink
-            as={Link}
-            href={secondary.href}
-            variant="secondary"
-            className={styles.secondary}
+          <TrackCta
+            cta={secondary.href.endsWith("#app") ? "get_the_app" : "trade_with_ai"}
+            location="nav"
           >
-            {secondary.href.endsWith("#app") && <Icon name="phone" size={15} />}
-            {secondary.label}
-          </ButtonLink>
-          <ButtonLink
-            as={Link}
-            href="/create"
-            variant="ghost"
-            className={styles.cta}
-            data-surface={surface === "dark" ? "light" : "dark"}
-            arrow
-          >
-            Create agent
-          </ButtonLink>
+            <ButtonLink
+              as={Link}
+              href={secondary.href}
+              variant="secondary"
+              className={styles.secondary}
+            >
+              {secondary.href.endsWith("#app") && <Icon name="phone" size={15} />}
+              {secondary.label}
+            </ButtonLink>
+          </TrackCta>
+          <TrackCta cta="create_agent" location="nav">
+            <ButtonLink
+              as={Link}
+              href="/create"
+              variant="ghost"
+              className={styles.cta}
+              data-surface={surface === "dark" ? "light" : "dark"}
+              arrow
+            >
+              Create agent
+            </ButtonLink>
+          </TrackCta>
 
           <div className={styles.compactMenu}>
             <DropdownMenu
@@ -249,7 +258,17 @@ export function SiteNav({
                 <DropdownMenuGroup className={styles.mobileLaunch}>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className={styles.item}>
-                    <Link href={secondary.href}>{secondary.label}</Link>
+                    <Link
+                      href={secondary.href}
+                      onClick={() =>
+                        captureCta(
+                          secondary.href.endsWith("#app") ? "get_the_app" : "trade_with_ai",
+                          "nav",
+                        )
+                      }
+                    >
+                      {secondary.label}
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className={styles.launchItem}>
                     <ButtonLink
@@ -258,6 +277,7 @@ export function SiteNav({
                       variant="ghost"
                       data-surface={surface === "dark" ? "light" : "dark"}
                       arrow
+                      onClick={() => captureCta("create_agent", "nav")}
                     >
                       Create agent
                     </ButtonLink>

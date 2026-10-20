@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@pickler/ui";
+import { TrackCta } from "@/features/analytics/track-cta";
 import styles from "../landing.module.css";
 import { AppStoreLink } from "./app-store-link";
 
@@ -20,22 +21,26 @@ export function Download({ appStoreUrl }: { appStoreUrl: string | null }) {
         </p>
         <div className={styles.downloadActions}>
           {/* White on the dark ground: the inverted pill, as the headline's dark pill is on white. */}
-          <AppStoreLink
-            url={appStoreUrl}
-            surface="light"
-            className={`${styles.pill} ${styles.pillInk} ${styles.pillWide}`}
-          >
-            <span className={styles.pillIcon} aria-hidden="true">
-              <Icon name="phone" size={15} />
-            </span>
-            Download on the App Store
-          </AppStoreLink>
-          <Link href="/create" className={`${styles.pill} ${styles.pillPanel}`}>
-            Create an agent
-            <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
-              <Icon name="arrow" size={13} />
-            </span>
-          </Link>
+          <TrackCta cta="app_store" location="download">
+            <AppStoreLink
+              url={appStoreUrl}
+              surface="light"
+              className={`${styles.pill} ${styles.pillInk} ${styles.pillWide}`}
+            >
+              <span className={styles.pillIcon} aria-hidden="true">
+                <Icon name="phone" size={15} />
+              </span>
+              Download on the App Store
+            </AppStoreLink>
+          </TrackCta>
+          <TrackCta cta="create_agent" location="download">
+            <Link href="/create" className={`${styles.pill} ${styles.pillPanel}`}>
+              Create an agent
+              <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
+                <Icon name="arrow" size={13} />
+              </span>
+            </Link>
+          </TrackCta>
         </div>
         <p className={styles.downloadNote}>iOS ONLY FOR NOW · ANDROID LATER</p>
       </div>

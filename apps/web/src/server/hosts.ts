@@ -86,8 +86,11 @@ const STUDIO_SEGMENTS = new Set(["studio", "account", "signin", "signup", "auth"
  * A file at the root (`_headers`) and a dotted directory (`.well-known`) need no rule of their own:
  * the first segment of `/_headers` is the whole filename and the first segment of `/.well-known/x`
  * is `.well-known`, dot included, so whole-segment equality already matches both.
+ *
+ * `ingest` is not a page. It is the same-origin PostHog proxy (`next.config.ts`). Left as a
+ * marketplace path, the studio host would 404 it and every event from that host would die here.
  */
-const SHARED_SEGMENTS = new Set(["api", "_next", "brand", ".well-known", "_headers"]);
+const SHARED_SEGMENTS = new Set(["api", "_next", "brand", ".well-known", "_headers", "ingest"]);
 
 /**
  * The first path segment, which is what every set in this file and in ./guard.ts is keyed on.

@@ -140,5 +140,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  // `ingest` is excluded as well as listed as a shared path. A catch-all matcher runs before
+  // Next's rewrites, and on the studio host an unowned path is a 404, so the proxy would swallow
+  // the analytics POST before it could be forwarded.
+  matcher: ["/((?!_next/static|_next/image|ingest).*)"],
 };

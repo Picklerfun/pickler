@@ -74,6 +74,13 @@ test("the API and Next's own assets belong to both", () => {
   assert.equal(ownerOf("/_next/static/chunk.js"), "either");
 });
 
+test("the analytics proxy belongs to both hosts", () => {
+  // A marketplace-only path 404s on the studio host, which would drop every event sent from there.
+  assert.equal(ownerOf("/ingest"), "either");
+  assert.equal(ownerOf("/ingest/e/"), "either");
+  assert.equal(ownerOf("/ingesting"), "marketplace");
+});
+
 test("the static files both products' pages request belong to both", () => {
   // The icon is set on the root layout, so a studio page requests it too; universal links need the
   // association file served as a direct 200 from a fixed origin.

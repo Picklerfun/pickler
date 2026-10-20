@@ -39,6 +39,7 @@ import {
   suggestTicker,
   SWATCHES,
 } from "../lib/options";
+import { captureWaitlistSignup, captureWaitlistSignupFailed } from "@/features/analytics/client";
 import { Mark } from "./mark";
 import { SectionHead } from "./section-head";
 
@@ -113,14 +114,25 @@ export function ApplicationForm({
     try {
       const seat = await joinWaitlist(email, referralCode);
       if (seat.kind === "error") {
+        captureWaitlistSignupFailed({
+          reason: seat.status === 0 ? "network" : "rejected",
+          status: seat.status,
+          errorCode: seat.code,
+        });
         setFormError(seat.message);
         return;
       }
       const refusal = waitlistRefusal(seat.placement);
       if (refusal) {
+        captureWaitlistSignupFailed({ reason: "seat_held_elsewhere", status: 200 });
         setFormError(refusal);
         return;
       }
+      captureWaitlistSignup({
+        alreadyJoined: seat.placement.alreadyJoined,
+        position: seat.placement.position,
+        referralPresent: referralCode !== null,
+      });
 
       const body: SubmitApplicationRequest = {
         agentName,
@@ -400,24 +412,36 @@ export function ApplicationForm({
 }
 
 type Seat =
-  { kind: "seated"; placement: JoinWaitlistResponse } | { kind: "error"; message: string };
+  | { kind: "seated"; placement: JoinWaitlistResponse }
+  | { kind: "error"; message: string; code: string | null; status: number };
 
 /** The first of the two requests: seat this browser for the email. */
 async function joinWaitlist(email: string, referralCode: string | null): Promise<Seat> {
   const body: JoinWaitlistRequest = referralCode ? { email, ref: referralCode } : { email };
-  const response = await fetch("/api/v1/waitlist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const failure = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+  try {
+    const response = await fetch("/api/v1/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const failure = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+      return {
+        kind: "error",
+        message: failure?.error.message ?? "Something went wrong. Try again.",
+        code: failure?.error.code ?? null,
+        status: response.status,
+      };
+    }
+    return { kind: "seated", placement: (await response.json()) as JoinWaitlistResponse };
+  } catch {
     return {
       kind: "error",
-      message: failure?.error.message ?? "Something went wrong. Try again.",
+      message: "Network error. Your answers are still here; try again.",
+      code: null,
+      status: 0,
     };
   }
-  return { kind: "seated", placement: (await response.json()) as JoinWaitlistResponse };
 }
 
 function useTickerStatus(ticker: string): TickerStatus {

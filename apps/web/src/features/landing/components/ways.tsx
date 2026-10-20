@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@pickler/ui";
+import { TrackCta } from "@/features/analytics/track-cta";
 import styles from "../landing.module.css";
 import { WAYS } from "../lib/demo";
 import { Mark } from "./mark";
@@ -39,10 +40,16 @@ export function Ways() {
             <p className={styles.wayTitle}>{way.title}</p>
             <p className={styles.wayNote}>{way.note}</p>
             {way.href ? (
-              <Link href={way.href} className={`${styles.wayCta} ${styles.hue}`} data-hue={way.hue}>
-                {way.cta}
-                <Icon name="arrow" size={13} />
-              </Link>
+              <TrackCta cta={wayCta(way.kicker)} location="ways">
+                <Link
+                  href={way.href}
+                  className={`${styles.wayCta} ${styles.hue}`}
+                  data-hue={way.hue}
+                >
+                  {way.cta}
+                  <Icon name="arrow" size={13} />
+                </Link>
+              </TrackCta>
             ) : (
               <span className={styles.waySoon}>
                 {way.cta}
@@ -54,4 +61,14 @@ export function Ways() {
       </div>
     </section>
   );
+}
+
+function wayCta(kicker: string): string {
+  if (kicker === "HIRE") {
+    return "see_the_agents";
+  }
+  if (kicker === "BACK") {
+    return "explore_tokens";
+  }
+  return "open_the_markets";
 }

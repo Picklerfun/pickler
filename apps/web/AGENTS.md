@@ -83,6 +83,31 @@ Public Supabase Auth values are supplied at build time. No provider or database 
 belong in `.env` here. The final deployment must be tested using OpenNext/workerd, not only
 next dev. Check cookies, protected routes, session refresh, signout and tenant isolation.
 
+## Product analytics
+
+`src/instrumentation-client.ts` initializes `posthog-js` in the browser, before hydration, and
+nowhere on the server. Pageviews use `history_change`, so App Router navigations count, and
+pageleaves are captured with them. Autocapture stays on. Session replay stays off
+(`disable_session_recording`), with input masking set so a later recording flag cannot record
+typed values. The public project token and ingestion host are `NEXT_PUBLIC_POSTHOG_KEY` and
+`NEXT_PUBLIC_POSTHOG_HOST` (`NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is an alias of the key). Both are
+optional: an unset build uses the Pickler Fun US project. Only the US and EU PostHog cloud hosts
+are accepted as the ingestion origin.
+
+Events leave through `/ingest`, rewritten in `next.config.ts` to PostHog. That path is a shared
+segment in `src/server/hosts.ts` and is excluded from the request-proxy matcher, so neither host
+404s it before the rewrite. `skipTrailingSlashRedirect` stays on because PostHog's capture URL
+ends in a slash. The web Worker must be able to fetch `us.i.posthog.com` and
+`us-assets.i.posthog.com` (or the EU pair when that host is configured).
+
+`waitlist_signup` fires from the `/create` form after `POST /api/v1/waitlist` returns a seat this
+browser can use. `already_joined` is false for a new seat. `waitlist_signup_failed` covers a
+rejected request, a network failure, and a seat held by another browser. Properties are the page,
+campaign parameters present on the URL, and (on success) the line position and whether a referral
+code was present. The email is not a property and is not passed to `posthog.identify`: the
+waitlist keeps it in the product database, and the application request that follows does not
+carry it. `cta_clicked` records the landing and public-nav calls to action (`cta`, `location`).
+
 ## Design system
 
 Shapes, control sizes and button variants live in `@pickler/ui` (see its `AGENTS.md`): one radius scale from `mark` to `3xl` in which a step names a role — chips and tiles, menu rows, stat tiles, cards, panels, sections — and a pill for every action, chip and status. Feature stylesheets reference the `--pk-radius-*` tokens and never hard-code a radius. Each shell declares its surface: the marketplace — the landing and every page inside `PublicShell`, the agent pages included — uses `data-surface="light"`, and the studio, account, auth and apply screens use `data-surface="dark"`. No screen paints a ground of its own: the night sky, the starfield and the neon floor were removed on 2026-09-29. Either value nests inside the other to invert a subtree. Type is the same on both: Archivo for titles and the lead figure of a view, always with its width axis (`font-variation-settings: var(--pk-display-wdth)`), and Instrument Sans for everything else — body text, every control, and the small tracked labels that used to be a monospace.
@@ -343,9 +368,10 @@ remains operator-enabled, separate from authentication. The completed signup scr
 ## Request proxy
 
 `src/proxy.ts` exports the Next.js 16 `proxy` request handler and the unchanged host/session
-decision rules. Keep the matcher, temporary uncached redirects, callback query and Studio rewrite
-intact. API JWT authorization remains independent. The request and routing regressions retain
-their historical middleware test filenames. OpenNext 1.20.6 can bundle this Node.js proxy for
+decision rules. Keep the temporary uncached redirects, callback query and Studio rewrite intact.
+The matcher excludes `_next/static`, `_next/image`, and `ingest` (the PostHog reverse proxy);
+do not let `ingest` fall through to a host 404. API JWT authorization remains independent.
+The request and routing regressions retain their historical middleware test filenames. OpenNext 1.20.6 can bundle this Node.js proxy for
 workerd, but labels that support experimental; a Next build alone is insufficient validation.
 Run the Worker build and controlled workerd routing checks before accepting the migration.
 For that controlled build, set `NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co` and

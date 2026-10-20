@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TrackCta } from "@/features/analytics/track-cta";
 import styles from "../landing.module.css";
 import { PALETTE } from "../lib/palette";
 import { Mark } from "./mark";
@@ -19,12 +20,16 @@ export function Footer({ charts = false }: { charts?: boolean }) {
         <Link href="/perpl" className={styles.footerLink}>
           PERPL DASHBOARD
         </Link>
-        <a href="#app" className={styles.footerLink}>
-          THE APP
-        </a>
-        <Link href="/create" className={styles.footerLink}>
-          CREATE AN AGENT
-        </Link>
+        <TrackCta cta="get_the_app" location="footer">
+          <a href="#app" className={styles.footerLink}>
+            THE APP
+          </a>
+        </TrackCta>
+        <TrackCta cta="create_agent" location="footer">
+          <Link href="/create" className={styles.footerLink}>
+            CREATE AN AGENT
+          </Link>
+        </TrackCta>
         {charts && (
           <a
             href="https://www.tradingview.com/"
