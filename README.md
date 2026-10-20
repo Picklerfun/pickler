@@ -56,6 +56,19 @@ The landing page reads a snapshot through `GET /api/v1/landing` and accepts sign
 
 See [architecture decisions](docs/architecture.md) and [repository agent instructions](AGENTS.md). Every app and package has its own `AGENTS.md`; read it before working in that project and update it when the project changes. Repository documentation is maintained in English.
 
+## Product analytics
+
+The web app records visits and waitlist joins with PostHog in the browser (`posthog-js`). Page views and page leaves include client-side route changes. Autocapture is on. Session replay is off. A seat granted from `/create` sends `waitlist_signup` (`already_joined: false` is a new person). A refused or failed seat sends `waitlist_signup_failed`. Landing and navigation calls to action send `cta_clicked`. The waitlist email is not sent and is not used as a distinct id.
+
+Events are posted to the same origin at `/ingest`, which the web app rewrites to PostHog. Set these public build-time variables on the web host (Cloudflare / OpenNext, or Vercel). They are optional: an unset build uses the Pickler Fun project on the US cloud.
+
+```sh
+NEXT_PUBLIC_POSTHOG_KEY=phc_yKbE6movrvGzTe2ixgp5qZCRqzi7Hsvp7T3xAjFf6Fjy
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
+
+Names and the fallback are also in `apps/web/.env.example`. No separate PostHog proxy setup is required. After deploy, the web Worker must be allowed to reach `us.i.posthog.com` and `us-assets.i.posthog.com`.
+
 ## Solidity
 
 Foundry configuration and directories are included. Contracts remain undefined until their business rules, permissions, and target network are established. These commands require Foundry:

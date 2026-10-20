@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 /**
  * The App Store control, which is a link only when there is somewhere to send people. Without
@@ -12,11 +12,13 @@ export function AppStoreLink({
   url,
   surface,
   className,
+  onClick,
   children,
 }: {
   url: string | null;
   surface: "light" | "dark";
   className: string;
+  onClick?: (event: MouseEvent<HTMLElement>) => void;
   children: ReactNode;
 }) {
   if (url) {
@@ -27,6 +29,7 @@ export function AppStoreLink({
         data-surface={surface}
         target="_blank"
         rel="noreferrer noopener"
+        onClick={onClick}
       >
         {children}
       </a>

@@ -2,6 +2,7 @@
 
 import { Icon } from "@pickler/ui";
 import { useState } from "react";
+import { TrackCta } from "@/features/analytics/track-cta";
 import styles from "../landing.module.css";
 import { stepLabel, STEPS, type Screen } from "../lib/demo";
 import { AppStoreLink } from "./app-store-link";
@@ -58,16 +59,18 @@ export function Steps({ appStoreUrl }: { appStoreUrl: string | null }) {
               </span>
             </button>
           ))}
-          <AppStoreLink
-            url={appStoreUrl}
-            surface="dark"
-            className={`${styles.pill} ${styles.pillInk}`}
-          >
-            Download on the App Store
-            <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
-              <Icon name="arrow" size={13} />
-            </span>
-          </AppStoreLink>
+          <TrackCta cta="app_store" location="steps">
+            <AppStoreLink
+              url={appStoreUrl}
+              surface="dark"
+              className={`${styles.pill} ${styles.pillInk}`}
+            >
+              Download on the App Store
+              <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
+                <Icon name="arrow" size={13} />
+              </span>
+            </AppStoreLink>
+          </TrackCta>
         </div>
         <div id="steps-phone" className={styles.stepsPhone} data-surface="dark" role="tabpanel">
           <span className={`${styles.cornerTag} ${styles.cornerLeft}`}>{stepLabel(step)}</span>

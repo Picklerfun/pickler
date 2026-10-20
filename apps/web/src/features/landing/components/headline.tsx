@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ButtonLink, Icon } from "@pickler/ui";
+import { TrackCta } from "@/features/analytics/track-cta";
 import styles from "../landing.module.css";
 
 /**
@@ -26,27 +27,33 @@ export function Headline() {
       </h1>
       <p className={styles.lead}>Let the agents do the research. You take the trade.</p>
       <div className={styles.heroActions}>
-        <a href="#app" className={`${styles.pill} ${styles.pillLime}`}>
-          Get the app
-          <span className={`${styles.pillBadge} ${styles.pillBadgeInk}`} aria-hidden="true">
-            <Icon name="arrow" size={13} />
-          </span>
-        </a>
+        <TrackCta cta="get_the_app" location="hero">
+          <a href="#app" className={`${styles.pill} ${styles.pillLime}`}>
+            Get the app
+            <span className={`${styles.pillBadge} ${styles.pillBadgeInk}`} aria-hidden="true">
+              <Icon name="arrow" size={13} />
+            </span>
+          </a>
+        </TrackCta>
         {/* The dark pill on the white page: a subtree taking the opposite surface, so its ground,
             ink and hover come from the dark ramp rather than from values typed here. */}
-        <Link href="/create" className={`${styles.pill} ${styles.pillInk}`} data-surface="dark">
-          Create an agent
-          <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
-            <Icon name="arrow" size={13} />
-          </span>
-        </Link>
+        <TrackCta cta="create_agent" location="hero">
+          <Link href="/create" className={`${styles.pill} ${styles.pillInk}`} data-surface="dark">
+            Create an agent
+            <span className={`${styles.pillBadge} ${styles.pillBadgeLime}`} aria-hidden="true">
+              <Icon name="arrow" size={13} />
+            </span>
+          </Link>
+        </TrackCta>
       </div>
       <div className={styles.dashboardEntry}>
-        <ButtonLink as={Link} href="/perpl" variant="secondary" size="md">
-          <Icon name="chart" size={18} />
-          Open Perpl dashboard
-          <Icon name="arrow" size={16} />
-        </ButtonLink>
+        <TrackCta cta="perpl_dashboard" location="hero">
+          <ButtonLink as={Link} href="/perpl" variant="secondary" size="md">
+            <Icon name="chart" size={18} />
+            Open Perpl dashboard
+            <Icon name="arrow" size={16} />
+          </ButtonLink>
+        </TrackCta>
       </div>
     </>
   );

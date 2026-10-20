@@ -76,6 +76,14 @@ test("shared paths are served on both hosts", () => {
   assert.deepEqual(decide("app.pickler.fun", "/brand/logo.png", HOSTS, OFF), { kind: "serve" });
 });
 
+test("the analytics proxy is served on both hosts, signed in or not", () => {
+  assert.deepEqual(decide("pickler.fun", "/ingest/e/", HOSTS, OUT), { kind: "serve" });
+  assert.deepEqual(decide("app.pickler.fun", "/ingest/e/", HOSTS, OUT), { kind: "serve" });
+  assert.deepEqual(decide("app.pickler.fun", "/ingest/static/array.js", HOSTS, IN), {
+    kind: "serve",
+  });
+});
+
 test("development is inert: every path is served on localhost", () => {
   assert.deepEqual(decide("localhost:3001", "/studio", HOSTS, OFF), { kind: "serve" });
   assert.deepEqual(decide("localhost:3001", "/leaderboard", HOSTS, OFF), { kind: "serve" });
