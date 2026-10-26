@@ -6,10 +6,16 @@ Three Worker configurations and local Worker builds are implemented. A successfu
 not a remote deployment. Until an acceptance record with a staging URL and deployed versions
 is attached to the deployment PR, remote acceptance remains pending.
 
-The only public entry point is `pickler-web-staging` on workers.dev. It delegates `/api/v1/*`
+The public entry point serving `pickler.fun` is named `pickler-web-production` in the committed
+configuration. Its previous name was `pickler-web-staging`. It delegates `/api/v1/*`
 to `pickler-api-staging` through `API`; `pickler-research-staging` only consumes Queue and Cron
 events. Node and Studio remain local tools. The retained local experiment is not a deployment
 entry point. PR #22 real trading is excluded.
+
+The public web name identifies its role; backend environment isolation is unchanged. This is
+not the separate production-environment cutover. See the
+[coordinated naming rollout](cloudflare-worker-naming-2026-10-25.md) before applying the rename
+to the existing Worker and its build integration.
 
 ## Local Worker verification
 
@@ -259,7 +265,7 @@ For the complete dashboard settings, build variables, commands and watch paths f
 existing staging Workers, use the [Worker Builds guide](../scripts/cloudflare/README.md).
 Runtime secrets remain separate from build variables and GitHub Actions credentials.
 
-The `pickler-web-staging` Git integration has separate production and preview build settings.
+The `pickler-web-production` Git integration has separate production and preview build settings.
 Both should build only the API schema and OpenNext web bundle from the repository root:
 
 ```sh
