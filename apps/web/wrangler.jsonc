@@ -1,7 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "account_id": "bc8d4adf4860284fda426b24e7377bc2",
-  "name": "pickler-web-staging",
+  "name": "pickler-web-production",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -9,7 +9,7 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   "services": [
     { "binding": "API", "service": "pickler-api-staging" },
-    { "binding": "WORKER_SELF_REFERENCE", "service": "pickler-web-staging" },
+    { "binding": "WORKER_SELF_REFERENCE", "service": "pickler-web-production" },
   ],
   "observability": { "enabled": true },
   "vars": { "NEXTJS_ENV": "production" },
