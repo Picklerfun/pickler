@@ -1,6 +1,9 @@
-# Staging Worker Builds configuration
+# Worker Builds configuration
 
 This guide configures Cloudflare Workers Builds connected to `Picklerfun/pickler`.
+The public web Worker is named `pickler-web-production`; backend Workers retain their staging
+names and resources. The web naming change does not promote the backend environment. Coordinate
+the [existing Worker rename](../../docs/cloudflare-worker-naming-2026-10-25.md) before deployment.
 These settings remain current until the opt-in
 [coordinated GitHub Actions cutover](../../docs/staging-deployment-pipeline.md) is completed.
 Do not keep independent main deployments enabled after that cutover. For database operations, access controls, deployment
@@ -82,7 +85,7 @@ faucet purchase/sale before reporting remote trading acceptance. See
 
 ## Web
 
-For `pickler-web-staging`, use:
+For `pickler-web-production`, use:
 
 ```sh
 npm install --global npm@10.9.3 && npm ci && npm run build --workspace=@pickler/api-schema && npm run build:worker --workspace=@pickler/web

@@ -357,6 +357,12 @@ These synthetic build values are not user preview or deployment configuration.
 
 ## Worker build
 
+The public web Worker is named `pickler-web-production` because it serves `pickler.fun`.
+Its `WORKER_SELF_REFERENCE` must use that same name. The `API` binding still targets
+`pickler-api-staging`; this naming change does not create an isolated production backend
+or promote databases, queues, credentials, research, trading, or admission settings.
+Keep controlled local Studio fixture names separate from deployed Worker names.
+
 OpenNext 1.20.6 adapts the existing Next.js build. Use `npm run build:worker --workspace=@pickler/web`;
 `wrangler.jsonc` binds API and static assets. No shared incremental cache is configured. Test the
 compiled Worker and same-origin auth/cookies before deployment. See ../../docs/cloudflare-staging.md.

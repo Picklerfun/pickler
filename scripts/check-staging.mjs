@@ -16,7 +16,12 @@ const api = read("workers/api/wrangler.staging.jsonc");
 const research = read("workers/research/wrangler.jsonc");
 const trading = read("workers/trading/wrangler.jsonc");
 const requireProvisioned = process.argv.includes("--provisioned");
-assert.equal(web.name, "pickler-web-staging");
+assert.equal(web.name, "pickler-web-production");
+assert.equal(
+  web.services.find((binding) => binding.binding === "WORKER_SELF_REFERENCE")?.service,
+  web.name,
+  "The public web Worker must reference its own current name",
+);
 assert.equal(api.name, "pickler-api-staging");
 assert.equal(research.name, "pickler-research-staging");
 assert.equal(web.workers_dev, true);
