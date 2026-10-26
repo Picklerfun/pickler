@@ -1,7 +1,7 @@
 # Cloudflare build operations
 
 Read the root instructions before changing this directory. The [build guide](README.md)
-documents the dashboard configuration for the five independent staging Workers (API, research, trading, web and indexer); it does not
+documents the dashboard configuration for the staging backend Workers and the public web Worker; it does not
 provision resources, enable admissions, or run migrations.
 
 Keep commands consistent with the committed Wrangler configurations and staging operations
