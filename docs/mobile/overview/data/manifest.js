@@ -27,6 +27,19 @@
 
 window.DOCS = [
   {
+    date: '2026-10-15',
+    title: 'Fast verification · native builds only when they add evidence',
+    summary: 'JavaScript and TypeScript changes reuse the development client and Metro; a deterministic native fingerprint forces rebuilds when needed, while releases keep their clean archive.',
+    file: '2026-10-15-verificacion-rapida.html',
+    types: ['spec'],
+    status: 'active',
+    tags: ['mobile', 'ios', 'verification', 'performance'],
+    phases: [
+      { num: 1, status: 'pending' },
+      { num: 2, status: 'pending' },
+    ],
+  },
+  {
     date: '2026-10-12',
     title: 'Studio agents in the app · paid analyses with x402',
     summary: 'The Agents tab lists Studio agents; a person picks BTC or ETH, pays one 24-hour analysis in AUSD (x402, 65/35 through the splitter) and reads it. Code done on codex/mobile-studio-agents; not merged, not deployed, build 13 pending authorization.',

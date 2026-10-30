@@ -1,0 +1,335 @@
+<!doctype html>
+<!--
+  AUTOGENERADO desde 2026-10-15-verificacion-rapida-design.md por scripts/mobile/docs-md-to-html.mjs
+
+  ⚠️  NO EDITES ESTE ARCHIVO. Edita el .md y re-genera.
+  El próximo Write al .md (con el hook activo) sobrescribirá este HTML.
+
+  Reglas en docs/mobile/AGENTS.md sección "MD → HTML autogenerado".
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fast verification for Pickler iOS · Spec · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../overview/_styles.css">
+<script defer src="../../overview/_syntax.js"></script>
+<style>
+  /* Overrides locales del MD-view */
+  .wrap { max-width: 820px; }
+  header.hero { padding: 24px 0 28px; }
+  main { padding: 32px 0 64px; overflow-wrap: anywhere; }
+  @media (max-width: 600px) { nav.toc { position: static; } }
+  main h1 { display: none; } /* el h1 ya está en el hero */
+  main h2 {
+    font-size: 22px; font-weight: 800;
+    margin: 36px 0 12px;
+    letter-spacing: -0.015em;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand-soft);
+    scroll-margin-top: 72px;
+  }
+  main h3 {
+    font-size: 17px; font-weight: 700;
+    margin: 24px 0 8px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    scroll-margin-top: 72px;
+  }
+  main h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 20px 0 6px;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3);
+  }
+  main p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+  main blockquote {
+    margin: 14px 0;
+    padding: 12px 18px;
+    background: var(--brand-soft);
+    border-left: 4px solid var(--brand);
+    border-radius: var(--radius-s);
+    color: var(--ink);
+    font-size: 14px; line-height: 1.6;
+  }
+  main blockquote p { margin: 0; }
+  main ul, main ol { margin: 8px 0 14px; padding-left: 26px; font-size: 14.5px; }
+  main ul li, main ol li { margin: 4px 0; line-height: 1.55; }
+  main ul.task-list { list-style: none; padding-left: 4px; }
+  main ul.task-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 4px 0;
+  }
+  main ul.task-list li input[type="checkbox"] {
+    margin-top: 4px; accent-color: var(--brand); cursor: pointer;
+    flex-shrink: 0;
+  }
+  main ul.task-list li label { flex: 1; cursor: pointer; }
+  main ul.task-list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+
+  main hr {
+    border: none; border-top: 1px solid var(--line);
+    margin: 32px 0;
+  }
+  main table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); overflow: hidden;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  main table th, main table td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  main table th {
+    background: var(--surface-2); font-weight: 700;
+    font-size: 11.5px; color: var(--ink-3);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  main table tr:last-child td { border-bottom: none; }
+  main img {
+    max-width: 100%; height: auto;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    margin: 10px 0;
+  }
+
+  .md-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin: 8px 0 28px;
+    position: sticky; top: 60px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    padding: 10px 0; z-index: 25;
+    border-bottom: 1px solid var(--line);
+  }
+  .md-actions .btn { text-decoration: none; }
+</style>
+</head>
+<body data-slug="2026-10-15-verificacion-rapida-design">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="../../overview/index.html">← Catálogo</a>
+    <span class="sep">/</span>
+    <a href="../">superpowers/specs</a>
+    <span class="sep">/</span>
+    <span class="mono">2026-10-15-verificacion-rapida-design.md</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Spec · markdown source</span>
+    <h1>Fast verification for Pickler iOS</h1>
+    <p class="lede" style="margin:0;font-size:13.5px;color:var(--ink-3);font-family:var(--mono)">
+      Autogenerado · source: <code>specs/2026-10-15-verificacion-rapida-design.md</code>
+    </p>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+       <ul><li><a href="#vision">Vision</a></li><li><a href="#why-now">Why now</a></li><li><a href="#verification-contract">Verification contract</a></li><li><a href="#quick">`quick`</a></li><li><a href="#visual">`visual`</a></li><li><a href="#phase">`phase`</a></li><li><a href="#release">`release`</a></li><li><a href="#native-fingerprint">Native fingerprint</a></li><li><a href="#timing-and-cache-report">Timing and cache report</a></li><li><a href="#key-decisions">Key decisions</a></li><li><a href="#acceptance-criteria">Acceptance criteria</a></li><li><a href="#roadmap">Roadmap</a></li><li><a href="#f1-runner-native-fingerprint-and-timings">F1 — Runner, native fingerprint, and timings</a></li><li><a href="#f2-visual-acceptance-and-separate-phaserelease-gates">F2 — Visual acceptance and separate phase/release gates</a></li><li><a href="#out-of-scope">Out of scope</a></li></ul>
+     </div></nav>
+
+<main>
+  <div class="wrap">
+
+<div class="md-actions">
+  <button type="button" class="btn primary" id="btn-copy-progress">📋 Copy progress as MD</button>
+  <a href="2026-10-15-verificacion-rapida-design.md" class="btn">📝 Ver source MD</a>
+</div>
+    <h1 id="fast-verification-for-pickler-ios">Fast verification for Pickler iOS</h1>
+<p><strong>Date:</strong> 2026-10-15 <strong>Status:</strong> Approved design; implementation not started <strong>Scope:</strong> Pickler&#39;s Expo iOS development, visual verification, phase closure, and release workflows</p>
+<h2 id="vision">Vision</h2>
+<p>Pickler should answer two different questions with two different costs:</p>
+<ol>
+<li>Did this application change behave correctly in development?</li>
+<li>Is this exact native binary ready to distribute?</li>
+</ol>
+<p>Today, ordinary JavaScript or TypeScript work can reach the same expensive native preparation used for a TestFlight archive. The new verification contract introduces four explicit levels—<code>quick</code>, <code>visual</code>, <code>phase</code>, and <code>release</code>—so evidence remains proportional to the claim being made.</p>
+<p>A JavaScript-only change reuses the installed development client and Metro. A native-sensitive change is detected from a reproducible fingerprint and requires a rebuild before visual or phase evidence can be accepted. Release remains conservative: the existing clean prebuild and clean archive behavior is preserved.</p>
+<h2 id="why-now">Why now</h2>
+<p>The final verification step has become the slowest part of otherwise small mobile changes. The main cost is not the changed screen itself; it is repeating Expo prebuild, dependency preparation, and an Xcode build even when the native project would be identical.</p>
+<p>This has three consequences:</p>
+<ul>
+<li>Small copy, style, and application-logic changes receive feedback too late.</li>
+<li>Development verification and release packaging are treated as one operation even though they</li>
+<p>establish different evidence.</p>
+<li>A long total duration cannot currently be attributed to fingerprinting, Metro, native build,</li>
+<p>installation, visual traversal, or packaging.</p>
+</ul>
+<p>The project keeps the strict release path while making the common development path observable and incremental.</p>
+<h2 id="verification-contract">Verification contract</h2>
+<h3 id="quick"><code>quick</code></h3>
+<p>The default inner loop for application changes. It runs the relevant focused tests and type checks, records timing data, and reports whether the native fingerprint is current.</p>
+<p>For a JavaScript- or TypeScript-only change with a matching native fingerprint, <code>quick</code> must not invoke Expo prebuild, CocoaPods, or Xcode. A dirty native fingerprint is surfaced as an explicit rebuild requirement; the runner must never silently claim that the installed client is current.</p>
+<h3 id="visual"><code>visual</code></h3>
+<p>The interactive UI check for the flows affected by the change. It reuses the installed development client and Metro when the native fingerprint matches, then records startup and traversal timing.</p>
+<p>If native-sensitive inputs changed, visual verification is blocked until the development client is rebuilt. Simulator evidence is valid only for behavior the simulator can actually exercise. A real Face ID prompt and its physical-device behavior require an iPhone; simulator enrollment or mocked state is not equivalent evidence.</p>
+<h3 id="phase"><code>phase</code></h3>
+<p>The comprehensive local gate used once when closing an implementation phase. It composes the project&#39;s required tests, type checks, and visual evidence without automatically turning the run into a distribution archive. It may reuse a fingerprint-matched development build. If the phase contains native-sensitive changes, it includes the required development rebuild before acceptance.</p>
+<p>Phase closure records the exact commands, fingerprint result, cache result, stage durations, and the device or simulator used. It does not publish a build.</p>
+<h3 id="release"><code>release</code></h3>
+<p>The distribution gate. It preserves the current clean preparation and archive semantics, including clean Expo prebuild and clean Xcode archive, signing, and export. It runs only when a release or TestFlight build is intentionally requested and separately authorized.</p>
+<p>Development cache reuse must never weaken the clean release path. The release report uses the same timing schema, but a cache hit in <code>quick</code> or <code>visual</code> cannot substitute for a successful release archive.</p>
+<h2 id="native-fingerprint">Native fingerprint</h2>
+<p>The runner calculates a deterministic fingerprint from inputs that can alter the generated native project or installed binary. The initial contract includes:</p>
+<ul>
+<li>workspace and mobile package manifests plus the portion of the committed lockfile reachable from</li>
+<p>the mobile workspace dependency closure, not unrelated monorepo packages;</p>
+<li>the evaluated Expo configuration under an explicit allowlist of environment inputs, including the</li>
+<p>effective associated domains, entitlements, permissions, and bundle identifiers; values that affect the binary are hashed but never emitted raw in reports;</p>
+<li>Expo config sources and config plugins, including <code>app.config.ts</code> and plugin implementation inputs;</li>
+<li>explicitly authored native override sources and dependency metadata when present;</li>
+<li>icons, splash resources, entitlements, permissions, and other assets embedded by prebuild or the</li>
+<p>native build;</p>
+<li>the relevant Expo, React Native, Node, Xcode, and platform/toolchain versions.</li>
+</ul>
+<p>Ordinary application JavaScript, TypeScript, tests, non-native documentation, the generated <code>ios/</code> prebuild tree, Pods, and build outputs are excluded unless a file is an explicitly authored native override or is imported by a native configuration input. The fingerprint implementation must expose its input classes and dependency-closure decision for inspection and testing rather than relying on an undocumented directory-wide hash.</p>
+<p>The installed development client&#39;s recorded fingerprint is compared with the current fingerprint. A match permits reuse. A mismatch identifies the changed input class and requires a new development build before <code>visual</code> or native-dependent <code>phase</code> acceptance.</p>
+<h2 id="timing-and-cache-report">Timing and cache report</h2>
+<p>Every level emits a human-readable summary and a machine-readable record with, where applicable:</p>
+<ul>
+<li>fingerprint calculation;</li>
+<li>cache lookup and result (<code>hit</code>, <code>miss</code>, or <code>not_applicable</code>);</li>
+<li>prebuild and native dependency preparation;</li>
+<li>Xcode compilation or archive;</li>
+<li>client installation and launch;</li>
+<li>Metro readiness;</li>
+<li>focused tests and type checking;</li>
+<li>visual traversal;</li>
+<li>signing/export; and</li>
+<li>total elapsed time.</li>
+</ul>
+<p>Skipped stages are reported as skipped, not as zero-cost work. Failures retain completed stage durations so the expensive step remains identifiable. Time budgets are observational in this project; hard performance thresholds require a later measured baseline and are not introduced by this spec.</p>
+<h2 id="key-decisions">Key decisions</h2>
+<table>
+<thead>
+<tr><th>Decision</th><th>Rationale</th></tr>
+</thead>
+<tbody>
+<tr><td>Separate <code>quick</code>, <code>visual</code>, <code>phase</code>, and <code>release</code></td><td>Each level establishes different evidence and should pay only for the work that evidence requires.</td></tr>
+<tr><td>Reuse the development client only on an exact native fingerprint match</td><td>Fast Refresh is safe for application-only changes, while native drift remains explicit and fail-closed.</td></tr>
+<tr><td>Keep clean prebuild and clean archive for release</td><td>Distribution reproducibility and signing confidence are more important than development speed.</td></tr>
+<tr><td>Record stage timings and cache state</td><td>Total wall-clock time alone cannot distinguish compilation from setup, UI traversal, or cache misses.</td></tr>
+<tr><td>Require a physical iPhone for real Face ID evidence</td><td>The simulator cannot prove the real biometric prompt or Secure Enclave interaction.</td></tr>
+<tr><td>Keep project-specific runners</td><td>A future cross-project rule may share vocabulary and reporting, but it must not couple Pickler&#39;s Expo/Xcode implementation to unrelated repositories.</td></tr>
+</tbody>
+</table>
+<h2 id="acceptance-criteria">Acceptance criteria</h2>
+<p>The implementation is accepted only when controlled tests demonstrate both sides of the routing decision:</p>
+<ul>
+<li>With only JavaScript or TypeScript application inputs changed and a matching native fingerprint,</li>
+<p><code>quick</code> and <code>visual</code> do not invoke Expo prebuild, CocoaPods, or Xcode.</p>
+<li>Changing a declared native input changes the fingerprint and prevents stale-client visual</li>
+<p>acceptance until the rebuild path succeeds.</p>
+<li>Changing dependency, plugin, embedded asset, or <code>app.config.ts</code> fixtures is covered by controlled</li>
+<p>fingerprint tests.</p>
+<li>Changing an allowlisted environment fixture such as <code>PICKLER_RP_ID</code> changes the fingerprint and</li>
+<p>prevents reuse, while the raw value never appears in the report.</p>
+<li>Changing only an unrelated workspace dependency or a generated <code>ios/</code>, Pods, or build-output</li>
+<p>fixture does not invalidate the native fingerprint.</p>
+<li>The existing release path still performs a clean prebuild and clean archive; a controlled test</li>
+<p>fails if either clean operation is removed or bypassed.</p>
+<li>Reports distinguish cache hits from misses and contain per-stage plus total elapsed times.</li>
+<li>Visual evidence names the runtime target, and real Face ID acceptance names a physical device.</li>
+</ul>
+<p>Tests must also be run against the defect: the JavaScript-only fixture must fail if a prebuild or Xcode invocation is injected, and the native-change fixture must fail if the runner incorrectly reuses the stale client.</p>
+<h2 id="roadmap">Roadmap</h2>
+<h3 id="f1-runner-native-fingerprint-and-timings">F1 — Runner, native fingerprint, and timings</h3>
+<p>Define the command surface for the four levels, implement the inspectable native fingerprint and development-client cache record, route JavaScript-only work away from native builds, and emit stage-level timing/cache reports. Cover both the no-native-build path and the forced-rebuild path with controlled negative tests.</p>
+<p><strong>Deliverable:</strong> a measured runner that can prove why the development client was reused or rebuilt.</p>
+<h3 id="f2-visual-acceptance-and-separate-phaserelease-gates">F2 — Visual acceptance and separate phase/release gates</h3>
+<p>Integrate affected-flow visual verification with the reused client and Metro, record simulator or device evidence, compose the phase-closing gate, and preserve the clean prebuild/archive release path as a distinct operation. Document the physical-device requirement for real Face ID acceptance.</p>
+<p><strong>Deliverable:</strong> explicit visual, phase, and release workflows whose reports cannot be confused with one another.</p>
+<h2 id="out-of-scope">Out of scope</h2>
+<ul>
+<li>Implementing the runner or choosing its final script names in this specification stage.</li>
+<li>Changing product screens, application behavior, signing identities, or TestFlight distribution.</li>
+<li>Removing clean prebuild or clean archive from the release workflow.</li>
+<li>Claiming real Face ID acceptance from a simulator.</li>
+<li>Introducing mandatory duration thresholds before a baseline is measured.</li>
+<li>Creating the future global verification skill or editing rules outside the Pickler repository.</li>
+<li>Extending this first implementation to Android or to non-mobile Pickler services.</li>
+</ul>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>HTML autogenerado · NO edites este archivo. Modifica el <code>.md</code> y re-genera con:</p>
+    <pre><code class="language-sql">node scripts/mobile/docs-md-to-html.mjs docs/mobile/superpowers/specs/2026-10-15-verificacion-rapida-design.md</code></pre>
+    <p>Reglas en <code>docs/mobile/AGENTS.md</code> sección "MD → HTML autogenerado".</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // Persistencia de los checkboxes de task lists (pickler-md:<slug>:tasks)
+  const SLUG = '2026-10-15-verificacion-rapida-design';
+  const KEY = `pickler-md:${SLUG}:tasks`;
+  const checks = [...document.querySelectorAll('ul.task-list input[type=checkbox]')];
+  function load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+      checks.forEach((c, i) => {
+        if (typeof saved[i] === 'boolean') {
+          c.checked = saved[i];
+          c.closest('li').classList.toggle('done', c.checked);
+        }
+      });
+    } catch {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(checks.map(c => c.checked))); } catch {}
+  }
+  checks.forEach(c => {
+    c.closest('li').classList.toggle('done', c.checked);
+    c.addEventListener('change', () => {
+      c.closest('li').classList.toggle('done', c.checked);
+      save();
+    });
+  });
+  load();
+
+  // Botón "Copy progress as MD"
+  const $copy = document.getElementById('btn-copy-progress');
+  const $toast = document.getElementById('toast');
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.dataset.show = 'true';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { $toast.dataset.show = 'false'; }, 2200);
+  }
+  if ($copy) {
+    $copy.addEventListener('click', async (e) => {
+      const lines = ['# ' + document.title.split(' · ')[0] + ' — task progress', ''];
+      lines.push('_Capturado en ' + new Date().toISOString() + '_', '');
+      checks.forEach(c => {
+        const text = c.closest('label').textContent.trim();
+        lines.push('- [' + (c.checked ? 'x' : ' ') + '] ' + text);
+      });
+      try {
+        await navigator.clipboard.writeText(lines.join('\n'));
+        e.currentTarget.dataset.copied = 'true';
+        const prev = e.currentTarget.textContent;
+        e.currentTarget.textContent = '✓ Copiado';
+        showToast('Progress copiado — pégalo en el plan MD');
+        setTimeout(() => {
+          e.currentTarget.dataset.copied = 'false';
+          e.currentTarget.textContent = prev;
+        }, 1800);
+      } catch {
+        showToast('Clipboard no disponible');
+      }
+    });
+  }
+</script>
+</body>
+</html>

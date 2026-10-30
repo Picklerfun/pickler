@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fast verification · native builds only when they add evidence · Pickler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_styles.css">
+<script defer src="_syntax.js"></script>
+</head>
+<body data-slug="verificacion-rapida">
+
+<div class="wrap">
+  <nav class="crumb">
+    <a href="index.html">← Catalogue</a>
+    <span class="sep">/</span>
+    <span class="mono">verificacion-rapida</span>
+  </nav>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span>Project overview</span>
+    <h1>Fast verification <span class="accent">native builds only when they add evidence</span></h1>
+    <p class="lede">
+      Give JavaScript and TypeScript changes a short path through the installed development client
+      and Metro, while native drift remains fail-closed and releases keep their clean archive.
+    </p>
+
+    <div class="status-board" id="status-board">
+      <div class="sb-grid">
+        <div class="sb-cell">
+          <div class="k">Status</div>
+          <div class="v"><span class="sb-pill active" data-sb="status">Active</span></div>
+        </div>
+        <div class="sb-cell"><div class="k">Spec</div><div class="v">✅</div></div>
+        <div class="sb-cell"><div class="k">Plans written</div><div class="v" data-sb="plans">0/2</div></div>
+        <div class="sb-cell"><div class="k">Implementation</div><div class="v" data-sb="impl">0/2</div></div>
+        <div class="sb-cell">
+          <div class="k">Next step</div>
+          <div class="v" data-sb="next" data-done="">F1: Runner, fingerprint, and timings</div>
+        </div>
+      </div>
+      <div class="sb-progress">
+        <div class="sb-progress-bar" id="sb-progress-bar">
+          <div class="seg" data-status="pending" style="width:50%" title="F1 pending"></div>
+          <div class="seg" data-status="pending" style="width:50%" title="F2 pending"></div>
+        </div>
+        <div class="sb-legend">
+          <span><span class="swatch completed"></span>Completed</span>
+          <span><span class="swatch in_progress"></span>In progress</span>
+          <span><span class="swatch plan_ready"></span>Plan ready</span>
+          <span><span class="swatch pending"></span>Pending</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#tldr">1. TL;DR</a></li>
+      <li><a href="#roadmap">2. Roadmap</a></li>
+      <li><a href="#contract">3. Contract</a></li>
+      <li><a href="#decisions">4. Decisions</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+    <section id="tldr">
+      <h2><span class="sec-num">01</span>TL;DR</h2>
+      <div class="tldr">
+        <h3>Development stays incremental; distribution stays clean</h3>
+        <p>
+          A deterministic native fingerprint decides whether Pickler can reuse its installed
+          development client. JavaScript-only work uses Metro without prebuild or Xcode. Native
+          inputs force a rebuild. Phase closure and release become separate gates, and every path
+          reports cache state and time by stage.
+        </p>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2><span class="sec-num">02</span>Roadmap</h2>
+      <p class="sec-sub">
+        The approved design defines two phases. Detailed tasks will be added only when each phase
+        receives its own implementation plan.
+      </p>
+      <div class="roadmap-actions">
+        <button type="button" class="btn" id="btn-copy-md">📋 Copy progress as MD</button>
+        <button type="button" class="btn" id="btn-copy-diff">📋 Copy HTML diff</button>
+        <button type="button" class="btn" id="btn-reset-local">↺ Reset local changes</button>
+      </div>
+
+      <article class="phase-card" data-phase="1" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F1</span>
+            <h3 class="phase-title">Runner, native fingerprint, and timings</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 1 status">
+              <option value="pending" selected>pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>
+            Establish the four-level command contract, calculate an inspectable fingerprint of
+            native-sensitive inputs, route application-only changes away from native builds, and
+            record stage durations plus cache state.
+          </p>
+          <div class="phase-meta">
+            <div><div class="k">Deliverable</div><div class="v">A measured runner that proves reuse or rebuild</div></div>
+            <div><div class="k">Prerequisites</div><div class="v">Approved specification</div></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="phase-card" data-phase="2" data-status="pending">
+        <div class="phase-head">
+          <div class="phase-title-wrap">
+            <span class="phase-num">F2</span>
+            <h3 class="phase-title">Visual acceptance and separate closing gates</h3>
+          </div>
+          <div class="phase-status-control">
+            <select aria-label="Phase 2 status">
+              <option value="pending" selected>pending</option>
+              <option value="plan_ready">plan_ready</option>
+              <option value="in_progress">in_progress</option>
+              <option value="completed">completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="phase-body">
+          <p>
+            Reuse the fingerprint-matched client for affected-flow visual checks, compose phase
+            closure without packaging, preserve clean prebuild plus archive for release, and record
+            when a physical iPhone is required for real Face ID evidence.
+          </p>
+          <div class="phase-meta">
+            <div><div class="k">Deliverable</div><div class="v">Distinct visual, phase, and release evidence</div></div>
+            <div><div class="k">Prerequisites</div><div class="v">F1</div></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="contract">
+      <h2><span class="sec-num">03</span>Verification contract</h2>
+      <table class="decisions">
+        <thead><tr><th>Level</th><th>Promise</th><th>Native work</th></tr></thead>
+        <tbody>
+          <tr><td><code>quick</code></td><td>Focused tests, type checks, fingerprint, and timings</td><td>Never for a matching JS/TS-only change</td></tr>
+          <tr><td><code>visual</code></td><td>Affected flows on a named simulator or device</td><td>Only after native fingerprint drift</td></tr>
+          <tr><td><code>phase</code></td><td>Comprehensive local closure without distribution</td><td>Development rebuild only when required</td></tr>
+          <tr><td><code>release</code></td><td>Signed, exportable distribution evidence</td><td>Always clean prebuild and clean archive</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="decisions">
+      <h2><span class="sec-num">04</span>Key decisions</h2>
+      <table class="decisions">
+        <thead><tr><th>Decision</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Fail closed on native drift</td><td>A stale client cannot produce accepted visual evidence.</td></tr>
+          <tr><td>Fingerprint explicit native inputs</td><td>The mobile dependency closure, sanitized resolved Expo config, plugins, embedded assets, and toolchains remain inspectable; generated iOS/Pods/build outputs stay excluded.</td></tr>
+          <tr><td>Measure each stage and cache outcome</td><td>The report identifies the expensive operation instead of hiding it in one total.</td></tr>
+          <tr><td>Keep release clean</td><td>Development speed must not reduce archive reproducibility or signing confidence.</td></tr>
+          <tr><td>Require a physical iPhone for real Face ID</td><td>The simulator cannot prove the real biometric prompt or hardware-backed behavior.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>Source:</b> <code>docs/mobile/superpowers/specs/2026-10-15-verificacion-rapida-design.md</code></p>
+    <p>Future plans: <code>docs/mobile/superpowers/plans/2026-10-15-verificacion-rapida-f*.md</code> · Live dashboard; update when a phase advances.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script>
+  const slug = document.body.dataset.slug;
+  const key = `pickler-docs:${slug}:state`;
+  const cards = [...document.querySelectorAll('.phase-card')];
+  const initial = Object.fromEntries(cards.map(card => [card.dataset.phase, card.dataset.status]));
+
+  function current() {
+    return Object.fromEntries(cards.map(card => [card.dataset.phase, card.dataset.status]));
+  }
+
+  function persist() {
+    try { localStorage.setItem(key, JSON.stringify({ phases: current() })); } catch {}
+  }
+
+  function update() {
+    const phases = cards.map(card => ({
+      num: card.dataset.phase,
+      status: card.dataset.status,
+      title: card.querySelector('.phase-title').textContent.trim(),
+    }));
+    const planned = phases.filter(phase => phase.status !== 'pending').length;
+    const completed = phases.filter(phase => phase.status === 'completed').length;
+    document.querySelector('[data-sb="plans"]').textContent = `${planned}/${phases.length}`;
+    document.querySelector('[data-sb="impl"]').textContent = `${completed}/${phases.length}`;
+    const next = phases.find(phase => phase.status !== 'completed');
+    document.querySelector('[data-sb="next"]').textContent = next ? `F${next.num}: ${next.title}` : '— all complete';
+    const bar = document.getElementById('sb-progress-bar');
+    bar.replaceChildren(...phases.map(phase => {
+      const segment = document.createElement('div');
+      segment.className = 'seg';
+      segment.dataset.status = phase.status;
+      segment.style.width = `${100 / phases.length}%`;
+      segment.title = `F${phase.num}: ${phase.title} (${phase.status})`;
+      return segment;
+    }));
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}').phases || {};
+    cards.forEach(card => {
+      if (saved[card.dataset.phase]) {
+        card.dataset.status = saved[card.dataset.phase];
+        card.querySelector('select').value = saved[card.dataset.phase];
+      }
+    });
+  } catch {}
+
+  cards.forEach(card => card.querySelector('select').addEventListener('change', event => {
+    card.dataset.status = event.target.value;
+    persist();
+    update();
+  }));
+
+  document.getElementById('btn-copy-md').addEventListener('click', async () => {
+    const lines = cards.map(card => `- F${card.dataset.phase} ${card.querySelector('.phase-title').textContent.trim()}: ${card.dataset.status}`);
+    await navigator.clipboard.writeText(`# Fast verification progress\n\n${lines.join('\n')}`);
+  });
+  document.getElementById('btn-copy-diff').addEventListener('click', async () => {
+    const changed = cards.filter(card => card.dataset.status !== initial[card.dataset.phase]);
+    const lines = changed.map(card => `F${card.dataset.phase}: ${initial[card.dataset.phase]} -> ${card.dataset.status}`);
+    await navigator.clipboard.writeText(lines.join('\n') || 'No local status changes.');
+  });
+  document.getElementById('btn-reset-local').addEventListener('click', () => {
+    localStorage.removeItem(key);
+    location.reload();
+  });
+  update();
+</script>
+</body>
+</html>
+
